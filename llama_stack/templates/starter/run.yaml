@@ -1195,7 +1195,7 @@ scoring_fns: []
 benchmarks: []
 tool_groups:
 - toolgroup_id: builtin::websearch
-  provider_id: tavily-search
+  provider_id: brave-search
 - toolgroup_id: builtin::rag
   provider_id: rag-runtime
 server:
