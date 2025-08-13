@@ -1,14 +1,12 @@
 name: Installer CI
 
-run-name: Test the installation script
-
 on:
   pull_request:
     paths:
-      - 'scripts/install.sh'
+      - 'install.sh'
   push:
     paths:
-      - 'scripts/install.sh'
+      - 'install.sh'
   schedule:
     - cron: '0 2 * * *'  # every day at 02:00 UTC
 
@@ -18,22 +16,11 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
       - name: Run ShellCheck on install.sh
-        run: shellcheck scripts/install.sh
-  smoke-test-on-dev:
+        run: shellcheck install.sh
+  smoke-test:
+    needs: lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Install dependencies
-        uses: ./.github/actions/setup-runner
-
-      - name: Build a single provider
-        run: |
-          USE_COPY_NOT_MOUNT=true LLAMA_STACK_DIR=. uv run --no-sync \
-            llama stack build --template starter --image-type container --image-name test
-
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
       - name: Run installer end-to-end
-        run: |
-          IMAGE_ID=$(docker images --format "{{.Repository}}:{{.Tag}}" | head -n 1)
-          ./scripts/install.sh --image $IMAGE_ID
+        run: ./install.sh

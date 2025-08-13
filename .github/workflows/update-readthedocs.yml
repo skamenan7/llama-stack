@@ -1,7 +1,5 @@
 name: Update ReadTheDocs
 
-run-name: Update the Llama Stack ReadTheDocs site
-
 on:
   workflow_dispatch:
     inputs:
