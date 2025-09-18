@@ -823,22 +823,22 @@ server:
   port: 8321
 vector_store_config:
   default_embedding_model: ${env.LLAMA_STACK_DEFAULT_EMBEDDING_MODEL:=all-MiniLM-L6-v2}
-  # optional - if omitted, defaults to 384
+  # required when default_embedding_model is set
   default_embedding_dimension: ${env.LLAMA_STACK_DEFAULT_EMBEDDING_DIMENSION:=384}
 ```
 
 Precedence rules at runtime:
 
-1. If `embedding_model` is explicitly passed in an API call, that value is used.
-2. Otherwise the value in `vector_store_config.default_embedding_model` is used.
-3. If neither is available the server will fall back to the system default (all-MiniLM-L6-v2).
+1. If `embedding_model` is explicitly passed in an API call, that value is used (model must be registered in the stack).
+2. Otherwise the value in `vector_store_config.default_embedding_model` is used (requires `default_embedding_dimension` to be set).
+3. If neither is available, the server will fall back to the first available embedding model in the registry.
 
 #### Environment variables
 
 | Variable | Purpose | Example |
 |----------|---------|---------|
 | `LLAMA_STACK_DEFAULT_EMBEDDING_MODEL` | Global default embedding model id | `all-MiniLM-L6-v2` |
-| `LLAMA_STACK_DEFAULT_EMBEDDING_DIMENSION` | Dimension for embeddings (optional, defaults to 384) | `384` |
+| `LLAMA_STACK_DEFAULT_EMBEDDING_DIMENSION` | Dimension for embeddings (required when model is set) | `384` |
 
 If you include the `${env.…}` placeholder in `vector_store_config`, deployments can override the default without editing YAML:
 
@@ -847,4 +847,4 @@ export LLAMA_STACK_DEFAULT_EMBEDDING_MODEL="sentence-transformers/all-MiniLM-L6-
 llama stack run --config run.yaml
 ```
 
-> Tip: If you omit `vector_store_config` entirely and don't set `LLAMA_STACK_DEFAULT_EMBEDDING_MODEL`, the system will fall back to the default `all-MiniLM-L6-v2` model with 384 dimensions for vector store creation.
+> Tip: If you omit `vector_store_config` entirely and don't set `LLAMA_STACK_DEFAULT_EMBEDDING_MODEL`, the system will fall back to using the first available embedding model in the registry for vector store creation.

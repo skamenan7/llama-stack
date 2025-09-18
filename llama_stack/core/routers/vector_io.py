@@ -90,16 +90,27 @@ class VectorIORouter(VectorIO):
                     if dim is None:
                         raise ValueError(f"Model {explicit_model} found but no embedding dimension in metadata")
                     return explicit_model, dim
-            # model not in our registry, let caller deal with dimension
-            return explicit_model, None  # type: ignore
+            # model not found in registry - this is an error
+            raise ValueError(f"Embedding model '{explicit_model}' not found in model registry")
 
         # check if we have global defaults set via env vars
         config = VectorStoreConfig()
         if config.default_embedding_model is not None:
-            return config.default_embedding_model, config.default_embedding_dimension or 384
+            if config.default_embedding_dimension is None:
+                raise ValueError(
+                    f"default_embedding_model '{config.default_embedding_model}' is set but default_embedding_dimension is missing"
+                )
+            return config.default_embedding_model, config.default_embedding_dimension
 
-        # fallback to existing default model for compatibility
-        return "all-MiniLM-L6-v2", 384
+        # fallback to first available embedding model for compatibility
+        fallback = await self._get_first_embedding_model()
+        if fallback is not None:
+            return fallback
+
+        # if no models available, raise error
+        raise ValueError(
+            "No embedding model specified and no default configured. Either provide an embedding_model parameter or set vector_store_config.default_embedding_model"
+        )
 
     async def register_vector_db(
         self,

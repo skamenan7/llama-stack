@@ -73,10 +73,40 @@ async def test_explicit_override(monkeypatch):
 
 
 async def test_fallback_to_default():
-    """Should fallback to all-MiniLM-L6-v2 when no defaults set."""
+    """Should fallback to first available embedding model when no defaults set."""
 
     router = VectorIORouter(routing_table=_DummyRoutingTable())
 
     model, dim = await router._resolve_embedding_model(None)
-    assert model == "all-MiniLM-L6-v2"
-    assert dim == 384
+    assert model == "first-model"
+    assert dim == 123
+
+
+async def test_missing_dimension_requirement(monkeypatch):
+    monkeypatch.setenv("LLAMA_STACK_DEFAULT_EMBEDDING_MODEL", "some-model")
+
+    router = VectorIORouter(routing_table=_DummyRoutingTable())
+
+    with pytest.raises(ValueError, match="default_embedding_model.*is set but default_embedding_dimension is missing"):
+        await router._resolve_embedding_model(None)
+
+    monkeypatch.delenv("LLAMA_STACK_DEFAULT_EMBEDDING_MODEL", raising=False)
+
+
+async def test_unregistered_model_error():
+    router = VectorIORouter(routing_table=_DummyRoutingTable())
+
+    with pytest.raises(ValueError, match="Embedding model 'unknown-model' not found in model registry"):
+        await router._resolve_embedding_model("unknown-model")
+
+
+class _EmptyRoutingTable:
+    async def get_all_with_type(self, _type: str):
+        return []
+
+
+async def test_no_models_available_error():
+    router = VectorIORouter(routing_table=_EmptyRoutingTable())
+
+    with pytest.raises(ValueError, match="No embedding model specified and no default configured"):
+        await router._resolve_embedding_model(None)
