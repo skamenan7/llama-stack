@@ -14,70 +14,56 @@ from llama_stack.providers.inline.telemetry.meta_reference.telemetry import Tele
 
 
 class TestAgentMetricsHistogram:
-    """Unit tests for histogram support in telemetry adapter for agent metrics"""
+    """Tests for agent histogram metrics"""
 
     @pytest.fixture
-    def telemetry_config(self):
-        """Basic telemetry config for testing"""
-        return TelemetryConfig(
-            service_name="test-service",
-            sinks=[],
-        )
+    def config(self):
+        return TelemetryConfig(service_name="test-service", sinks=[])
 
     @pytest.fixture
-    def telemetry_adapter(self, telemetry_config):
-        """TelemetryAdapter with mocked meter"""
-        adapter = TelemetryAdapter(telemetry_config, {})
-        # Mock the meter to avoid OpenTelemetry setup
-        adapter.meter = Mock()
+    def adapter(self, config):
+        adapter = TelemetryAdapter(config, {})
+        adapter.meter = Mock()  # skip otel setup
         return adapter
 
-    def test_get_or_create_histogram_new(self, telemetry_adapter):
-        """Test creating a new histogram"""
-        mock_histogram = Mock()
-        telemetry_adapter.meter.create_histogram.return_value = mock_histogram
+    def test_histogram_creation(self, adapter):
+        mock_hist = Mock()
+        adapter.meter.create_histogram.return_value = mock_hist
 
-        # Clear global storage to ensure clean state
         from llama_stack.providers.inline.telemetry.meta_reference.telemetry import _GLOBAL_STORAGE
 
         _GLOBAL_STORAGE["histograms"] = {}
 
-        result = telemetry_adapter._get_or_create_histogram("test_histogram", "s", [0.1, 0.5, 1.0, 5.0, 10.0])
+        result = adapter._get_or_create_histogram("test_histogram", "s")
 
-        assert result == mock_histogram
-        telemetry_adapter.meter.create_histogram.assert_called_once_with(
+        assert result == mock_hist
+        adapter.meter.create_histogram.assert_called_once_with(
             name="test_histogram",
             unit="s",
-            description="Histogram for test_histogram",
+            description="test histogram",
         )
-        assert _GLOBAL_STORAGE["histograms"]["test_histogram"] == mock_histogram
+        assert _GLOBAL_STORAGE["histograms"]["test_histogram"] == mock_hist
 
-    def test_get_or_create_histogram_existing(self, telemetry_adapter):
-        """Test retrieving an existing histogram"""
-        mock_histogram = Mock()
-
-        # Pre-populate global storage
+    def test_histogram_reuse(self, adapter):
+        mock_hist = Mock()
         from llama_stack.providers.inline.telemetry.meta_reference.telemetry import _GLOBAL_STORAGE
 
-        _GLOBAL_STORAGE["histograms"] = {"existing_histogram": mock_histogram}
+        _GLOBAL_STORAGE["histograms"] = {"existing_histogram": mock_hist}
 
-        result = telemetry_adapter._get_or_create_histogram("existing_histogram", "ms")
+        result = adapter._get_or_create_histogram("existing_histogram", "ms")
 
-        assert result == mock_histogram
-        # Should not create a new histogram
-        telemetry_adapter.meter.create_histogram.assert_not_called()
+        assert result == mock_hist
+        adapter.meter.create_histogram.assert_not_called()
 
-    def test_log_metric_duration_histogram(self, telemetry_adapter):
-        """Test logging duration metrics creates histogram"""
-        mock_histogram = Mock()
-        telemetry_adapter.meter.create_histogram.return_value = mock_histogram
+    def test_workflow_duration_histogram(self, adapter):
+        mock_hist = Mock()
+        adapter.meter.create_histogram.return_value = mock_hist
 
-        # Clear global storage
         from llama_stack.providers.inline.telemetry.meta_reference.telemetry import _GLOBAL_STORAGE
 
         _GLOBAL_STORAGE["histograms"] = {}
 
-        metric_event = MetricEvent(
+        event = MetricEvent(
             trace_id="123",
             span_id="456",
             metric="llama_stack_agent_workflow_duration_seconds",
@@ -88,27 +74,24 @@ class TestAgentMetricsHistogram:
             metric_type=MetricType.HISTOGRAM,
         )
 
-        telemetry_adapter._log_metric(metric_event)
+        adapter._log_metric(event)
 
-        # Verify histogram was created and recorded
-        telemetry_adapter.meter.create_histogram.assert_called_once_with(
+        adapter.meter.create_histogram.assert_called_once_with(
             name="llama_stack_agent_workflow_duration_seconds",
             unit="s",
-            description="Histogram for llama_stack_agent_workflow_duration_seconds",
+            description="llama stack agent workflow duration seconds",
         )
-        mock_histogram.record.assert_called_once_with(15.7, attributes={"agent_id": "test-agent"})
+        mock_hist.record.assert_called_once_with(15.7, attributes={"agent_id": "test-agent"})
 
-    def test_log_metric_duration_histogram_default_buckets(self, telemetry_adapter):
-        """Test that duration metrics use default buckets"""
-        mock_histogram = Mock()
-        telemetry_adapter.meter.create_histogram.return_value = mock_histogram
+    def test_duration_buckets_configured_via_views(self, adapter):
+        mock_hist = Mock()
+        adapter.meter.create_histogram.return_value = mock_hist
 
-        # Clear global storage
         from llama_stack.providers.inline.telemetry.meta_reference.telemetry import _GLOBAL_STORAGE
 
         _GLOBAL_STORAGE["histograms"] = {}
 
-        metric_event = MetricEvent(
+        event = MetricEvent(
             trace_id="123",
             span_id="456",
             metric="custom_duration_seconds",
@@ -119,22 +102,20 @@ class TestAgentMetricsHistogram:
             metric_type=MetricType.HISTOGRAM,
         )
 
-        telemetry_adapter._log_metric(metric_event)
+        adapter._log_metric(event)
 
-        # Verify histogram was created (buckets are not passed to create_histogram in OpenTelemetry)
-        mock_histogram.record.assert_called_once_with(5.2, attributes={})
+        # buckets configured via otel views, not passed to create_histogram
+        mock_hist.record.assert_called_once_with(5.2, attributes={})
 
-    def test_log_metric_non_duration_counter(self, telemetry_adapter):
-        """Test that non-duration metrics still use counters"""
+    def test_non_duration_uses_counter(self, adapter):
         mock_counter = Mock()
-        telemetry_adapter.meter.create_counter.return_value = mock_counter
+        adapter.meter.create_counter.return_value = mock_counter
 
-        # Clear global storage
         from llama_stack.providers.inline.telemetry.meta_reference.telemetry import _GLOBAL_STORAGE
 
         _GLOBAL_STORAGE["counters"] = {}
 
-        metric_event = MetricEvent(
+        event = MetricEvent(
             trace_id="123",
             span_id="456",
             metric="llama_stack_agent_workflows_total",
@@ -144,18 +125,16 @@ class TestAgentMetricsHistogram:
             attributes={"agent_id": "test-agent", "status": "completed"},
         )
 
-        telemetry_adapter._log_metric(metric_event)
+        adapter._log_metric(event)
 
-        # Verify counter was used, not histogram
-        telemetry_adapter.meter.create_counter.assert_called_once()
-        telemetry_adapter.meter.create_histogram.assert_not_called()
+        adapter.meter.create_counter.assert_called_once()
+        adapter.meter.create_histogram.assert_not_called()
         mock_counter.add.assert_called_once_with(1, attributes={"agent_id": "test-agent", "status": "completed"})
 
-    def test_log_metric_no_meter(self, telemetry_adapter):
-        """Test metric logging when meter is None"""
-        telemetry_adapter.meter = None
+    def test_no_meter_doesnt_crash(self, adapter):
+        adapter.meter = None
 
-        metric_event = MetricEvent(
+        event = MetricEvent(
             trace_id="123",
             span_id="456",
             metric="test_duration_seconds",
@@ -165,80 +144,59 @@ class TestAgentMetricsHistogram:
             attributes={},
         )
 
-        # Should not raise exception
-        telemetry_adapter._log_metric(metric_event)
+        adapter._log_metric(event)  # shouldn't crash
 
-    def test_histogram_name_detection_patterns(self, telemetry_adapter):
-        """Test various duration metric name patterns"""
-        mock_histogram = Mock()
-        telemetry_adapter.meter.create_histogram.return_value = mock_histogram
-
-        # Clear global storage
-        from llama_stack.providers.inline.telemetry.meta_reference.telemetry import _GLOBAL_STORAGE
-
-        _GLOBAL_STORAGE["histograms"] = {}
-
-        duration_metrics = [
-            "workflow_duration_seconds",
-            "request_duration_seconds",
-            "processing_duration_seconds",
-            "llama_stack_agent_workflow_duration_seconds",
-        ]
-
-        for metric_name in duration_metrics:
-            _GLOBAL_STORAGE["histograms"] = {}  # Reset for each test
-
-            metric_event = MetricEvent(
-                trace_id="123",
-                span_id="456",
-                metric=metric_name,
-                value=1.0,
-                timestamp=1234567890.0,
-                unit="s",
-                attributes={},
-                metric_type=MetricType.HISTOGRAM,
-            )
-
-            telemetry_adapter._log_metric(metric_event)
-            mock_histogram.record.assert_called()
-
-        # Reset call count for negative test
-        mock_histogram.record.reset_mock()
-        telemetry_adapter.meter.create_histogram.reset_mock()
-
-        # Test non-duration metric
-        non_duration_metric = MetricEvent(
-            trace_id="123",
-            span_id="456",
-            metric="workflow_total",  # No "_duration_seconds" suffix
-            value=1,
-            timestamp=1234567890.0,
-            unit="1",
-            attributes={},
-        )
-
-        telemetry_adapter._log_metric(non_duration_metric)
-
-        # Should not create histogram for non-duration metric
-        telemetry_adapter.meter.create_histogram.assert_not_called()
-        mock_histogram.record.assert_not_called()
-
-    def test_histogram_global_storage_isolation(self, telemetry_adapter):
-        """Test that histogram storage doesn't interfere with counters"""
-        mock_histogram = Mock()
+    def test_histogram_vs_counter_by_type(self, adapter):
+        mock_hist = Mock()
         mock_counter = Mock()
+        adapter.meter.create_histogram.return_value = mock_hist
+        adapter.meter.create_counter.return_value = mock_counter
 
-        telemetry_adapter.meter.create_histogram.return_value = mock_histogram
-        telemetry_adapter.meter.create_counter.return_value = mock_counter
-
-        # Clear global storage
         from llama_stack.providers.inline.telemetry.meta_reference.telemetry import _GLOBAL_STORAGE
 
         _GLOBAL_STORAGE["histograms"] = {}
         _GLOBAL_STORAGE["counters"] = {}
 
-        # Create histogram
-        duration_metric = MetricEvent(
+        # histogram metric
+        hist_event = MetricEvent(
+            trace_id="123",
+            span_id="456",
+            metric="workflow_duration_seconds",
+            value=1.0,
+            timestamp=1234567890.0,
+            unit="s",
+            attributes={},
+            metric_type=MetricType.HISTOGRAM,
+        )
+        adapter._log_metric(hist_event)
+        mock_hist.record.assert_called()
+
+        # counter metric (default type)
+        counter_event = MetricEvent(
+            trace_id="123",
+            span_id="456",
+            metric="workflow_total",
+            value=1,
+            timestamp=1234567890.0,
+            unit="1",
+            attributes={},
+        )
+        adapter._log_metric(counter_event)
+        mock_counter.add.assert_called()
+
+    def test_storage_separation(self, adapter):
+        mock_hist = Mock()
+        mock_counter = Mock()
+        adapter.meter.create_histogram.return_value = mock_hist
+        adapter.meter.create_counter.return_value = mock_counter
+
+        from llama_stack.providers.inline.telemetry.meta_reference.telemetry import _GLOBAL_STORAGE
+
+        _GLOBAL_STORAGE["histograms"] = {}
+        _GLOBAL_STORAGE["counters"] = {}
+
+        # create both types
+        hist_event = MetricEvent(
             trace_id="123",
             span_id="456",
             metric="test_duration_seconds",
@@ -248,10 +206,7 @@ class TestAgentMetricsHistogram:
             attributes={},
             metric_type=MetricType.HISTOGRAM,
         )
-        telemetry_adapter._log_metric(duration_metric)
-
-        # Create counter
-        counter_metric = MetricEvent(
+        counter_event = MetricEvent(
             trace_id="123",
             span_id="456",
             metric="test_counter",
@@ -260,33 +215,30 @@ class TestAgentMetricsHistogram:
             unit="1",
             attributes={},
         )
-        telemetry_adapter._log_metric(counter_metric)
 
-        # Verify both were created and stored separately
+        adapter._log_metric(hist_event)
+        adapter._log_metric(counter_event)
+
+        # check they're stored separately
         assert "test_duration_seconds" in _GLOBAL_STORAGE["histograms"]
         assert "test_counter" in _GLOBAL_STORAGE["counters"]
         assert "test_duration_seconds" not in _GLOBAL_STORAGE["counters"]
         assert "test_counter" not in _GLOBAL_STORAGE["histograms"]
 
-    def test_histogram_buckets_parameter_ignored(self, telemetry_adapter):
-        """Test that buckets parameter doesn't affect histogram creation (OpenTelemetry handles buckets internally)"""
-        mock_histogram = Mock()
-        telemetry_adapter.meter.create_histogram.return_value = mock_histogram
+    def test_histogram_uses_views_for_buckets(self, adapter):
+        mock_hist = Mock()
+        adapter.meter.create_histogram.return_value = mock_hist
 
-        # Clear global storage
         from llama_stack.providers.inline.telemetry.meta_reference.telemetry import _GLOBAL_STORAGE
 
         _GLOBAL_STORAGE["histograms"] = {}
 
-        # Call with buckets parameter
-        result = telemetry_adapter._get_or_create_histogram(
-            "test_histogram", "s", buckets=[0.1, 0.5, 1.0, 5.0, 10.0, 25.0, 50.0, 100.0]
-        )
+        result = adapter._get_or_create_histogram("test_histogram", "s")
 
-        # Buckets are not passed to OpenTelemetry create_histogram
-        telemetry_adapter.meter.create_histogram.assert_called_once_with(
+        # buckets come from otel views, not create_histogram params
+        adapter.meter.create_histogram.assert_called_once_with(
             name="test_histogram",
             unit="s",
-            description="Histogram for test_histogram",
+            description="test histogram",
         )
-        assert result == mock_histogram
+        assert result == mock_hist

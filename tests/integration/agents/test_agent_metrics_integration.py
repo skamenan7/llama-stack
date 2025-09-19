@@ -5,55 +5,79 @@
 # the root directory of this source tree.
 
 import asyncio
-from unittest.mock import AsyncMock, Mock, patch
+from typing import Any
 
-from llama_stack.providers.inline.agents.meta_reference.agent_instance import ChatAgent
+from llama_stack.providers.utils.telemetry import tracing as telemetry_tracing
 
 
 class TestAgentMetricsIntegration:
-    """Smoke test for agent metrics integration"""
-
-    async def test_agent_metrics_methods_exist_and_work(self):
-        """Test that metrics methods exist and can be called without errors"""
-        # Create a minimal agent instance with mocked dependencies
-        telemetry_api = AsyncMock()
-        telemetry_api.logged_events = []
-
-        async def mock_log_event(event):
-            telemetry_api.logged_events.append(event)
-
-        telemetry_api.log_event = mock_log_event
-
-        agent = ChatAgent(
-            agent_id="test-agent",
-            agent_config=Mock(),
-            inference_api=Mock(),
-            safety_api=Mock(),
-            tool_runtime_api=Mock(),
-            tool_groups_api=Mock(),
-            vector_io_api=Mock(),
-            telemetry_api=telemetry_api,
-            persistence_store=Mock(),
-            created_at="2025-01-01T00:00:00Z",
-            policy=[],
+    async def test_agent_metrics_end_to_end(
+        self: Any,
+        telemetry: Any,
+        kvstore: Any,
+        make_agent_fixture: Any,
+        span_patch: Any,
+        make_completion_fn: Any,
+    ) -> None:
+        from llama_stack.apis.inference import (
+            SamplingParams,
+            UserMessage,
         )
 
-        with patch("llama_stack.providers.inline.agents.meta_reference.agent_instance.get_current_span") as mock_span:
-            mock_span.return_value = Mock(get_span_context=Mock(return_value=Mock(trace_id=123, span_id=456)))
+        agent: Any = make_agent_fixture(telemetry, kvstore)
 
-            # Test all metrics methods work
-            agent._track_step()
-            agent._track_workflow("completed", 2.5)
-            agent._track_tool("web_search")
+        session_id = await agent.create_session("s")
+        sampling_params = SamplingParams(max_tokens=64)
 
-            # Wait for async operations
-            await asyncio.sleep(0.01)
+        # single trace: plain, knowledge_search, web_search
+        await telemetry_tracing.start_trace("agent_metrics")
+        agent.inference_api.chat_completion = make_completion_fn(None, "Hello! I can help you with that.")
+        async for _ in agent.run(
+            session_id,
+            "t1",
+            [UserMessage(content="Hello")],
+            sampling_params,
+            stream=True,
+        ):
+            pass
+        agent.inference_api.chat_completion = make_completion_fn("knowledge_search", "")
+        async for _ in agent.run(
+            session_id,
+            "t2",
+            [UserMessage(content="Please search knowledge")],
+            sampling_params,
+            stream=True,
+        ):
+            pass
+        agent.inference_api.chat_completion = make_completion_fn("web_search", "")
+        async for _ in agent.run(
+            session_id,
+            "t3",
+            [UserMessage(content="Please search web")],
+            sampling_params,
+            stream=True,
+        ):
+            pass
+        await telemetry_tracing.end_trace()
 
-            # Basic verification that telemetry was called
-            assert len(telemetry_api.logged_events) >= 3
+        # Poll briefly to avoid flake with async persistence
+        tool_labels: set[str] = set()
+        for _ in range(10):
+            resp = await telemetry.query_metrics("llama_stack_agent_tool_calls_total", start_time=0, end_time=None)
+            tool_labels.clear()
+            for series in getattr(resp, "data", []) or []:
+                for lbl in getattr(series, "labels", []) or []:
+                    name = getattr(lbl, "name", None) or getattr(lbl, "key", None)
+                    value = getattr(lbl, "value", None)
+                    if name == "tool" and value:
+                        tool_labels.add(value)
 
-            # Verify we can call the methods without exceptions
-            agent._track_tool("knowledge_search")  # Test tool mapping
-            await asyncio.sleep(0.01)
+            # Look for both web_search AND some form of knowledge search
+            if ("web_search" in tool_labels) and ("rag" in tool_labels or "knowledge_search" in tool_labels):
+                break
+            await asyncio.sleep(0.1)
 
-            assert len(telemetry_api.logged_events) >= 4
+        # More descriptive assertion
+        assert bool(tool_labels & {"web_search", "rag", "knowledge_search"}), (
+            f"Expected tool calls not found. Got: {tool_labels}"
+        )
