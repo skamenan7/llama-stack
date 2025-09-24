@@ -5,6 +5,7 @@
 # the root directory of this source tree.
 
 import asyncio
+import logging
 import uuid
 from typing import Any
 
@@ -101,13 +102,12 @@ class VectorIORouter(VectorIO):
         chunks: list[Chunk],
         ttl_seconds: int | None = None,
     ) -> None:
-        doc_ids = [
-            getattr(chunk.chunk_metadata, "document_id", None) if chunk.chunk_metadata else None for chunk in chunks[:3]
-        ]
-        logger.debug(
-            f"VectorIORouter.insert_chunks: {vector_db_id}, {len(chunks)} chunks, "
-            f"ttl_seconds={ttl_seconds}, chunk_ids={doc_ids}{' and more...' if len(chunks) > 3 else ''}"
-        )
+        if logger.isEnabledFor(logging.DEBUG):
+            doc_ids = [chunk.document_id for chunk in chunks[:3]]
+            logger.debug(
+                f"VectorIORouter.insert_chunks: {vector_db_id}, {len(chunks)} chunks, "
+                f"ttl_seconds={ttl_seconds}, chunk_ids={doc_ids}{' and more...' if len(chunks) > 3 else ''}"
+            )
         provider = await self.routing_table.get_provider_impl(vector_db_id)
         await provider.insert_chunks(vector_db_id, chunks, ttl_seconds)
 
