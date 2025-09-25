@@ -5,7 +5,7 @@
 # the root directory of this source tree.
 
 import asyncio
-import logging
+import logging  # allow-direct-logging
 import uuid
 from typing import Any
 
