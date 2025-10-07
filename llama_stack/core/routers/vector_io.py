@@ -107,7 +107,7 @@ class VectorIORouter(VectorIO):
             f"ttl_seconds={ttl_seconds}, chunk_ids={doc_ids}{' and more...' if len(chunks) > 3 else ''}"
         )
         provider = await self.routing_table.get_provider_impl(vector_db_id)
-        await provider.insert_chunks(vector_db_id, chunks, ttl_seconds)
+        return await provider.insert_chunks(vector_db_id, chunks, ttl_seconds)
 
     async def query_chunks(
         self,
