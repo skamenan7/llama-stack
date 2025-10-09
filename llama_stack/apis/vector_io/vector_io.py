@@ -96,14 +96,14 @@ class Chunk(BaseModel):
         """Returns the document_id from either metadata or chunk_metadata, with metadata taking precedence."""
         # Check metadata first (takes precedence)
         doc_id = self.metadata.get("document_id")
-        if isinstance(doc_id, str):
+        if doc_id is not None:
+            if not isinstance(doc_id, str):
+                raise TypeError(f"metadata['document_id'] must be a string, got {type(doc_id).__name__}: {doc_id!r}")
             return doc_id
 
-        # Fall back to chunk_metadata if available
+        # Fall back to chunk_metadata if available (Pydantic ensures type safety)
         if self.chunk_metadata is not None:
-            chunk_doc_id = getattr(self.chunk_metadata, "document_id", None)
-            if isinstance(chunk_doc_id, str):
-                return chunk_doc_id
+            return self.chunk_metadata.document_id
 
         return None
 
