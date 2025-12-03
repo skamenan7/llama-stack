@@ -134,9 +134,13 @@ def pytest_configure(config):
             if k not in os.environ:
                 os.environ[k] = str(v)
         # Apply defaults if not provided explicitly
+        # Empty string ("") is a special case that means "force override to disable"
+        # This allows setups like bedrock to skip embedding validation
         for dest, value in setup_obj.defaults.items():
-            current = getattr(config.option, dest, None)
-            if current is None:
+            if value == "":
+                # Empty string forces override - used to disable features
+                setattr(config.option, dest, value)
+            elif getattr(config.option, dest, None) is None:
                 setattr(config.option, dest, value)
 
     # Apply global fallback for embedding_dimension if still not set
