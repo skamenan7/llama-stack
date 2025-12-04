@@ -47,6 +47,40 @@ class WatsonXInferenceAdapter(LiteLLMOpenAIMixin):
             openai_compat_api_base=self.get_base_url(),
         )
 
+    def _inject_stream_options_for_telemetry(
+        self,
+        stream_options: dict | None,
+        is_streaming: bool,
+    ) -> dict | None:
+        """
+        Inject stream_options when streaming and telemetry is active.
+
+        Active telemetry takes precedence over caller preference to ensure
+        complete and consistent observability metrics.
+
+        Args:
+            stream_options: Original stream_options from params
+            is_streaming: Whether this is a streaming request
+
+        Returns:
+            Modified stream_options with include_usage=True if telemetry active,
+            otherwise returns original stream_options unchanged
+        """
+        if not is_streaming:
+            return stream_options
+
+        from opentelemetry import trace
+
+        span = trace.get_current_span()
+        if not span or not span.is_recording():
+            return stream_options
+
+        # Telemetry is active - inject include_usage
+        if stream_options is None:
+            return {"include_usage": True}
+        else:
+            return {**stream_options, "include_usage": True}
+
     async def openai_chat_completion(
         self,
         params: OpenAIChatCompletionRequestWithExtraBody,
@@ -55,14 +89,11 @@ class WatsonXInferenceAdapter(LiteLLMOpenAIMixin):
         Override parent method to add timeout and inject usage object when missing.
         This works around a LiteLLM defect where usage block is sometimes dropped.
         """
-
-        # Add usage tracking for streaming when telemetry is active
-        stream_options = params.stream_options
-        if params.stream:
-            if stream_options is None:
-                stream_options = {"include_usage": True}
-            elif "include_usage" not in stream_options:
-                stream_options = {**stream_options, "include_usage": True}
+        # Inject stream_options when streaming and telemetry is active
+        stream_options = self._inject_stream_options_for_telemetry(
+            params.stream_options,
+            params.stream,
+        )
 
         model_obj = await self.model_store.get_model(params.model)
 
@@ -183,6 +214,12 @@ class WatsonXInferenceAdapter(LiteLLMOpenAIMixin):
         """
         from llama_stack.providers.utils.inference.openai_compat import prepare_openai_completion_params
 
+        # Inject stream_options when streaming and telemetry is active
+        stream_options = self._inject_stream_options_for_telemetry(
+            params.stream_options,
+            params.stream,
+        )
+
         model_obj = await self.model_store.get_model(params.model)
 
         request_params = await prepare_openai_completion_params(
@@ -199,7 +236,7 @@ class WatsonXInferenceAdapter(LiteLLMOpenAIMixin):
             seed=params.seed,
             stop=params.stop,
             stream=params.stream,
-            stream_options=params.stream_options,
+            stream_options=stream_options,
             temperature=params.temperature,
             top_p=params.top_p,
             user=params.user,

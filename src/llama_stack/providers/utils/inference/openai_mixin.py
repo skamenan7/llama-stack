@@ -271,6 +271,20 @@ class OpenAIMixin(NeedsRequestProviderData, ABC, BaseModel):
         """
         Direct OpenAI completion API call.
         """
+        # Inject stream_options when streaming and telemetry is active
+        if params.stream:
+            from opentelemetry import trace
+
+            span = trace.get_current_span()
+            if span and span.is_recording():
+                params = params.model_copy()
+                if params.stream_options is None:
+                    params.stream_options = {"include_usage": True}
+                else:
+                    # Active telemetry takes precedence over caller preference.
+                    # This ensures complete and consistent observability metrics.
+                    params.stream_options = {**params.stream_options, "include_usage": True}
+
         # TODO: fix openai_completion to return type compatible with OpenAI's API response
         provider_model_id = await self._get_provider_model_id(params.model)
         self._validate_model_allowed(provider_model_id)
@@ -308,6 +322,20 @@ class OpenAIMixin(NeedsRequestProviderData, ABC, BaseModel):
         """
         Direct OpenAI chat completion API call.
         """
+        # Inject stream_options when streaming and telemetry is active
+        if params.stream:
+            from opentelemetry import trace
+
+            span = trace.get_current_span()
+            if span and span.is_recording():
+                params = params.model_copy()
+                if params.stream_options is None:
+                    params.stream_options = {"include_usage": True}
+                else:
+                    # Active telemetry takes precedence over caller preference.
+                    # This ensures complete and consistent observability metrics.
+                    params.stream_options = {**params.stream_options, "include_usage": True}
+
         provider_model_id = await self._get_provider_model_id(params.model)
         self._validate_model_allowed(provider_model_id)
 
