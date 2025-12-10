@@ -13,7 +13,10 @@ import requests
 from llama_stack.log import get_logger
 from llama_stack.providers.remote.inference.watsonx.config import WatsonXConfig
 from llama_stack.providers.utils.inference.litellm_openai_mixin import LiteLLMOpenAIMixin
-from llama_stack.providers.utils.inference.openai_compat import prepare_openai_completion_params
+from llama_stack.providers.utils.inference.openai_compat import (
+    get_stream_options_for_telemetry,
+    prepare_openai_completion_params,
+)
 from llama_stack_api import (
     Model,
     ModelType,
@@ -47,40 +50,6 @@ class WatsonXInferenceAdapter(LiteLLMOpenAIMixin):
             openai_compat_api_base=self.get_base_url(),
         )
 
-    def _inject_stream_options_for_telemetry(
-        self,
-        stream_options: dict | None,
-        is_streaming: bool,
-    ) -> dict | None:
-        """
-        Inject stream_options when streaming and telemetry is active.
-
-        Active telemetry takes precedence over caller preference to ensure
-        complete and consistent observability metrics.
-
-        Args:
-            stream_options: Original stream_options from params
-            is_streaming: Whether this is a streaming request
-
-        Returns:
-            Modified stream_options with include_usage=True if telemetry active,
-            otherwise returns original stream_options unchanged
-        """
-        if not is_streaming:
-            return stream_options
-
-        from opentelemetry import trace
-
-        span = trace.get_current_span()
-        if not span or not span.is_recording():
-            return stream_options
-
-        # Telemetry is active - inject include_usage
-        if stream_options is None:
-            return {"include_usage": True}
-        else:
-            return {**stream_options, "include_usage": True}
-
     async def openai_chat_completion(
         self,
         params: OpenAIChatCompletionRequestWithExtraBody,
@@ -90,7 +59,7 @@ class WatsonXInferenceAdapter(LiteLLMOpenAIMixin):
         This works around a LiteLLM defect where usage block is sometimes dropped.
         """
         # Inject stream_options when streaming and telemetry is active
-        stream_options = self._inject_stream_options_for_telemetry(
+        stream_options = get_stream_options_for_telemetry(
             params.stream_options,
             params.stream,
         )
@@ -212,10 +181,8 @@ class WatsonXInferenceAdapter(LiteLLMOpenAIMixin):
         """
         Override parent method to add watsonx-specific parameters.
         """
-        from llama_stack.providers.utils.inference.openai_compat import prepare_openai_completion_params
-
         # Inject stream_options when streaming and telemetry is active
-        stream_options = self._inject_stream_options_for_telemetry(
+        stream_options = get_stream_options_for_telemetry(
             params.stream_options,
             params.stream,
         )

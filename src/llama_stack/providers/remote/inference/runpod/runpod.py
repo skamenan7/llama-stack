@@ -4,7 +4,14 @@
 # This source code is licensed under the terms described in the LICENSE file in
 # the root directory of this source tree.
 
+from collections.abc import AsyncIterator
+
 from llama_stack.providers.utils.inference.openai_mixin import OpenAIMixin
+from llama_stack_api import (
+    OpenAIChatCompletion,
+    OpenAIChatCompletionChunk,
+    OpenAIChatCompletionRequestWithExtraBody,
+)
 
 from .config import RunpodImplConfig
 
@@ -22,3 +29,17 @@ class RunpodInferenceAdapter(OpenAIMixin):
     def get_base_url(self) -> str:
         """Get base URL for OpenAI client."""
         return str(self.config.base_url)
+
+    async def openai_chat_completion(
+        self,
+        params: OpenAIChatCompletionRequestWithExtraBody,
+    ) -> OpenAIChatCompletion | AsyncIterator[OpenAIChatCompletionChunk]:
+        """Override to add RunPod-specific stream_options requirement."""
+        if params.stream:
+            params = params.model_copy()
+            if params.stream_options is None:
+                params.stream_options = {"include_usage": True}
+            elif params.stream_options.get("include_usage") is not True:
+                params.stream_options = {**params.stream_options, "include_usage": True}
+
+        return await super().openai_chat_completion(params)

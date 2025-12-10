@@ -14,6 +14,7 @@ from llama_stack.core.request_headers import NeedsRequestProviderData
 from llama_stack.log import get_logger
 from llama_stack.providers.utils.inference.model_registry import ModelRegistryHelper, ProviderModelEntry
 from llama_stack.providers.utils.inference.openai_compat import (
+    get_stream_options_for_telemetry,
     prepare_openai_completion_params,
 )
 from llama_stack_api import (
@@ -180,18 +181,7 @@ class LiteLLMOpenAIMixin(
         params: OpenAICompletionRequestWithExtraBody,
     ) -> OpenAICompletion:
         # Inject stream_options when streaming and telemetry is active
-        stream_options = params.stream_options
-        if params.stream:
-            from opentelemetry import trace
-
-            span = trace.get_current_span()
-            if span and span.is_recording():
-                if stream_options is None:
-                    stream_options = {"include_usage": True}
-                else:
-                    # Active telemetry takes precedence over caller preference.
-                    # This ensures complete and consistent observability metrics.
-                    stream_options = {**stream_options, "include_usage": True}
+        stream_options = get_stream_options_for_telemetry(params.stream_options, params.stream)
 
         if not self.model_store:
             raise ValueError("Model store is not initialized")
@@ -231,18 +221,7 @@ class LiteLLMOpenAIMixin(
         params: OpenAIChatCompletionRequestWithExtraBody,
     ) -> OpenAIChatCompletion | AsyncIterator[OpenAIChatCompletionChunk]:
         # Inject stream_options when streaming and telemetry is active
-        stream_options = params.stream_options
-        if params.stream:
-            from opentelemetry import trace
-
-            span = trace.get_current_span()
-            if span and span.is_recording():
-                if stream_options is None:
-                    stream_options = {"include_usage": True}
-                else:
-                    # Active telemetry takes precedence over caller preference.
-                    # This ensures complete and consistent observability metrics.
-                    stream_options = {**stream_options, "include_usage": True}
+        stream_options = get_stream_options_for_telemetry(params.stream_options, params.stream)
 
         if not self.model_store:
             raise ValueError("Model store is not initialized")

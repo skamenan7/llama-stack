@@ -82,6 +82,14 @@ class BedrockInferenceAdapter(OpenAIMixin):
         params: OpenAIChatCompletionRequestWithExtraBody,
     ) -> OpenAIChatCompletion | AsyncIterator[OpenAIChatCompletionChunk]:
         """Override to handle authentication errors and null responses."""
+        # Enable streaming usage metrics unconditionally for Bedrock
+        if params.stream:
+            params = params.model_copy()
+            if params.stream_options is None:
+                params.stream_options = {"include_usage": True}
+            elif params.stream_options.get("include_usage") is not True:
+                params.stream_options = {**params.stream_options, "include_usage": True}
+
         try:
             logger.debug(f"Calling Bedrock OpenAI API with model={params.model}, stream={params.stream}")
             result = await super().openai_chat_completion(params=params)
