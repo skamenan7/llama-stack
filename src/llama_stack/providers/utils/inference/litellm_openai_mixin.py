@@ -7,6 +7,7 @@
 import base64
 import struct
 from collections.abc import AsyncIterator
+from typing import Any
 
 import litellm
 
@@ -212,6 +213,7 @@ class LiteLLMOpenAIMixin(
             suffix=params.suffix,
             api_key=self.get_api_key(),
             api_base=self.api_base,
+            **self._litellm_extra_request_params(params),
         )
         # LiteLLM returns compatible type but mypy can't verify external library
         return await litellm.atext_completion(**request_params)  # type: ignore[no-any-return]  # external lib lacks type stubs
@@ -257,6 +259,7 @@ class LiteLLMOpenAIMixin(
             user=params.user,
             api_key=self.get_api_key(),
             api_base=self.api_base,
+            **self._litellm_extra_request_params(params),
         )
         # LiteLLM returns compatible type but mypy can't verify external library
         return await litellm.acompletion(**request_params)  # type: ignore[no-any-return]  # external lib lacks type stubs
@@ -274,6 +277,20 @@ class LiteLLMOpenAIMixin(
             return False
 
         return model in litellm.models_by_provider[self.litellm_provider_name]
+
+    def _litellm_extra_request_params(
+        self,
+        params: OpenAIChatCompletionRequestWithExtraBody | OpenAICompletionRequestWithExtraBody,
+    ) -> dict[str, Any]:
+        """
+        Provider hook for extra LiteLLM/OpenAI-compat request params.
+
+        This is intentionally a narrow hook so provider adapters (e.g. WatsonX)
+        can add provider-specific kwargs (timeouts, project IDs, etc.) while the
+        mixin remains the single source of truth for telemetry-driven
+        stream_options injection.
+        """
+        return {}
 
 
 def b64_encode_openai_embeddings_response(
