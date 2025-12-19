@@ -50,6 +50,7 @@ class OpenAIMixin(NeedsRequestProviderData, ABC, BaseModel):
     The behavior of this class can be customized by child classes in the following ways:
     - overwrite_completion_id: If True, overwrites the 'id' field in OpenAI responses
     - download_images: If True, downloads images and converts to base64 for providers that require it
+    - supports_stream_options: If False, disables stream_options injection for providers that don't support it
     - embedding_model_metadata: A dictionary mapping model IDs to their embedding metadata
     - construct_model_from_identifier: Method to construct a Model instance corresponding to the given identifier
     - provider_data_api_key_field: Optional field name in provider data to look for API key
@@ -76,6 +77,10 @@ class OpenAIMixin(NeedsRequestProviderData, ABC, BaseModel):
     # Allow subclasses to control whether to download images and convert to base64
     # for providers that require base64 encoded images instead of URLs.
     download_images: bool = False
+
+    # Allow subclasses to control whether the provider supports stream_options parameter
+    # Set to False for providers that don't support stream_options (e.g., Ollama, vLLM)
+    supports_stream_options: bool = True
 
     # Embedding model metadata for this provider
     # Can be set by subclasses or instances to provide embedding models
@@ -274,7 +279,9 @@ class OpenAIMixin(NeedsRequestProviderData, ABC, BaseModel):
         Direct OpenAI completion API call.
         """
         # Inject stream_options when streaming and telemetry is active
-        stream_options = get_stream_options_for_telemetry(params.stream_options, params.stream or False)
+        stream_options = get_stream_options_for_telemetry(
+            params.stream_options, params.stream or False, self.supports_stream_options
+        )
 
         provider_model_id = await self._get_provider_model_id(params.model)
         self._validate_model_allowed(provider_model_id)
@@ -313,7 +320,9 @@ class OpenAIMixin(NeedsRequestProviderData, ABC, BaseModel):
         Direct OpenAI chat completion API call.
         """
         # Inject stream_options when streaming and telemetry is active
-        stream_options = get_stream_options_for_telemetry(params.stream_options, params.stream or False)
+        stream_options = get_stream_options_for_telemetry(
+            params.stream_options, params.stream or False, self.supports_stream_options
+        )
 
         provider_model_id = await self._get_provider_model_id(params.model)
         self._validate_model_allowed(provider_model_id)

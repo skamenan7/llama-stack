@@ -52,6 +52,7 @@ class LiteLLMOpenAIMixin(
         openai_compat_api_base: str | None = None,
         download_images: bool = False,
         json_schema_strict: bool = True,
+        supports_stream_options: bool = True,
     ):
         """
         Initialize the LiteLLMOpenAIMixin.
@@ -63,6 +64,7 @@ class LiteLLMOpenAIMixin(
         :param openai_compat_api_base: The base URL for OpenAI compatibility, or None if not using OpenAI compatibility.
         :param download_images: Whether to download images and convert to base64 for message conversion.
         :param json_schema_strict: Whether to use strict mode for JSON schema validation.
+        :param supports_stream_options: Whether the provider supports stream_options parameter.
         """
         ModelRegistryHelper.__init__(self, model_entries=model_entries)
 
@@ -72,6 +74,7 @@ class LiteLLMOpenAIMixin(
         self.api_base = openai_compat_api_base
         self.download_images = download_images
         self.json_schema_strict = json_schema_strict
+        self.supports_stream_options = supports_stream_options
 
         if openai_compat_api_base:
             self.is_openai_compat = True
@@ -183,7 +186,9 @@ class LiteLLMOpenAIMixin(
         params: OpenAICompletionRequestWithExtraBody,
     ) -> OpenAICompletion | AsyncIterator[OpenAICompletion]:
         # Inject stream_options when streaming and telemetry is active
-        stream_options = get_stream_options_for_telemetry(params.stream_options, params.stream)
+        stream_options = get_stream_options_for_telemetry(
+            params.stream_options, params.stream, self.supports_stream_options
+        )
 
         if not self.model_store:
             raise ValueError("Model store is not initialized")
@@ -229,7 +234,9 @@ class LiteLLMOpenAIMixin(
         params: OpenAIChatCompletionRequestWithExtraBody,
     ) -> OpenAIChatCompletion | AsyncIterator[OpenAIChatCompletionChunk]:
         # Inject stream_options when streaming and telemetry is active
-        stream_options = get_stream_options_for_telemetry(params.stream_options, params.stream)
+        stream_options = get_stream_options_for_telemetry(
+            params.stream_options, params.stream, self.supports_stream_options
+        )
 
         if not self.model_store:
             raise ValueError("Model store is not initialized")
