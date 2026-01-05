@@ -116,7 +116,6 @@ class CreateResponseRequest(BaseModel):
     )
     max_tool_calls: int | None = Field(
         default=None,
-        ge=1,
         description="Max number of total calls to built-in tools that can be processed in a response.",
     )
     reasoning: OpenAIResponseReasoning | None = Field(
