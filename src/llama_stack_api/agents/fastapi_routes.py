@@ -12,6 +12,7 @@ FastAPI route decorators.
 
 import asyncio
 import json
+import logging  # allow-direct-logging
 from collections.abc import AsyncIterator
 from typing import Annotated, Any
 
@@ -43,6 +44,8 @@ from .models import (
     RetrieveResponseRequest,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def create_sse_event(data: Any) -> str:
     """Create a Server-Sent Event string from data."""
@@ -67,6 +70,7 @@ async def sse_generator(event_gen):
             await event_gen.aclose()
         raise  # Re-raise to maintain proper cancellation semantics
     except Exception as e:
+        logger.exception("Error in SSE generator")
         yield create_sse_event({"error": {"message": str(e)}})
 
 

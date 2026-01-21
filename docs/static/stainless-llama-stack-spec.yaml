@@ -5131,6 +5131,17 @@ components:
           anyOf:
           - type: string
           - type: 'null'
+        reasoning_effort:
+          anyOf:
+          - type: string
+            enum:
+            - none
+            - minimal
+            - low
+            - medium
+            - high
+            - xhigh
+          - type: 'null'
       additionalProperties: true
       type: object
       required:
@@ -7264,6 +7275,12 @@ components:
           anyOf:
           - type: integer
           - type: 'null'
+        reasoning:
+          anyOf:
+          - $ref: '#/components/schemas/OpenAIResponseReasoning'
+            title: OpenAIResponseReasoning
+          - type: 'null'
+          title: OpenAIResponseReasoning
         metadata:
           anyOf:
           - additionalProperties:
@@ -7709,6 +7726,12 @@ components:
           anyOf:
           - type: integer
           - type: 'null'
+        reasoning:
+          anyOf:
+          - $ref: '#/components/schemas/OpenAIResponseReasoning'
+            title: OpenAIResponseReasoning
+          - type: 'null'
+          title: OpenAIResponseReasoning
         metadata:
           anyOf:
           - additionalProperties:
@@ -12238,6 +12261,13 @@ components:
           - type: integer
           - type: 'null'
           description: Max number of total calls to built-in tools that can be processed in a response.
+        reasoning:
+          anyOf:
+          - $ref: '#/components/schemas/OpenAIResponseReasoning'
+            title: OpenAIResponseReasoning
+          - type: 'null'
+          description: Configuration for reasoning effort in responses.
+          title: OpenAIResponseReasoning
         metadata:
           anyOf:
           - additionalProperties:
@@ -12955,6 +12985,25 @@ components:
       - text
       title: OpenAIResponseOutputMessageFileSearchToolCallResults
       description: Search results returned by the file search operation.
+    OpenAIResponseReasoning:
+      properties:
+        effort:
+          anyOf:
+          - type: string
+            enum:
+            - none
+            - minimal
+            - low
+            - medium
+            - high
+            - xhigh
+          - type: 'null'
+      type: object
+      title: OpenAIResponseReasoning
+      description: |-
+        Configuration for reasoning effort in OpenAI responses.
+
+        Controls how much reasoning the model performs before generating a response.
     OpenAIResponseTextFormat:
       properties:
         type:

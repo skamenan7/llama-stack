@@ -116,6 +116,7 @@ async def test_create_response_returns_json_for_non_streaming():
         object="response",
         output=[],
         status="completed",
+        store=True,
     )
     impl.create_openai_response.return_value = expected_response
 
@@ -185,6 +186,7 @@ async def test_get_response_returns_response_object():
         object="response",
         output=[],
         status="completed",
+        store=True,
     )
     impl.get_openai_response.return_value = expected_response
 
