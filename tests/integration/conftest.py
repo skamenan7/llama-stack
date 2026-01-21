@@ -407,6 +407,11 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         file_path, test_name = r.split("::", 1)
         allowed_tests.add((file_path, test_name))
 
+    allowed_roots: list[Path] = []
+    for r in roots:
+        if "::" not in r:
+            allowed_roots.append((config.rootpath / r).resolve())
+
     # Filter items to only those matching the allowed tests
     selected = []
     for item in items:
@@ -417,6 +422,16 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 
         if (rel_path, test_name) in allowed_tests:
             selected.append(item)
+            continue
+
+        item_path = Path(item.fspath).resolve()
+        for root in allowed_roots:
+            if root.is_file() and item_path == root:
+                selected.append(item)
+                break
+            elif root.is_dir() and item_path.is_relative_to(root):
+                selected.append(item)
+                break
 
     items[:] = selected
 

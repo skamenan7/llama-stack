@@ -77,11 +77,14 @@ def _normalize_numeric_literal_strings(value: str) -> str:
     return _FLOAT_IN_STRING_PATTERN.sub(_replace, value)
 
 
-def _normalize_body_for_hash(value: Any) -> Any:
+def _normalize_body_for_hash(value: Any, is_top_level: bool = False) -> Any:
     """Recursively normalize a JSON-like value to improve hash stability."""
 
     if isinstance(value, dict):
-        return {key: _normalize_body_for_hash(item) for key, item in value.items()}
+        normalized = {key: _normalize_body_for_hash(item) for key, item in value.items()}
+        if is_top_level and "stream_options" in normalized:
+            del normalized["stream_options"]
+        return normalized
     if isinstance(value, list):
         return [_normalize_body_for_hash(item) for item in value]
     if isinstance(value, tuple):
@@ -146,7 +149,7 @@ def normalize_inference_request(method: str, url: str, headers: dict[str, Any], 
 
     parsed = urlparse(url)
 
-    body_for_hash = _normalize_body_for_hash(body)
+    body_for_hash = _normalize_body_for_hash(body, is_top_level=True)
 
     test_id = get_test_context()
     normalized: dict[str, Any] = {
