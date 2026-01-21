@@ -266,12 +266,9 @@ export AWS_BEARER_TOKEN_BEDROCK=bedrock-api-key-YmVkcm9jay5hbWF6b25hd3MuY29...
 export AWS_DEFAULT_REGION=us-west-2
 ```
 
-### Stack Configuration Choices
+### Stack Configuration
 
-- `ci-tests::config.yaml` — canonical config that CI and replay runs use. It already registers the Bedrock provider with a dummy API key, so recordings can be replayed without editing the file.
-- `bedrock-test.yaml` — lightweight config at the repo root that only wires up Bedrock. Use this when you specifically want to run a standalone stack server for debugging.
-
-Prefer `ci-tests::config.yaml` for anything that interacts with the shared recordings, and switch to `bedrock-test.yaml` only when you need that minimal setup.
+Use `ci-tests::config.yaml` for Bedrock tests. This config pre-registers the Bedrock model and provider, enabling replay mode without additional setup.
 
 ### Recording Bedrock Tests
 

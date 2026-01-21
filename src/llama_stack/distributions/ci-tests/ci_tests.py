@@ -15,7 +15,10 @@ def get_distribution_template() -> DistributionTemplate:
     template = get_starter_distribution_template(name="ci-tests")
     template.description = "CI tests for Llama Stack"
 
-    # Pre-register the Bedrock model (Bedrock /v1/models returns empty)
+    # Pre-register the Bedrock model.
+    # Unlike other providers, Bedrock's OpenAI-compatible endpoint does not support
+    # /v1/models for dynamic model discovery (see bedrock.py:list_provider_model_ids).
+    # Models must be registered in config to be available.
     bedrock_model = ModelInput(
         model_id="openai.gpt-oss-20b-1:0",
         provider_id="bedrock",
