@@ -23,7 +23,6 @@ from llama_stack_api.openai_responses import (
     OpenAIResponseReasoning,
     OpenAIResponseText,
 )
-from llama_stack_api.schema_utils import json_schema_type
 
 
 class ResponseItemInclude(StrEnum):
@@ -38,7 +37,6 @@ class ResponseItemInclude(StrEnum):
     reasoning_encrypted_content = "reasoning.encrypted_content"
 
 
-@json_schema_type
 class ResponseGuardrailSpec(BaseModel):
     """Specification for a guardrail to apply during response generation."""
 
@@ -51,7 +49,6 @@ class ResponseGuardrailSpec(BaseModel):
 ResponseGuardrail = str | ResponseGuardrailSpec
 
 
-@json_schema_type
 class CreateResponseRequest(BaseModel):
     """Request model for creating a response."""
 
@@ -128,7 +125,6 @@ class CreateResponseRequest(BaseModel):
     )
 
 
-@json_schema_type
 class RetrieveResponseRequest(BaseModel):
     """Request model for retrieving a response."""
 
@@ -137,7 +133,6 @@ class RetrieveResponseRequest(BaseModel):
     response_id: str = Field(..., min_length=1, description="The ID of the OpenAI response to retrieve.")
 
 
-@json_schema_type
 class ListResponsesRequest(BaseModel):
     """Request model for listing responses."""
 
@@ -152,7 +147,6 @@ class ListResponsesRequest(BaseModel):
     )
 
 
-@json_schema_type
 class ListResponseInputItemsRequest(BaseModel):
     """Request model for listing input items of a response."""
 
@@ -173,7 +167,6 @@ class ListResponseInputItemsRequest(BaseModel):
     order: Order | None = Field(default=Order.desc, description="The order to return the input items in.")
 
 
-@json_schema_type
 class DeleteResponseRequest(BaseModel):
     """Request model for deleting a response."""
 

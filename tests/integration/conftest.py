@@ -347,9 +347,6 @@ def pytest_generate_tests(metafunc):
     metafunc.parametrize(params, value_combinations, scope="session", ids=test_ids if test_ids else None)
 
 
-# Plugin loading moved to root conftest.py for pytest 8.4+ compatibility
-
-
 def pytest_ignore_collect(path: str, config: pytest.Config) -> bool:
     """Skip collecting paths outside the selected suite roots for speed."""
     suite = config.getoption("--suite")

@@ -12,15 +12,12 @@ FastAPI route decorators.
 
 import asyncio
 import json
-import logging  # allow-direct-logging
 from collections.abc import AsyncIterator
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-
-logger = logging.getLogger(__name__)
 
 from llama_stack_api.common.responses import Order
 from llama_stack_api.openai_responses import (
@@ -66,12 +63,10 @@ async def sse_generator(event_gen):
         async for item in event_gen:
             yield create_sse_event(item)
     except asyncio.CancelledError:
-        logger.info("SSE generator cancelled")
         if hasattr(event_gen, "aclose"):
             await event_gen.aclose()
         raise  # Re-raise to maintain proper cancellation semantics
     except Exception as e:
-        logger.exception("Error in sse_generator")
         yield create_sse_event({"error": {"message": str(e)}})
 
 

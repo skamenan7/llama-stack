@@ -26,17 +26,6 @@ from .models import (
 
 @runtime_checkable
 class Agents(Protocol):
-    """Agents
-
-    APIs for creating and interacting with agentic systems."""
-
-    # We situate the OpenAI Responses API in the Agents API just like we did things
-    # for Inference. The Responses API, in its intent, serves the same purpose as
-    # the Agents API above -- it is essentially a lightweight "agentic loop" with
-    # integrated tool calling.
-    #
-    # Both of these APIs are inherently stateful.
-
     async def get_openai_response(
         self,
         request: RetrieveResponseRequest,
