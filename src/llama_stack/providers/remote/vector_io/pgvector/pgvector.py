@@ -69,6 +69,26 @@ def upsert_models(conn, keys_models: list[tuple[str, BaseModel]]):
         execute_values(cur, query, values, template="(%s, %s)")
 
 
+def remove_vector_store_metadata(conn: psycopg2.extensions.connection, vector_store_id: str) -> None:
+    """
+    Performs removal of vector store metadata from PGVector metadata_store table when vector store is unregistered
+
+    Args:
+        conn: active PostgreSQL connection
+        vector_store_id: identifier of VectorStore resource
+    """
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM metadata_store WHERE key = %s", (vector_store_id,))
+            if cur.rowcount > 0:
+                log.info(f"Removed metadata for vector store '{vector_store_id}' from PGVector metadata_store table.")
+
+    except Exception as e:
+        raise RuntimeError(
+            f"Error removing metadata from PGVector metadata_store for vector_store: {vector_store_id}"
+        ) from e
+
+
 def load_models(cur, cls):
     cur.execute("SELECT key, data FROM metadata_store")
     rows = cur.fetchall()
@@ -463,6 +483,9 @@ class PGVectorVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorStoresProt
         if self.kvstore is None:
             raise RuntimeError("KVStore not initialized. Call initialize() before unregistering vector stores.")
         await self.kvstore.delete(key=f"{VECTOR_DBS_PREFIX}{vector_store_id}")
+
+        # Delete vector store metadata from PGVector metadata_store table
+        remove_vector_store_metadata(self.conn, vector_store_id)
 
     async def insert_chunks(
         self, vector_store_id: str, chunks: list[EmbeddedChunk], ttl_seconds: int | None = None
