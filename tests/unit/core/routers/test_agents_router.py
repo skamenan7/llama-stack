@@ -174,6 +174,78 @@ async def test_sse_format_is_correct():
     assert '"type": "response.output_text.delta"' in events[0]
 
 
+async def test_sse_stream_keeps_provider_context():
+    from llama_stack.core.request_headers import PROVIDER_DATA_VAR
+
+    app = FastAPI()
+    impl = AsyncMock(spec=Agents)
+    provider_data = {"provider": "test"}
+
+    async def _stream():
+        yield {"provider_data": PROVIDER_DATA_VAR.get()}
+        yield {"type": "response.completed"}
+
+    impl.create_openai_response.return_value = _stream()
+
+    router = build_fastapi_router(Api.agents, impl)
+    assert router is not None
+    app.include_router(router)
+
+    create = next(
+        r.endpoint
+        for r in router.routes
+        if getattr(r, "path", None) == "/v1/responses" and "POST" in getattr(r, "methods", set())
+    )
+
+    token = PROVIDER_DATA_VAR.set(provider_data)
+    try:
+        request = CreateResponseRequest(input="hi", model="test", stream=True)
+        response = await create(request)
+    finally:
+        PROVIDER_DATA_VAR.reset(token)
+
+    first_event = None
+    async for chunk in response.body_iterator:
+        first_event = chunk
+        break
+
+    assert first_event is not None
+    assert '"provider_data": {"provider": "test"}' in first_event
+
+
+async def test_sse_stream_reports_value_error_as_http_exception():
+    app = FastAPI()
+    impl = AsyncMock(spec=Agents)
+
+    async def _stream():
+        raise ValueError("not found")
+        yield {"type": "response.completed"}
+
+    impl.create_openai_response.return_value = _stream()
+
+    router = build_fastapi_router(Api.agents, impl)
+    assert router is not None
+    app.include_router(router)
+
+    create = next(
+        r.endpoint
+        for r in router.routes
+        if getattr(r, "path", None) == "/v1/responses" and "POST" in getattr(r, "methods", set())
+    )
+
+    request = CreateResponseRequest(input="hi", model="test", stream=True)
+    response = await create(request)
+
+    first_event = None
+    async for chunk in response.body_iterator:
+        first_event = chunk
+        break
+
+    assert first_event is not None
+    assert '"status_code": 400' in first_event
+    assert '"message": "not found"' in first_event
+
+
 async def test_get_response_returns_response_object():
     """Test GET /v1/responses/{response_id} returns OpenAIResponseObject."""
     app = FastAPI()

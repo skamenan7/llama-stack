@@ -504,9 +504,12 @@ class AsyncLlamaStackAsLibraryClient(AsyncLlamaStackClient):
         # Prepare body for the function call (handles both Pydantic and traditional params)
         body = self._convert_body(func, body)
 
-        async def gen():
-            result = await func(**body)
+        result = await func(**body)
+        content_type = "application/json"
+        if isinstance(result, FastAPIResponse):
+            content_type = result.media_type or content_type
 
+        async def gen():
             # Handle FastAPI StreamingResponse (returned by router endpoints)
             # Extract the async generator from the StreamingResponse body
             from fastapi.responses import StreamingResponse
@@ -532,7 +535,7 @@ class AsyncLlamaStackAsLibraryClient(AsyncLlamaStackClient):
             status_code=httpx.codes.OK,
             content=wrapped_gen,
             headers={
-                "Content-Type": "application/json",
+                "Content-Type": content_type,
             },
             request=httpx.Request(
                 method=options.method,

@@ -11,6 +11,7 @@ FastAPI route decorators.
 """
 
 import asyncio
+import contextvars
 import json
 import logging  # allow-direct-logging
 from collections.abc import AsyncIterator
@@ -71,7 +72,8 @@ async def sse_generator(event_gen):
         raise  # Re-raise to maintain proper cancellation semantics
     except Exception as e:
         logger.exception("Error in SSE generator")
-        yield create_sse_event({"error": {"message": str(e)}})
+        exc = _http_exception_from_sse_error(e)
+        yield create_sse_event({"error": {"status_code": exc.status_code, "message": exc.detail}})
 
 
 # Automatically generate dependency functions from Pydantic models
@@ -123,6 +125,39 @@ def _http_exception_from_value_error(exc: ValueError) -> HTTPException:
 
     detail = str(exc) or "Invalid value"
     return HTTPException(status_code=400, detail=detail)
+
+
+def _http_exception_from_sse_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, HTTPException):
+        return exc
+    if isinstance(exc, ValueError):
+        return _http_exception_from_value_error(exc)
+    status_code = getattr(exc, "status_code", None)
+    if isinstance(status_code, int):
+        return HTTPException(status_code=status_code, detail=str(exc))
+    return HTTPException(status_code=500, detail="Internal server error: An unexpected error occurred.")
+
+
+def _preserve_context_for_sse(event_gen):
+    # StreamingResponse runs in a different task, losing request contextvars.
+    # create_task inside context.run captures the context at task creation.
+    context = contextvars.copy_context()
+
+    async def wrapper():
+        try:
+            while True:
+                try:
+                    task = context.run(asyncio.create_task, event_gen.__anext__())
+                    item = await task
+                except StopAsyncIteration:
+                    break
+                yield item
+        except (asyncio.CancelledError, GeneratorExit):
+            if hasattr(event_gen, "aclose"):
+                await event_gen.aclose()
+            raise
+
+    return wrapper()
 
 
 def create_router(impl: Agents) -> APIRouter:
@@ -182,7 +217,7 @@ def create_router(impl: Agents) -> APIRouter:
         # The implementation is typed to return an `AsyncIterator` for streaming.
         if isinstance(result, AsyncIterator):
             return StreamingResponse(
-                sse_generator(result),
+                _preserve_context_for_sse(sse_generator(result)),
                 media_type="text/event-stream",
             )
 
