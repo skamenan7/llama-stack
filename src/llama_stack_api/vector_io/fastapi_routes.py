@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Path, Query, Response, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from llama_stack_api.common.content_types import InterleavedContent
 from llama_stack_api.router_utils import standard_responses
@@ -45,41 +45,55 @@ from . import (
 )
 
 
-class _InsertChunksRequest(BaseModel):
-    vector_store_id: str
-    chunks: list[EmbeddedChunk]
-    ttl_seconds: int | None = None
+class InsertChunksRequest(BaseModel):
+    """Request body for inserting chunks into a vector store."""
+
+    vector_store_id: str = Field(description="The ID of the vector store to insert chunks into.")
+    chunks: list[EmbeddedChunk] = Field(description="The list of embedded chunks to insert.")
+    ttl_seconds: int | None = Field(default=None, description="Time-to-live in seconds for the inserted chunks.")
 
 
-class _QueryChunksRequest(BaseModel):
-    vector_store_id: str
-    query: InterleavedContent
-    params: dict[str, Any] | None = None
+class QueryChunksRequest(BaseModel):
+    """Request body for querying chunks from a vector store."""
+
+    vector_store_id: str = Field(description="The ID of the vector store to query.")
+    query: InterleavedContent = Field(description="The query content to search for.")
+    params: dict[str, Any] | None = Field(default=None, description="Additional query parameters.")
 
 
-class _OpenAIUpdateVectorStoreRequest(BaseModel):
-    name: str | None = None
-    expires_after: dict[str, Any] | None = None
-    metadata: dict[str, Any] | None = None
+class OpenAIUpdateVectorStoreRequest(BaseModel):
+    """Request body for updating a vector store."""
+
+    name: str | None = Field(default=None, description="The new name for the vector store.")
+    expires_after: dict[str, Any] | None = Field(default=None, description="Expiration policy for the vector store.")
+    metadata: dict[str, Any] | None = Field(default=None, description="Metadata to associate with the vector store.")
 
 
-class _OpenAISearchVectorStoreRequest(BaseModel):
-    query: str | list[str]
-    filters: dict[str, Any] | None = None
-    max_num_results: int | None = 10
-    ranking_options: SearchRankingOptions | None = None
-    rewrite_query: bool | None = False
-    search_mode: str | None = "vector"
+class OpenAISearchVectorStoreRequest(BaseModel):
+    """Request body for searching a vector store."""
+
+    query: str | list[str] = Field(description="The search query string or list of query strings.")
+    filters: dict[str, Any] | None = Field(default=None, description="Filters to apply to the search.")
+    max_num_results: int | None = Field(default=10, description="Maximum number of results to return.")
+    ranking_options: SearchRankingOptions | None = Field(default=None, description="Options for ranking results.")
+    rewrite_query: bool | None = Field(default=False, description="Whether to rewrite the query for better results.")
+    search_mode: str | None = Field(default="vector", description="The search mode to use (e.g., 'vector', 'keyword').")
 
 
-class _OpenAIAttachFileRequest(BaseModel):
-    file_id: str
-    attributes: dict[str, Any] | None = None
-    chunking_strategy: VectorStoreChunkingStrategy | None = None
+class OpenAIAttachFileRequest(BaseModel):
+    """Request body for attaching a file to a vector store."""
+
+    file_id: str = Field(description="The ID of the file to attach.")
+    attributes: dict[str, Any] | None = Field(default=None, description="Attributes to associate with the file.")
+    chunking_strategy: VectorStoreChunkingStrategy | None = Field(
+        default=None, description="Strategy for chunking the file content."
+    )
 
 
-class _OpenAIUpdateVectorStoreFileRequest(BaseModel):
-    attributes: dict[str, Any]
+class OpenAIUpdateVectorStoreFileRequest(BaseModel):
+    """Request body for updating a vector store file."""
+
+    attributes: dict[str, Any] = Field(description="The new attributes for the file.")
 
 
 def create_router(impl: VectorIO) -> APIRouter:
@@ -97,7 +111,7 @@ def create_router(impl: VectorIO) -> APIRouter:
         description="Insert embedded chunks into a vector database.",
         responses={204: {"description": "Chunks were inserted."}},
     )
-    async def insert_chunks(request: Annotated[_InsertChunksRequest, Body(...)]) -> None:
+    async def insert_chunks(request: Annotated[InsertChunksRequest, Body(...)]) -> None:
         await impl.insert_chunks(
             vector_store_id=request.vector_store_id,
             chunks=request.chunks,
@@ -112,7 +126,7 @@ def create_router(impl: VectorIO) -> APIRouter:
         description="Query chunks from a vector database.",
         responses={200: {"description": "A QueryChunksResponse."}},
     )
-    async def query_chunks(request: Annotated[_QueryChunksRequest, Body(...)]) -> QueryChunksResponse:
+    async def query_chunks(request: Annotated[QueryChunksRequest, Body(...)]) -> QueryChunksResponse:
         return await impl.query_chunks(
             vector_store_id=request.vector_store_id,
             query=request.query,
@@ -177,7 +191,7 @@ def create_router(impl: VectorIO) -> APIRouter:
     )
     async def openai_update_vector_store(
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
-        request: Annotated[_OpenAIUpdateVectorStoreRequest, Body(...)],
+        request: Annotated[OpenAIUpdateVectorStoreRequest, Body(...)],
     ) -> VectorStoreObject:
         return await impl.openai_update_vector_store(
             vector_store_id=vector_store_id,
@@ -207,7 +221,7 @@ def create_router(impl: VectorIO) -> APIRouter:
     )
     async def openai_search_vector_store(
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
-        request: Annotated[_OpenAISearchVectorStoreRequest, Body(...)],
+        request: Annotated[OpenAISearchVectorStoreRequest, Body(...)],
     ) -> VectorStoreSearchResponsePage:
         return await impl.openai_search_vector_store(
             vector_store_id=vector_store_id,
@@ -228,7 +242,7 @@ def create_router(impl: VectorIO) -> APIRouter:
     )
     async def openai_attach_file_to_vector_store(
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
-        request: Annotated[_OpenAIAttachFileRequest, Body(...)],
+        request: Annotated[OpenAIAttachFileRequest, Body(...)],
     ) -> VectorStoreFileObject:
         return await impl.openai_attach_file_to_vector_store(
             vector_store_id=vector_store_id,
@@ -314,7 +328,7 @@ def create_router(impl: VectorIO) -> APIRouter:
     async def openai_update_vector_store_file(
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
         file_id: Annotated[str, Path(description="The file identifier.")],
-        request: Annotated[_OpenAIUpdateVectorStoreFileRequest, Body(...)],
+        request: Annotated[OpenAIUpdateVectorStoreFileRequest, Body(...)],
     ) -> VectorStoreFileObject:
         return await impl.openai_update_vector_store_file(
             vector_store_id=vector_store_id,
