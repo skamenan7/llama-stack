@@ -45,7 +45,7 @@ from .models import (
     RetrieveResponseRequest,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.LoggerAdapter(logging.getLogger(__name__), {"category": "agents"})
 
 
 def create_sse_event(data: Any) -> str:

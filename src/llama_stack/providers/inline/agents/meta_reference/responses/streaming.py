@@ -164,6 +164,7 @@ class StreamingResponseOrchestrator:
         self.max_tool_calls = max_tool_calls
         self.reasoning = reasoning
         self.metadata = metadata
+        self.store = store
         self.include = include
         self.store = bool(store) if store is not None else True
         self.sequence_number = 0
