@@ -55,13 +55,7 @@ class VectorIO(Protocol):
         chunks: list[EmbeddedChunk],
         ttl_seconds: int | None = None,
     ) -> None:
-        """Insert embedded chunks into a vector database.
-
-        :param vector_store_id: The identifier of the vector database to insert the chunks into.
-        :param chunks: The embedded chunks to insert. Each `EmbeddedChunk` contains the content, metadata,
-            and embedding vector ready for storage.
-        :param ttl_seconds: The time to live of the chunks.
-        """
+        """Insert embedded chunks into a vector database."""
         ...
 
     async def query_chunks(
@@ -70,13 +64,7 @@ class VectorIO(Protocol):
         query: InterleavedContent,
         params: dict[str, Any] | None = None,
     ) -> QueryChunksResponse:
-        """Query chunks from a vector database.
-
-        :param vector_store_id: The identifier of the vector database to query.
-        :param query: The query to search for.
-        :param params: The parameters of the query.
-        :returns: A QueryChunksResponse.
-        """
+        """Query chunks from a vector database."""
         ...
 
     # OpenAI Vector Stores API endpoints
@@ -87,7 +75,6 @@ class VectorIO(Protocol):
         """Creates a vector store.
 
         Generate an OpenAI-compatible vector store with the given parameters.
-        :returns: A VectorStoreObject representing the created vector store.
         """
         ...
 
@@ -98,25 +85,14 @@ class VectorIO(Protocol):
         after: str | None = None,
         before: str | None = None,
     ) -> VectorStoreListResponse:
-        """Returns a list of vector stores.
-
-        :param limit: A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 20.
-        :param order: Sort order by the `created_at` timestamp of the objects. `asc` for ascending order and `desc` for descending order.
-        :param after: A cursor for use in pagination. `after` is an object ID that defines your place in the list.
-        :param before: A cursor for use in pagination. `before` is an object ID that defines your place in the list.
-        :returns: A VectorStoreListResponse containing the list of vector stores.
-        """
+        """Returns a list of vector stores."""
         ...
 
     async def openai_retrieve_vector_store(
         self,
         vector_store_id: str,
     ) -> VectorStoreObject:
-        """Retrieves a vector store.
-
-        :param vector_store_id: The ID of the vector store to retrieve.
-        :returns: A VectorStoreObject representing the vector store.
-        """
+        """Retrieves a vector store."""
         ...
 
     async def openai_update_vector_store(
@@ -126,25 +102,14 @@ class VectorIO(Protocol):
         expires_after: dict[str, Any] | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> VectorStoreObject:
-        """Updates a vector store.
-
-        :param vector_store_id: The ID of the vector store to update.
-        :param name: The name of the vector store.
-        :param expires_after: The expiration policy for a vector store.
-        :param metadata: Set of 16 key-value pairs that can be attached to an object.
-        :returns: A VectorStoreObject representing the updated vector store.
-        """
+        """Updates a vector store."""
         ...
 
     async def openai_delete_vector_store(
         self,
         vector_store_id: str,
     ) -> VectorStoreDeleteResponse:
-        """Delete a vector store.
-
-        :param vector_store_id: The ID of the vector store to delete.
-        :returns: A VectorStoreDeleteResponse indicating the deletion status.
-        """
+        """Delete a vector store."""
         ...
 
     async def openai_search_vector_store(
@@ -162,15 +127,6 @@ class VectorIO(Protocol):
         """Search for chunks in a vector store.
 
         Searches a vector store for relevant chunks based on a query and optional file attribute filters.
-
-        :param vector_store_id: The ID of the vector store to search.
-        :param query: The query string or array for performing the search.
-        :param filters: Filters based on file attributes to narrow the search results.
-        :param max_num_results: Maximum number of results to return (1 to 50 inclusive, default 10).
-        :param ranking_options: Ranking options for fine-tuning the search results.
-        :param rewrite_query: Whether to rewrite the natural language query for vector search (default false)
-        :param search_mode: The search mode to use - "keyword", "vector", or "hybrid" (default "vector")
-        :returns: A VectorStoreSearchResponse containing the search results.
         """
         ...
 
@@ -181,14 +137,7 @@ class VectorIO(Protocol):
         attributes: dict[str, Any] | None = None,
         chunking_strategy: VectorStoreChunkingStrategy | None = None,
     ) -> VectorStoreFileObject:
-        """Attach a file to a vector store.
-
-        :param vector_store_id: The ID of the vector store to attach the file to.
-        :param file_id: The ID of the file to attach to the vector store.
-        :param attributes: The key-value attributes stored with the file, which can be used for filtering.
-        :param chunking_strategy: The chunking strategy to use for the file.
-        :returns: A VectorStoreFileObject representing the attached file.
-        """
+        """Attach a file to a vector store."""
         ...
 
     async def openai_list_files_in_vector_store(
@@ -200,16 +149,7 @@ class VectorIO(Protocol):
         before: str | None = None,
         filter: VectorStoreFileStatus | None = None,
     ) -> VectorStoreListFilesResponse:
-        """List files in a vector store.
-
-        :param vector_store_id: The ID of the vector store to list files from.
-        :param limit: (Optional) A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 20.
-        :param order: (Optional) Sort order by the `created_at` timestamp of the objects. `asc` for ascending order and `desc` for descending order.
-        :param after: (Optional) A cursor for use in pagination. `after` is an object ID that defines your place in the list.
-        :param before: (Optional) A cursor for use in pagination. `before` is an object ID that defines your place in the list.
-        :param filter: (Optional) Filter by file status to only return files with the specified status.
-        :returns: A VectorStoreListFilesResponse containing the list of files.
-        """
+        """List files in a vector store."""
         ...
 
     async def openai_retrieve_vector_store_file(
@@ -217,12 +157,7 @@ class VectorIO(Protocol):
         vector_store_id: str,
         file_id: str,
     ) -> VectorStoreFileObject:
-        """Retrieves a vector store file.
-
-        :param vector_store_id: The ID of the vector store containing the file to retrieve.
-        :param file_id: The ID of the file to retrieve.
-        :returns: A VectorStoreFileObject representing the file.
-        """
+        """Retrieves a vector store file."""
         ...
 
     async def openai_retrieve_vector_store_file_contents(
@@ -232,14 +167,7 @@ class VectorIO(Protocol):
         include_embeddings: Annotated[bool | None, Query()] = False,
         include_metadata: Annotated[bool | None, Query()] = False,
     ) -> VectorStoreFileContentResponse:
-        """Retrieves the contents of a vector store file.
-
-        :param vector_store_id: The ID of the vector store containing the file to retrieve.
-        :param file_id: The ID of the file to retrieve.
-        :param include_embeddings: Whether to include embedding vectors in the response.
-        :param include_metadata: Whether to include chunk metadata in the response.
-        :returns: File contents, optionally with embeddings and metadata based on query parameters.
-        """
+        """Retrieves the contents of a vector store file."""
         ...
 
     async def openai_update_vector_store_file(
@@ -248,13 +176,7 @@ class VectorIO(Protocol):
         file_id: str,
         attributes: dict[str, Any],
     ) -> VectorStoreFileObject:
-        """Updates a vector store file.
-
-        :param vector_store_id: The ID of the vector store containing the file to update.
-        :param file_id: The ID of the file to update.
-        :param attributes: The updated key-value attributes to store with the file.
-        :returns: A VectorStoreFileObject representing the updated file.
-        """
+        """Updates a vector store file."""
         ...
 
     async def openai_delete_vector_store_file(
@@ -262,12 +184,7 @@ class VectorIO(Protocol):
         vector_store_id: str,
         file_id: str,
     ) -> VectorStoreFileDeleteResponse:
-        """Delete a vector store file.
-
-        :param vector_store_id: The ID of the vector store containing the file to delete.
-        :param file_id: The ID of the file to delete.
-        :returns: A VectorStoreFileDeleteResponse indicating the deletion status.
-        """
+        """Delete a vector store file."""
         ...
 
     async def openai_create_vector_store_file_batch(
@@ -278,8 +195,6 @@ class VectorIO(Protocol):
         """Create a vector store file batch.
 
         Generate an OpenAI-compatible vector store file batch for the given vector store.
-        :param vector_store_id: The ID of the vector store to create the file batch for.
-        :returns: A VectorStoreFileBatchObject representing the created file batch.
         """
         ...
 
@@ -288,12 +203,7 @@ class VectorIO(Protocol):
         batch_id: str,
         vector_store_id: str,
     ) -> VectorStoreFileBatchObject:
-        """Retrieve a vector store file batch.
-
-        :param batch_id: The ID of the file batch to retrieve.
-        :param vector_store_id: The ID of the vector store containing the file batch.
-        :returns: A VectorStoreFileBatchObject representing the file batch.
-        """
+        """Retrieve a vector store file batch."""
         ...
 
     async def openai_list_files_in_vector_store_file_batch(
@@ -306,17 +216,7 @@ class VectorIO(Protocol):
         limit: int | None = 20,
         order: str | None = "desc",
     ) -> VectorStoreFilesListInBatchResponse:
-        """Returns a list of vector store files in a batch.
-
-        :param batch_id: The ID of the file batch to list files from.
-        :param vector_store_id: The ID of the vector store containing the file batch.
-        :param after: A cursor for use in pagination. `after` is an object ID that defines your place in the list.
-        :param before: A cursor for use in pagination. `before` is an object ID that defines your place in the list.
-        :param filter: Filter by file status. One of in_progress, completed, failed, cancelled.
-        :param limit: A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 20.
-        :param order: Sort order by the `created_at` timestamp of the objects. `asc` for ascending order and `desc` for descending order.
-        :returns: A VectorStoreFilesListInBatchResponse containing the list of files in the batch.
-        """
+        """Returns a list of vector store files in a batch."""
         ...
 
     async def openai_cancel_vector_store_file_batch(
@@ -324,12 +224,7 @@ class VectorIO(Protocol):
         batch_id: str,
         vector_store_id: str,
     ) -> VectorStoreFileBatchObject:
-        """Cancels a vector store file batch.
-
-        :param batch_id: The ID of the file batch to cancel.
-        :param vector_store_id: The ID of the vector store containing the file batch.
-        :returns: A VectorStoreFileBatchObject representing the cancelled file batch.
-        """
+        """Cancels a vector store file batch."""
         ...
 
 

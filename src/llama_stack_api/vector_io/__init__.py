@@ -11,9 +11,8 @@ Protocol definitions are in api.py, Pydantic models are in models.py,
 and FastAPI routes are in fastapi_routes.py.
 """
 
-from typing import Any
-
 # Re-export Protocol classes from api.py
+from . import fastapi_routes
 from .api import VectorIO, VectorStoreTable
 
 # Re-export all Pydantic models from models.py
@@ -50,18 +49,6 @@ from .models import (
     VectorStoreSearchResponsePage,
 )
 
-
-def __getattr__(name: str) -> Any:
-    if name != "fastapi_routes":
-        raise AttributeError(name)
-
-    import importlib
-
-    module = importlib.import_module(f"{__name__}.fastapi_routes")
-    globals()[name] = module
-    return module
-
-
 __all__ = [
     # Protocol classes
     "VectorIO",
@@ -97,4 +84,5 @@ __all__ = [
     "VectorStoreSearchRequest",
     "VectorStoreSearchResponse",
     "VectorStoreSearchResponsePage",
+    "fastapi_routes",
 ]

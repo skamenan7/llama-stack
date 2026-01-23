@@ -23,13 +23,13 @@ from llama_stack_api.common.content_types import InterleavedContent
 from llama_stack_api.router_utils import standard_responses
 from llama_stack_api.version import LLAMA_STACK_API_V1
 
-from . import (
+from .api import VectorIO
+from .models import (
     EmbeddedChunk,
     OpenAICreateVectorStoreFileBatchRequestWithExtraBody,
     OpenAICreateVectorStoreRequestWithExtraBody,
     QueryChunksResponse,
     SearchRankingOptions,
-    VectorIO,
     VectorStoreChunkingStrategy,
     VectorStoreDeleteResponse,
     VectorStoreFileBatchObject,
