@@ -1,0 +1,453 @@
+#!/usr/bin/env bash
+#
+# llama-dev - Llama Stack Local Development Control Script
+# =========================================================
+# Usage: ./llama-dev <command> [options]
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKTREE_ROOT="$(dirname "$SCRIPT_DIR")"
+REPO_ROOT="$(cd "$WORKTREE_ROOT/../.." && pwd)"
+LOG_DIR="$WORKTREE_ROOT/logs"
+REPORT_DIR="$WORKTREE_ROOT/reports"
+
+# Load environment
+if [[ -f "$SCRIPT_DIR/.env" ]]; then
+    set -a
+    source "$SCRIPT_DIR/.env"
+    set +a
+fi
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+NC='\033[0m'
+
+log_info()  { echo -e "${BLUE}[INFO]${NC} $*"; }
+log_ok()    { echo -e "${GREEN}[OK]${NC} $*"; }
+log_warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
+
+# Ensure directories exist
+mkdir -p "$LOG_DIR" "$REPORT_DIR"
+
+#------------------------------------------------------------------------------
+# Ollama Management
+#------------------------------------------------------------------------------
+ollama_start() {
+    if pgrep -x ollama >/dev/null 2>&1; then
+        log_ok "Ollama already running"
+        return 0
+    fi
+
+    log_info "Starting Ollama..."
+    ollama serve > "$LOG_DIR/ollama.log" 2>&1 &
+
+    # Wait for Ollama to be ready
+    local retries=30
+    while ! curl -s http://localhost:11434/api/tags >/dev/null 2>&1; do
+        ((retries--)) || { log_error "Ollama failed to start"; return 1; }
+        sleep 1
+    done
+    log_ok "Ollama started (PID: $(pgrep -x ollama))"
+}
+
+ollama_stop() {
+    if pgrep -x ollama >/dev/null 2>&1; then
+        log_info "Stopping Ollama..."
+        pkill -x ollama || true
+        sleep 2
+        log_ok "Ollama stopped"
+    else
+        log_warn "Ollama not running"
+    fi
+}
+
+ollama_pull_models() {
+    log_info "Pulling required models..."
+
+    local models=(
+        "llama3.2:3b-instruct-fp16"
+        "llama-guard3:1b"
+    )
+
+    for model in "${models[@]}"; do
+        log_info "Pulling $model..."
+        ollama pull "$model" 2>&1 | tee -a "$LOG_DIR/ollama-pull.log"
+    done
+    log_ok "Models pulled"
+}
+
+#------------------------------------------------------------------------------
+# PostgreSQL Management
+#------------------------------------------------------------------------------
+postgres_start() {
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q llama-stack-postgres; then
+        log_ok "PostgreSQL already running"
+        return 0
+    fi
+
+    # Check if container exists but stopped
+    if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q llama-stack-postgres; then
+        log_info "Starting existing PostgreSQL container..."
+        docker start llama-stack-postgres
+    else
+        log_info "Creating PostgreSQL container..."
+        docker run -d \
+            --name llama-stack-postgres \
+            -e POSTGRES_USER=llamastack \
+            -e POSTGRES_PASSWORD=llamastack \
+            -e POSTGRES_DB=llamastack \
+            -p 5432:5432 \
+            --restart unless-stopped \
+            postgres:17
+    fi
+
+    # Wait for PostgreSQL to be ready
+    local retries=30
+    while ! docker exec llama-stack-postgres pg_isready -U llamastack >/dev/null 2>&1; do
+        ((retries--)) || { log_error "PostgreSQL failed to start"; return 1; }
+        sleep 1
+    done
+    log_ok "PostgreSQL started"
+}
+
+postgres_stop() {
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q llama-stack-postgres; then
+        log_info "Stopping PostgreSQL..."
+        docker stop llama-stack-postgres
+        log_ok "PostgreSQL stopped"
+    else
+        log_warn "PostgreSQL not running"
+    fi
+}
+
+postgres_reset() {
+    log_warn "Resetting PostgreSQL data..."
+    docker stop llama-stack-postgres 2>/dev/null || true
+    docker rm -v llama-stack-postgres 2>/dev/null || true
+    log_ok "PostgreSQL data cleared"
+}
+
+#------------------------------------------------------------------------------
+# Llama Stack Server Management
+#------------------------------------------------------------------------------
+stack_start() {
+    local config="${1:-ollama}"
+
+    if pgrep -f "llama stack run" >/dev/null 2>&1; then
+        log_ok "Llama Stack already running"
+        return 0
+    fi
+
+    log_info "Starting Llama Stack server (config: $config)..."
+    cd "$WORKTREE_ROOT"
+
+    # Activate venv if exists
+    if [[ -f ".venv/bin/activate" ]]; then
+        source .venv/bin/activate
+    fi
+
+    nohup uv run llama stack run "$config" \
+        --port "${LLAMA_STACK_PORT:-8321}" \
+        > "$LOG_DIR/llama-stack.log" 2>&1 &
+
+    local pid=$!
+    echo "$pid" > "$LOG_DIR/llama-stack.pid"
+
+    # Wait for server to be ready
+    local retries=60
+    while ! curl -s "http://localhost:${LLAMA_STACK_PORT:-8321}/v1/health" >/dev/null 2>&1; do
+        ((retries--)) || { log_error "Llama Stack failed to start"; return 1; }
+        sleep 1
+    done
+    log_ok "Llama Stack started (PID: $pid)"
+}
+
+stack_stop() {
+    if [[ -f "$LOG_DIR/llama-stack.pid" ]]; then
+        local pid
+        pid=$(cat "$LOG_DIR/llama-stack.pid")
+        if kill -0 "$pid" 2>/dev/null; then
+            log_info "Stopping Llama Stack (PID: $pid)..."
+            kill "$pid" || true
+            rm -f "$LOG_DIR/llama-stack.pid"
+            log_ok "Llama Stack stopped"
+        else
+            rm -f "$LOG_DIR/llama-stack.pid"
+            log_warn "Llama Stack not running (stale PID file removed)"
+        fi
+    else
+        # Try to find and kill any running instance
+        if pgrep -f "llama stack run" >/dev/null 2>&1; then
+            log_info "Stopping Llama Stack..."
+            pkill -f "llama stack run" || true
+            log_ok "Llama Stack stopped"
+        else
+            log_warn "Llama Stack not running"
+        fi
+    fi
+}
+
+#------------------------------------------------------------------------------
+# Combined Commands
+#------------------------------------------------------------------------------
+start_all() {
+    log_info "=== Starting All Services ==="
+    ollama_start
+    postgres_start
+    stack_start "${1:-ollama}"
+    echo ""
+    status_all
+}
+
+stop_all() {
+    log_info "=== Stopping All Services ==="
+    stack_stop
+    postgres_stop
+    ollama_stop
+}
+
+restart_all() {
+    stop_all
+    sleep 2
+    start_all "${1:-ollama}"
+}
+
+status_all() {
+    echo ""
+    echo -e "${PURPLE}=== Service Status ===${NC}"
+    echo ""
+
+    # Ollama
+    if pgrep -x ollama >/dev/null 2>&1; then
+        echo -e "Ollama:      ${GREEN}Running${NC} (PID: $(pgrep -x ollama))"
+    else
+        echo -e "Ollama:      ${RED}Stopped${NC}"
+    fi
+
+    # PostgreSQL
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q llama-stack-postgres; then
+        echo -e "PostgreSQL:  ${GREEN}Running${NC}"
+    else
+        echo -e "PostgreSQL:  ${RED}Stopped${NC}"
+    fi
+
+    # Llama Stack
+    if curl -s "http://localhost:${LLAMA_STACK_PORT:-8321}/v1/health" >/dev/null 2>&1; then
+        echo -e "Llama Stack: ${GREEN}Running${NC} (port ${LLAMA_STACK_PORT:-8321})"
+    else
+        echo -e "Llama Stack: ${RED}Stopped${NC}"
+    fi
+
+    echo ""
+}
+
+#------------------------------------------------------------------------------
+# Logs
+#------------------------------------------------------------------------------
+logs_tail() {
+    local service="${1:-all}"
+
+    case "$service" in
+        ollama)
+            tail -f "$LOG_DIR/ollama.log"
+            ;;
+        postgres)
+            docker logs -f llama-stack-postgres
+            ;;
+        stack|llama-stack)
+            tail -f "$LOG_DIR/llama-stack.log"
+            ;;
+        all)
+            tail -f "$LOG_DIR"/*.log
+            ;;
+        *)
+            log_error "Unknown service: $service"
+            echo "Available: ollama, postgres, stack, all"
+            ;;
+    esac
+}
+
+#------------------------------------------------------------------------------
+# Tests
+#------------------------------------------------------------------------------
+run_tests() {
+    local test_type="${1:-quick}"
+    local timestamp
+    timestamp=$(date +%Y%m%d-%H%M%S)
+
+    cd "$WORKTREE_ROOT"
+
+    case "$test_type" in
+        quick)
+            log_info "Running quick health check..."
+            $SCRIPT_DIR/test-quick.sh 2>&1 | tee "$LOG_DIR/test-quick-$timestamp.log"
+            ;;
+        unit)
+            log_info "Running unit tests..."
+            uv run pytest tests/unit/ -v 2>&1 | tee "$LOG_DIR/test-unit-$timestamp.log"
+            ;;
+        integration)
+            log_info "Running integration tests..."
+            uv run pytest tests/integration/ \
+                --stack-config=ollama \
+                --setup=ollama \
+                -v 2>&1 | tee "$LOG_DIR/test-integration-$timestamp.log"
+            ;;
+        inference)
+            log_info "Running inference tests..."
+            $SCRIPT_DIR/test-inference.sh 2>&1 | tee "$LOG_DIR/test-inference-$timestamp.log"
+            ;;
+        agents)
+            log_info "Running agents/responses tests..."
+            $SCRIPT_DIR/test-agents.sh 2>&1 | tee "$LOG_DIR/test-agents-$timestamp.log"
+            ;;
+        streaming)
+            log_info "Running streaming tests..."
+            $SCRIPT_DIR/test-streaming.sh 2>&1 | tee "$LOG_DIR/test-streaming-$timestamp.log"
+            ;;
+        all)
+            log_info "Running all tests..."
+            $SCRIPT_DIR/test-quick.sh 2>&1 | tee "$LOG_DIR/test-all-$timestamp.log"
+            $SCRIPT_DIR/test-inference.sh 2>&1 | tee -a "$LOG_DIR/test-all-$timestamp.log"
+            $SCRIPT_DIR/test-streaming.sh 2>&1 | tee -a "$LOG_DIR/test-all-$timestamp.log"
+            $SCRIPT_DIR/test-agents.sh 2>&1 | tee -a "$LOG_DIR/test-all-$timestamp.log"
+            ;;
+        *)
+            log_error "Unknown test type: $test_type"
+            echo "Available: quick, inference, streaming, agents, unit, integration, all"
+            ;;
+    esac
+}
+
+#------------------------------------------------------------------------------
+# Reports
+#------------------------------------------------------------------------------
+generate_report() {
+    local timestamp
+    timestamp=$(date +%Y%m%d-%H%M%S)
+    local report_file="$REPORT_DIR/status-report-$timestamp.html"
+
+    ./local-dev/generate-report.sh > "$report_file"
+    log_ok "Report generated: $report_file"
+
+    # Open in browser if available
+    if command -v xdg-open >/dev/null 2>&1; then
+        xdg-open "$report_file" &
+    fi
+}
+
+#------------------------------------------------------------------------------
+# API Playground Server
+#------------------------------------------------------------------------------
+serve_playground() {
+    local port=8080
+
+    # Check if already running
+    if lsof -i ":$port" >/dev/null 2>&1; then
+        log_warn "Port $port already in use. Killing existing server..."
+        pkill -f "serve-report.py" 2>/dev/null || true
+        sleep 1
+    fi
+
+    log_info "Starting API Playground server on port $port..."
+    log_info "Proxying /api/* -> http://localhost:8321"
+    echo ""
+    log_ok "Open: http://localhost:$port/local-dev-guide.html"
+    echo ""
+
+    # Run the proxy server
+    python3 "$DEV_DIR/serve-report.py"
+}
+
+#------------------------------------------------------------------------------
+# Help
+#------------------------------------------------------------------------------
+show_help() {
+    cat << 'EOF'
+Llama Stack Local Development Control Script
+=============================================
+
+USAGE:
+    ./llama-dev <command> [options]
+
+COMMANDS:
+    start [config]     Start all services (default config: ollama)
+    stop               Stop all services
+    restart [config]   Restart all services
+    status             Show status of all services
+
+    ollama-start       Start Ollama only
+    ollama-stop        Stop Ollama only
+    ollama-pull        Pull required models
+
+    postgres-start     Start PostgreSQL only
+    postgres-stop      Stop PostgreSQL only
+    postgres-reset     Reset PostgreSQL data
+
+    stack-start [cfg]  Start Llama Stack server only
+    stack-stop         Stop Llama Stack server only
+
+    logs [service]     Tail logs (ollama|postgres|stack|all)
+
+    test [type]        Run tests (quick|unit|integration|inference)
+    report             Generate HTML status report
+    playground         Start API Playground server (interactive API testing)
+
+    help               Show this help
+
+EXAMPLES:
+    ./llama-dev start              # Start everything with default config
+    ./llama-dev start starter      # Start with 'starter' distribution
+    ./llama-dev logs stack         # Tail Llama Stack logs
+    ./llama-dev test quick         # Run quick health checks
+    ./llama-dev report             # Generate HTML report
+    ./llama-dev playground         # Start interactive API playground
+
+EOF
+}
+
+#------------------------------------------------------------------------------
+# Main
+#------------------------------------------------------------------------------
+main() {
+    local cmd="${1:-help}"
+    shift || true
+
+    case "$cmd" in
+        start)          start_all "$@" ;;
+        stop)           stop_all ;;
+        restart)        restart_all "$@" ;;
+        status)         status_all ;;
+
+        ollama-start)   ollama_start ;;
+        ollama-stop)    ollama_stop ;;
+        ollama-pull)    ollama_pull_models ;;
+
+        postgres-start) postgres_start ;;
+        postgres-stop)  postgres_stop ;;
+        postgres-reset) postgres_reset ;;
+
+        stack-start)    stack_start "$@" ;;
+        stack-stop)     stack_stop ;;
+
+        logs)           logs_tail "$@" ;;
+        test)           run_tests "$@" ;;
+        report)         generate_report ;;
+        playground)     serve_playground ;;
+
+        help|--help|-h) show_help ;;
+        *)
+            log_error "Unknown command: $cmd"
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"

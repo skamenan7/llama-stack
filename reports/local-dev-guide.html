@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Llama Stack Local Development Guide</title>
+
+    <!-- Mermaid.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+    <!-- Highlight.js -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #e53935;
+            --secondary: #1565c0;
+            --accent: #ff6f00;
+            --bg-dark: #1a1a2e;
+            --bg-card: #16213e;
+            --bg-code: #0f0f23;
+            --text-yellow: #ffd54f;
+            --text-orange: #ffab40;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --border: #2a2a4a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-yellow);
+            line-height: 1.7;
+        }
+
+        .page-wrapper {
+            display: flex;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            padding: 2rem 1.5rem;
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            color: var(--primary);
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .sidebar nav a {
+            display: block;
+            color: var(--text-yellow);
+            text-decoration: none;
+            padding: 0.5rem 0;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+            padding-left: 1rem;
+        }
+
+        .sidebar nav a:hover,
+        .sidebar nav a.active {
+            color: var(--primary);
+            border-left-color: var(--primary);
+            background: rgba(229, 57, 53, 0.1);
+        }
+
+        .sidebar .quick-links {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .sidebar .quick-links h3 {
+            color: var(--accent);
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .sidebar .quick-links a {
+            font-size: 0.85rem;
+            padding: 0.4rem 0;
+        }
+
+        /* Main Content */
+        main {
+            flex: 1;
+            padding: 3rem;
+            max-width: 1200px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        header h1 {
+            color: var(--primary);
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        header .subtitle {
+            color: var(--text-orange);
+            font-size: 1.1rem;
+        }
+
+        /* Sections */
+        section {
+            margin-bottom: 4rem;
+        }
+
+        section:nth-of-type(odd) { color: var(--text-yellow); }
+        section:nth-of-type(even) { color: var(--text-orange); }
+
+        section h2 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        section h3 {
+            color: var(--accent);
+            font-size: 1.3rem;
+            margin: 2rem 0 1rem;
+        }
+
+        p { margin-bottom: 1rem; }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .card.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .card.warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        .card.info {
+            border-left: 4px solid var(--secondary);
+        }
+
+        .card h4 {
+            color: var(--primary);
+            margin-bottom: 0.75rem;
+        }
+
+        /* Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        /* Code blocks */
+        pre {
+            background: var(--bg-code) !important;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+            white-space: pre;
+            word-wrap: normal;
+            word-break: normal;
+            text-shadow: none;
+            box-shadow: none;
+        }
+
+        pre code {
+            background: transparent !important;
+            text-shadow: none;
+            box-shadow: none;
+            font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+            font-size: 0.9rem;
+        }
+
+        code:not(.hljs) {
+            background: rgba(15, 15, 35, 0.8);
+            color: var(--text-orange);
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            text-align: left;
+        }
+
+        th {
+            background: var(--bg-card);
+            color: var(--primary);
+        }
+
+        tr:nth-child(even) {
+            background: rgba(22, 33, 62, 0.5);
+        }
+
+        /* Mermaid */
+        .diagram-container {
+            background: var(--bg-code);
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+            overflow-y: visible;
+        }
+
+        .mermaid {
+            min-height: 300px;
+            background: var(--bg-code);
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+            overflow: visible;
+            width: 100%;
+        }
+
+        .mermaid svg {
+            height: auto;
+            width: 100%;
+            max-width: none !important;
+        }
+
+        .mermaid text {
+            fill: #ffd54f !important;
+            font-size: 14px !important;
+        }
+
+        .mermaid .node rect,
+        .mermaid .node polygon,
+        .mermaid .node circle {
+            fill: #16213e !important;
+            stroke: #e53935 !important;
+        }
+
+        .mermaid .nodeLabel {
+            color: #ffd54f !important;
+        }
+
+        .mermaid .edgeLabel {
+            background-color: #16213e !important;
+            color: #ffab40 !important;
+        }
+
+        .mermaid .cluster rect {
+            fill: rgba(22, 33, 62, 0.8) !important;
+            stroke: rgba(229, 57, 53, 0.5) !important;
+        }
+
+        .mermaid .cluster text {
+            fill: #e53935 !important;
+        }
+
+        /* Step cards */
+        .step {
+            display: flex;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .step-number {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .step-content h4 {
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        /* File tree */
+        .file-tree {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        .file-tree .folder { color: var(--accent); }
+        .file-tree .file { color: var(--text-yellow); }
+        .file-tree .comment { color: #6272a4; }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .badge.running { background: rgba(76, 175, 80, 0.2); color: var(--success); }
+        .badge.required { background: rgba(229, 57, 53, 0.2); color: var(--primary); }
+        .badge.optional { background: rgba(255, 152, 0, 0.2); color: var(--warning); }
+
+        /* API Playground */
+        .api-playground {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            overflow: hidden;
+        }
+
+        .api-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.25rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .method-badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            font-family: monospace;
+        }
+
+        .method-badge.get { background: #1565c0; color: #fff; }
+        .method-badge.post { background: #2e7d32; color: #fff; }
+        .method-badge.put { background: #ff8f00; color: #fff; }
+        .method-badge.delete { background: #c62828; color: #fff; }
+
+        .url-input {
+            flex: 1;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.5rem 0.75rem;
+            color: var(--text-yellow);
+            font-family: 'SF Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        .url-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .send-btn {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 0.5rem 1.25rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .send-btn:hover {
+            background: #f44336;
+            transform: translateY(-1px);
+        }
+
+        .send-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .send-btn.loading::after {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-left: 0.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .api-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .api-tab {
+            padding: 0.75rem 1.25rem;
+            background: transparent;
+            border: none;
+            color: var(--text-yellow);
+            cursor: pointer;
+            font-size: 0.9rem;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .api-tab:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .api-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .api-panel {
+            display: none;
+            padding: 1rem;
+        }
+
+        .api-panel.active {
+            display: block;
+        }
+
+        .request-body, .response-output {
+            width: 100%;
+            min-height: 200px;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1rem;
+            color: var(--text-yellow);
+            font-family: 'SF Mono', monospace;
+            font-size: 0.85rem;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .request-body:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .response-output {
+            background: rgba(0, 0, 0, 0.4);
+            min-height: 150px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .response-output.error {
+            border-color: var(--primary);
+            color: #ff6b6b;
+        }
+
+        .response-output.success {
+            border-color: var(--success);
+        }
+
+        .response-meta {
+            display: flex;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            font-size: 0.85rem;
+            color: var(--text-orange);
+            border-top: 1px solid var(--border);
+        }
+
+        .response-meta .status { font-weight: bold; }
+        .response-meta .status.ok { color: var(--success); }
+        .response-meta .status.error { color: var(--primary); }
+
+        .curl-preview {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1rem;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-orange);
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            padding: 0.4rem 0.75rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            margin-top: 0.5rem;
+        }
+
+        .copy-btn:hover {
+            background: var(--text-orange);
+        }
+
+        /* Debug file paths */
+        .debug-file {
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-block;
+            padding: 0.3rem 0.5rem !important;
+            border: 1px dashed var(--border);
+        }
+
+        .debug-file:hover {
+            background: rgba(229, 57, 53, 0.2) !important;
+            border-color: var(--primary);
+            color: var(--primary) !important;
+        }
+
+        .debug-file.copied {
+            background: rgba(76, 175, 80, 0.2) !important;
+            border-color: var(--success);
+            color: var(--success) !important;
+        }
+
+        .preset-btns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .preset-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.4rem 0.75rem;
+            color: var(--text-yellow);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            background: rgba(229, 57, 53, 0.2);
+            border-color: var(--primary);
+        }
+
+        .preset-btn.active {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .sidebar { display: none; }
+            main { padding: 1.5rem; }
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-orange);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar TOC -->
+        <aside class="sidebar">
+            <h2>Contents</h2>
+            <nav>
+                <a href="#overview">Overview</a>
+                <a href="#architecture">Architecture</a>
+                <a href="#file-structure">File Structure</a>
+                <a href="#services">Services</a>
+                <a href="#scripts">Scripts Reference</a>
+                <a href="#workflow">Daily Workflow</a>
+                <a href="#playground">API Playground</a>
+                <a href="#testing">Testing</a>
+                <a href="#troubleshooting">Troubleshooting</a>
+            </nav>
+            <div class="quick-links">
+                <h3>Quick Commands</h3>
+                <a href="#cmd-start">./dev/llama-dev start</a>
+                <a href="#cmd-stop">./dev/llama-dev stop</a>
+                <a href="#cmd-status">./dev/llama-dev status</a>
+                <a href="#cmd-test">./dev/llama-dev test</a>
+                <a href="#cmd-logs">./dev/llama-dev logs</a>
+            </div>
+            <div class="quick-links">
+                <h3>API Playground</h3>
+                <a href="#playground">Try APIs Live</a>
+            </div>
+            <div class="quick-links">
+                <h3>Debugging</h3>
+                <a href="#playground" style="color: var(--primary);">Breakpoint Locations</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main>
+            <header>
+                <h1>Llama Stack Local Dev</h1>
+                <p class="subtitle">Your personal learning environment for Llama Stack</p>
+            </header>
+
+            <!-- Section 1: Overview -->
+            <section id="overview">
+                <h2>1. Overview</h2>
+                <p>
+                    This local development environment lets you run Llama Stack on your machine
+                    without requiring a GPU. It uses <strong>Ollama</strong> for inference (CPU-optimized)
+                    and <strong>PostgreSQL</strong> for persistence.
+                </p>
+
+                <div class="grid">
+                    <div class="card success">
+                        <h4>What You Get</h4>
+                        <ul>
+                            <li>Full Llama Stack server on localhost:8321</li>
+                            <li>OpenAI-compatible API endpoints</li>
+                            <li>Ollama for local LLM inference</li>
+                            <li>PostgreSQL for vector stores & persistence</li>
+                            <li>One-command start/stop/restart</li>
+                        </ul>
+                    </div>
+                    <div class="card info">
+                        <h4>Requirements</h4>
+                        <ul>
+                            <li><span class="badge required">Required</span> Ollama installed</li>
+                            <li><span class="badge required">Required</span> Docker for PostgreSQL</li>
+                            <li><span class="badge required">Required</span> Python 3.12 + uv</li>
+                            <li><span class="badge optional">Optional</span> 16GB+ RAM for larger models</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 2: Architecture -->
+            <section id="architecture">
+                <h2>2. Architecture</h2>
+                <p>Here's how the local dev environment is structured:</p>
+
+                <div class="diagram-container">
+                    <div class="mermaid">
+flowchart TB
+    subgraph Client["Your Code / curl / Python"]
+        REQ["HTTP Requests"]
+    end
+
+    subgraph Stack["Llama Stack Server :8321"]
+        API["API Layer"]
+        ROUTER["Provider Router"]
+        INFER["Inference Provider"]
+        VECTOR["Vector IO Provider"]
+        SAFETY["Safety Provider"]
+    end
+
+    subgraph Services["Backend Services"]
+        OLLAMA["Ollama :11434"]
+        PG["PostgreSQL :5432"]
+    end
+
+    subgraph Models["Ollama Models"]
+        LLAMA["llama3.2:3b"]
+        GUARD["llama-guard3:1b"]
+    end
+
+    REQ --> API
+    API --> ROUTER
+    ROUTER --> INFER
+    ROUTER --> VECTOR
+    ROUTER --> SAFETY
+    INFER --> OLLAMA
+    VECTOR --> PG
+    SAFETY --> OLLAMA
+    OLLAMA --> LLAMA
+    OLLAMA --> GUARD
+                    </div>
+                </div>
+
+                <h3>Request Flow</h3>
+                <div class="diagram-container">
+                    <div class="mermaid">
+sequenceDiagram
+    participant C as Client
+    participant S as Llama Stack
+    participant O as Ollama
+    participant P as PostgreSQL
+
+    C->>S: POST /v1/chat/completions
+    S->>S: Route to inference provider
+    S->>O: Forward to Ollama
+    O->>O: Run llama3.2:3b
+    O-->>S: Stream tokens
+    S-->>C: SSE stream response
+
+    Note over C,P: Vector Store Example
+    C->>S: POST /v1/vector_stores
+    S->>P: Create table
+    P-->>S: OK
+    S-->>C: Vector store created
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 3: File Structure -->
+            <section id="file-structure">
+                <h2>3. File Structure</h2>
+                <p>Your worktree is organized like this:</p>
+
+                <div class="file-tree">
+<span class="folder">.worktrees/learn/local-dev/</span>
+├── <span class="folder">dev/</span>                      <span class="comment"># Your local dev scripts</span>
+│   ├── <span class="file">llama-dev</span>             <span class="comment"># Main control script</span>
+│   ├── <span class="file">setup-once.sh</span>         <span class="comment"># First-time setup</span>
+│   ├── <span class="file">test-quick.sh</span>         <span class="comment"># Quick health checks</span>
+│   ├── <span class="file">test-inference.sh</span>     <span class="comment"># Inference API tests</span>
+│   ├── <span class="file">generate-report.sh</span>    <span class="comment"># HTML report generator</span>
+│   ├── <span class="file">docker-compose.yml</span>    <span class="comment"># PostgreSQL container</span>
+│   └── <span class="file">.env</span>                  <span class="comment"># Environment config</span>
+├── <span class="folder">logs/</span>                     <span class="comment"># Service logs</span>
+│   ├── <span class="file">ollama.log</span>
+│   ├── <span class="file">llama-stack.log</span>
+│   └── <span class="file">llama-stack.pid</span>
+├── <span class="folder">reports/</span>                  <span class="comment"># Generated HTML reports</span>
+├── <span class="folder">src/</span>                      <span class="comment"># Llama Stack source code</span>
+├── <span class="folder">tests/</span>                    <span class="comment"># Test suites</span>
+└── <span class="file">pyproject.toml</span>           <span class="comment"># Python project config</span>
+                </div>
+            </section>
+
+            <!-- Section 4: Services -->
+            <section id="services">
+                <h2>4. Services</h2>
+
+                <div class="grid">
+                    <div class="card">
+                        <h4>Ollama <span class="badge running">:11434</span></h4>
+                        <p>Local LLM inference engine. Runs models on CPU (or GPU if available).</p>
+                        <table>
+                            <tr><th>Model</th><th>Purpose</th><th>Size</th></tr>
+                            <tr><td>llama3.2:3b-instruct-fp16</td><td>Chat/Completion</td><td>~6GB</td></tr>
+                            <tr><td>llama-guard3:1b</td><td>Safety filtering</td><td>~2GB</td></tr>
+                        </table>
+                    </div>
+                    <div class="card">
+                        <h4>PostgreSQL <span class="badge running">:5432</span></h4>
+                        <p>Database for vector stores and persistence.</p>
+                        <table>
+                            <tr><th>Setting</th><th>Value</th></tr>
+                            <tr><td>Container</td><td>llama-stack-postgres</td></tr>
+                            <tr><td>Database</td><td>llamastack</td></tr>
+                            <tr><td>User</td><td>llamastack</td></tr>
+                            <tr><td>Password</td><td>llamastack</td></tr>
+                        </table>
+                    </div>
+                    <div class="card">
+                        <h4>Llama Stack <span class="badge running">:8321</span></h4>
+                        <p>The main API server that orchestrates everything.</p>
+                        <table>
+                            <tr><th>Endpoint</th><th>Description</th></tr>
+                            <tr><td>/health</td><td>Health check</td></tr>
+                            <tr><td>/v1/models</td><td>List models</td></tr>
+                            <tr><td>/v1/chat/completions</td><td>OpenAI-compatible chat</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 5: Scripts Reference -->
+            <section id="scripts">
+                <h2>5. Scripts Reference</h2>
+
+                <h3 id="cmd-start">Start All Services</h3>
+                <pre><code class="language-bash">./dev/llama-dev start</code></pre>
+                <p>Starts Ollama, PostgreSQL, and Llama Stack server in order.</p>
+
+                <h3 id="cmd-stop">Stop All Services</h3>
+                <pre><code class="language-bash">./dev/llama-dev stop</code></pre>
+                <p>Gracefully stops all services.</p>
+
+                <h3 id="cmd-status">Check Status</h3>
+                <pre><code class="language-bash">./dev/llama-dev status</code></pre>
+                <p>Shows which services are running.</p>
+
+                <h3 id="cmd-test">Run Tests</h3>
+                <pre><code class="language-bash"># Quick health check
+./dev/llama-dev test quick
+
+# Test inference APIs
+./dev/llama-dev test inference
+
+# Run unit tests
+./dev/llama-dev test unit
+
+# Run integration tests
+./dev/llama-dev test integration</code></pre>
+
+                <h3 id="cmd-logs">View Logs</h3>
+                <pre><code class="language-bash"># Tail Llama Stack logs
+./dev/llama-dev logs stack
+
+# Tail Ollama logs
+./dev/llama-dev logs ollama
+
+# Tail all logs
+./dev/llama-dev logs all</code></pre>
+
+                <h3>Generate Report</h3>
+                <pre><code class="language-bash">./dev/llama-dev report</code></pre>
+                <p>Creates an HTML status report and opens it in your browser.</p>
+
+                <h3>Individual Service Control</h3>
+                <pre><code class="language-bash"># Ollama
+./dev/llama-dev ollama-start
+./dev/llama-dev ollama-stop
+./dev/llama-dev ollama-pull    # Pull models
+
+# PostgreSQL
+./dev/llama-dev postgres-start
+./dev/llama-dev postgres-stop
+./dev/llama-dev postgres-reset  # Clear all data
+
+# Llama Stack
+./dev/llama-dev stack-start
+./dev/llama-dev stack-stop</code></pre>
+            </section>
+
+            <!-- Section 6: Daily Workflow -->
+            <section id="workflow">
+                <h2>6. Daily Workflow</h2>
+
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Start Your Environment</h4>
+                        <pre><code class="language-bash">cd ~/.worktrees/learn/local-dev
+./dev/llama-dev start</code></pre>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Verify Everything Works</h4>
+                        <pre><code class="language-bash">./dev/llama-dev test quick</code></pre>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Make API Calls</h4>
+                        <pre><code class="language-bash"># Simple chat completion
+curl http://localhost:8321/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "ollama/llama3.2:3b-instruct-fp16",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'</code></pre>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h4>Use Python Client</h4>
+                        <pre><code class="language-python">from llama_stack_client import LlamaStackClient
+
+client = LlamaStackClient(base_url="http://localhost:8321")
+
+response = client.inference.chat_completion(
+    model_id="ollama/llama3.2:3b-instruct-fp16",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.completion_message.content)</code></pre>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h4>When Done</h4>
+                        <pre><code class="language-bash">./dev/llama-dev stop</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 7: API Playground -->
+            <section id="playground">
+                <h2>7. API Playground</h2>
+                <p>
+                    Try API calls directly from this page. Edit the request body, click Send,
+                    and see the response. Make sure your Llama Stack server is running on localhost:8321.
+                </p>
+
+                <div class="card info">
+                    <h4>Quick Start</h4>
+                    <p>Click a preset button to load an example, edit the JSON body if needed, then click Send.</p>
+                </div>
+
+                <h3>Presets</h3>
+                <div class="preset-btns">
+                    <button class="preset-btn" onclick="loadPreset('health')">Health Check</button>
+                    <button class="preset-btn" onclick="loadPreset('models')">List Models</button>
+                    <button class="preset-btn" onclick="loadPreset('chat')">Chat Completion</button>
+                    <button class="preset-btn" onclick="loadPreset('chat-stream')">Chat (Streaming)</button>
+                    <button class="preset-btn" onclick="loadPreset('providers')">List Providers</button>
+                    <button class="preset-btn" onclick="loadPreset('routes')">List Routes</button>
+                </div>
+
+                <div class="api-playground" id="main-playground">
+                    <div class="api-header">
+                        <select id="method-select" class="method-badge post" onchange="updateMethodStyle()">
+                            <option value="GET">GET</option>
+                            <option value="POST" selected>POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                        </select>
+                        <input type="text" id="url-input" class="url-input" value="/api/v1/chat/completions">
+                        <button id="send-btn" class="send-btn" onclick="sendRequest()">Send</button>
+                    </div>
+
+                    <div class="api-tabs">
+                        <button class="api-tab active" onclick="switchTab('body')">Body</button>
+                        <button class="api-tab" onclick="switchTab('headers')">Headers</button>
+                        <button class="api-tab" onclick="switchTab('curl')">cURL</button>
+                        <button class="api-tab" onclick="switchTab('response')">Response</button>
+                    </div>
+
+                    <div id="panel-body" class="api-panel active">
+                        <textarea id="request-body" class="request-body">{
+  "model": "ollama/llama3.2:3b-instruct-fp16",
+  "messages": [
+    {"role": "user", "content": "Say hello in 10 words or less"}
+  ]
+}</textarea>
+                    </div>
+
+                    <div id="panel-headers" class="api-panel">
+                        <textarea id="request-headers" class="request-body" style="min-height: 100px">{
+  "Content-Type": "application/json"
+}</textarea>
+                    </div>
+
+                    <div id="panel-curl" class="api-panel">
+                        <p style="margin-bottom: 0.75rem; font-size: 0.85rem; color: var(--text-orange);">
+                            Copy this curl command to run in your terminal:
+                        </p>
+                        <div id="curl-command" class="curl-preview">curl http://localhost:8321/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+  "model": "ollama/llama3.2:3b-instruct-fp16",
+  "messages": [{"role": "user", "content": "Say hello in 10 words or less"}]
+}'</div>
+                        <button class="copy-btn" onclick="copyCurl()">Copy to Clipboard</button>
+                    </div>
+
+                    <div id="panel-response" class="api-panel">
+                        <div id="response-output" class="response-output">Click "Send" to see the response here...</div>
+                    </div>
+
+                    <div id="response-meta" class="response-meta" style="display: none;">
+                        <span>Status: <span id="resp-status" class="status">-</span></span>
+                        <span>Time: <span id="resp-time">-</span></span>
+                        <span>Size: <span id="resp-size">-</span></span>
+                    </div>
+                </div>
+
+                <h3>Debugging Guide</h3>
+                <div class="card info">
+                    <h4>How to Debug API Requests</h4>
+                    <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Open the file shown in "Breakpoint Location" column below</li>
+                        <li>Go to the line number and click in the gutter (red dot appears)</li>
+                        <li>Select <strong>"FastAPI Debug"</strong> in Cursor and press <kbd style="background: var(--bg-code); padding: 0.2rem 0.4rem; border-radius: 3px;">F5</kbd></li>
+                        <li>Click the preset button above, then click <strong>Send</strong></li>
+                        <li>Debugger pauses at your breakpoint!</li>
+                    </ol>
+                </div>
+
+                <h3>API Reference with Debug Locations</h3>
+                <table>
+                    <tr>
+                        <th>Endpoint</th>
+                        <th>Method</th>
+                        <th>Breakpoint Location</th>
+                    </tr>
+                    <tr>
+                        <td><code>/health</code></td>
+                        <td><span class="method-badge get">GET</span></td>
+                        <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/server/server.py</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>/v1/models</code></td>
+                        <td><span class="method-badge get">GET</span></td>
+                        <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/routing_tables/models.py:134</code><br><small style="color: var(--text-orange);">list_models()</small></td>
+                    </tr>
+                    <tr>
+                        <td><code>/v1/chat/completions</code></td>
+                        <td><span class="method-badge post">POST</span></td>
+                        <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/routers/inference.py:175</code><br><small style="color: var(--text-orange);">openai_chat_completion()</small></td>
+                    </tr>
+                    <tr>
+                        <td><code>/v1/completions</code></td>
+                        <td><span class="method-badge post">POST</span></td>
+                        <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/routers/inference.py:157</code><br><small style="color: var(--text-orange);">openai_completion()</small></td>
+                    </tr>
+                    <tr>
+                        <td><code>/v1/providers</code></td>
+                        <td><span class="method-badge get">GET</span></td>
+                        <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/server/server.py</code><br><small style="color: var(--text-orange);">list_providers()</small></td>
+                    </tr>
+                    <tr>
+                        <td><code>/v1/routes</code></td>
+                        <td><span class="method-badge get">GET</span></td>
+                        <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/server/server.py</code><br><small style="color: var(--text-orange);">list_routes()</small></td>
+                    </tr>
+                </table>
+                <p style="font-size: 0.85rem; color: var(--text-orange); margin-top: 0.5rem;">
+                    Click any file path to copy it. Then in Cursor: <kbd>Ctrl+P</kbd> > paste > <kbd>Enter</kbd> to open.
+                </p>
+            </section>
+
+            <!-- Section 8: Testing -->
+            <section id="testing">
+                <h2>8. Testing</h2>
+
+                <h3>Test Types</h3>
+                <div class="diagram-container">
+                    <div class="mermaid">
+flowchart LR
+    subgraph Quick["test quick"]
+        Q1["Health endpoint"]
+        Q2["Version check"]
+        Q3["Models list"]
+        Q4["Ollama ping"]
+        Q5["PostgreSQL ping"]
+    end
+
+    subgraph Inference["test inference"]
+        I1["Chat completion"]
+        I2["Streaming"]
+        I3["Native API"]
+    end
+
+    subgraph Unit["test unit"]
+        U1["pytest tests/unit/"]
+    end
+
+    subgraph Integration["test integration"]
+        INT1["Full API tests"]
+        INT2["With real services"]
+    end
+                    </div>
+                </div>
+
+                <div class="card warning">
+                    <h4>Testing Tips</h4>
+                    <ul>
+                        <li>Always run <code>test quick</code> first to ensure services are up</li>
+                        <li>Inference tests require models to be pulled</li>
+                        <li>Integration tests may take several minutes</li>
+                        <li>Check <code>logs/</code> directory for test output</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Section 9: Troubleshooting -->
+            <section id="troubleshooting">
+                <h2>9. Troubleshooting</h2>
+
+                <div class="card warning">
+                    <h4>Ollama not starting?</h4>
+                    <pre><code class="language-bash"># Check if already running
+pgrep -x ollama
+
+# Kill zombie process
+pkill -9 ollama
+
+# Check logs
+cat logs/ollama.log</code></pre>
+                </div>
+
+                <div class="card warning">
+                    <h4>PostgreSQL container issues?</h4>
+                    <pre><code class="language-bash"># Check container status
+docker ps -a | grep llama-stack-postgres
+
+# View container logs
+docker logs llama-stack-postgres
+
+# Reset and restart
+./dev/llama-dev postgres-reset
+./dev/llama-dev postgres-start</code></pre>
+                </div>
+
+                <div class="card warning">
+                    <h4>Llama Stack won't start?</h4>
+                    <pre><code class="language-bash"># Check for port conflict
+lsof -i :8321
+
+# View detailed logs
+tail -100 logs/llama-stack.log
+
+# Try running manually for better error output
+uv run llama stack run ollama --port 8321</code></pre>
+                </div>
+
+                <div class="card warning">
+                    <h4>Models not found?</h4>
+                    <pre><code class="language-bash"># List available Ollama models
+ollama list
+
+# Pull required models
+./dev/llama-dev ollama-pull</code></pre>
+                </div>
+
+                <div class="card info">
+                    <h4>Common Environment Variables</h4>
+                    <table>
+                        <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+                        <tr><td>LLAMA_STACK_PORT</td><td>8321</td><td>Server port</td></tr>
+                        <tr><td>LLAMA_STACK_CONFIG</td><td>ollama</td><td>Distribution to use</td></tr>
+                        <tr><td>OLLAMA_URL</td><td>http://localhost:11434/v1</td><td>Ollama endpoint</td></tr>
+                        <tr><td>POSTGRES_HOST</td><td>127.0.0.1</td><td>PostgreSQL host</td></tr>
+                    </table>
+                </div>
+            </section>
+
+            <footer>
+                Generated for Llama Stack Local Development<br>
+                Worktree: .worktrees/learn/local-dev
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            fontSize: 14,
+            themeVariables: {
+                primaryColor: '#e53935',
+                primaryTextColor: '#ffd54f',
+                primaryBorderColor: '#e53935',
+                lineColor: '#ffab40',
+                secondaryColor: '#16213e',
+                tertiaryColor: '#1a1a2e',
+                background: '#1a1a2e',
+                mainBkg: '#16213e',
+                secondBkg: '#1a1a2e',
+                nodeBorder: '#e53935',
+                clusterBkg: 'rgba(22, 33, 62, 0.8)',
+                clusterBorder: 'rgba(229, 57, 53, 0.5)',
+                titleColor: '#e53935',
+                edgeLabelBackground: '#16213e',
+                nodeTextColor: '#ffd54f',
+                textColor: '#ffd54f'
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 15
+            }
+        });
+
+        // Initialize Highlight.js
+        document.addEventListener('DOMContentLoaded', () => {
+            hljs.highlightAll();
+        });
+
+        // Scroll spy for sidebar
+        const sections = document.querySelectorAll('section[id]');
+        const navLinks = document.querySelectorAll('.sidebar nav a');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // API Playground functionality
+        // Use /api/ prefix when served via proxy, direct URL otherwise
+        const BASE_URL = window.location.protocol === 'file:'
+            ? 'http://localhost:8321'
+            : '/api';
+
+        const presets = {
+            health: {
+                method: 'GET',
+                url: `${BASE_URL}/health`,
+                body: '',
+                description: 'Check if the server is running'
+            },
+            models: {
+                method: 'GET',
+                url: `${BASE_URL}/v1/models`,
+                body: '',
+                description: 'List all available models'
+            },
+            chat: {
+                method: 'POST',
+                url: `${BASE_URL}/v1/chat/completions`,
+                body: JSON.stringify({
+                    model: 'ollama/llama3.2:3b-instruct-fp16',
+                    messages: [
+                        { role: 'user', content: 'Say hello in 10 words or less' }
+                    ]
+                }, null, 2),
+                description: 'Simple chat completion'
+            },
+            'chat-stream': {
+                method: 'POST',
+                url: `${BASE_URL}/v1/chat/completions`,
+                body: JSON.stringify({
+                    model: 'ollama/llama3.2:3b-instruct-fp16',
+                    messages: [
+                        { role: 'user', content: 'Count from 1 to 5' }
+                    ],
+                    stream: true
+                }, null, 2),
+                description: 'Streaming chat completion'
+            },
+            providers: {
+                method: 'GET',
+                url: `${BASE_URL}/v1/providers`,
+                body: '',
+                description: 'List configured providers'
+            },
+            routes: {
+                method: 'GET',
+                url: `${BASE_URL}/v1/routes`,
+                body: '',
+                description: 'List available API routes'
+            }
+        };
+
+        function loadPreset(name) {
+            const preset = presets[name];
+            if (!preset) return;
+
+            document.getElementById('method-select').value = preset.method;
+            document.getElementById('url-input').value = preset.url;
+            document.getElementById('request-body').value = preset.body;
+            updateMethodStyle();
+            updateCurlPreview();
+
+            // Highlight active preset
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function updateMethodStyle() {
+            const select = document.getElementById('method-select');
+            const method = select.value.toLowerCase();
+            select.className = 'method-badge ' + method;
+            updateCurlPreview();
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.api-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.api-panel').forEach(panel => panel.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('panel-' + tabName).classList.add('active');
+
+            if (tabName === 'curl') {
+                updateCurlPreview();
+            }
+        }
+
+        function updateCurlPreview() {
+            const method = document.getElementById('method-select').value;
+            let url = document.getElementById('url-input').value;
+            const body = document.getElementById('request-body').value;
+
+            // Convert /api/ URLs to real localhost URLs for curl
+            if (url.startsWith('/api/')) {
+                url = 'http://localhost:8321' + url.slice(4);
+            } else if (url.startsWith('/api')) {
+                url = 'http://localhost:8321' + url.slice(4);
+            }
+
+            let curl = `curl ${url}`;
+            if (method !== 'GET') {
+                curl += ` \\\n  -X ${method}`;
+            }
+            curl += ` \\\n  -H "Content-Type: application/json"`;
+
+            if (body && method !== 'GET') {
+                const compactBody = body.replace(/\n/g, '').replace(/\s+/g, ' ');
+                curl += ` \\\n  -d '${compactBody}'`;
+            }
+
+            document.getElementById('curl-command').textContent = curl;
+        }
+
+        function copyCurl() {
+            const curl = document.getElementById('curl-command').textContent;
+            navigator.clipboard.writeText(curl).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Copy to Clipboard', 2000);
+            });
+        }
+
+        function copyDebugPath(element) {
+            const path = element.textContent.split(':')[0]; // Get just the file path
+            navigator.clipboard.writeText(path).then(() => {
+                element.classList.add('copied');
+                const originalText = element.textContent;
+                element.textContent = 'Copied! Use Ctrl+P to open';
+                setTimeout(() => {
+                    element.textContent = originalText;
+                    element.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        async function sendRequest() {
+            const method = document.getElementById('method-select').value;
+            const url = document.getElementById('url-input').value;
+            const bodyText = document.getElementById('request-body').value;
+            const headersText = document.getElementById('request-headers').value;
+
+            const sendBtn = document.getElementById('send-btn');
+            const responseOutput = document.getElementById('response-output');
+            const responseMeta = document.getElementById('response-meta');
+
+            // Disable button and show loading
+            sendBtn.disabled = true;
+            sendBtn.classList.add('loading');
+            sendBtn.textContent = 'Sending';
+            responseOutput.textContent = 'Loading...';
+            responseOutput.className = 'response-output';
+            responseMeta.style.display = 'none';
+
+            // Switch to response tab
+            switchTabDirect('response');
+
+            const startTime = performance.now();
+
+            try {
+                // Parse headers
+                let headers = { 'Content-Type': 'application/json' };
+                try {
+                    const parsedHeaders = JSON.parse(headersText);
+                    headers = { ...headers, ...parsedHeaders };
+                } catch (e) {}
+
+                const options = { method, headers };
+                if (method !== 'GET' && bodyText) {
+                    options.body = bodyText;
+                }
+
+                // Check if streaming
+                const isStreaming = bodyText.includes('"stream": true') || bodyText.includes('"stream":true');
+
+                const response = await fetch(url, options);
+                const endTime = performance.now();
+                const duration = (endTime - startTime).toFixed(0);
+
+                // Update status
+                document.getElementById('resp-status').textContent = response.status + ' ' + response.statusText;
+                document.getElementById('resp-status').className = 'status ' + (response.ok ? 'ok' : 'error');
+                document.getElementById('resp-time').textContent = duration + 'ms';
+
+                if (isStreaming && response.ok) {
+                    // Handle SSE streaming
+                    responseOutput.textContent = '';
+                    responseOutput.className = 'response-output success';
+                    responseMeta.style.display = 'flex';
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let totalSize = 0;
+                    let fullContent = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        totalSize += value.length;
+
+                        // Parse SSE lines
+                        const lines = chunk.split('\n');
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') {
+                                    fullContent += '\n\n[DONE]';
+                                } else {
+                                    try {
+                                        const json = JSON.parse(data);
+                                        const content = json.choices?.[0]?.delta?.content || '';
+                                        fullContent += content;
+                                    } catch (e) {
+                                        fullContent += data;
+                                    }
+                                }
+                            }
+                        }
+                        responseOutput.textContent = fullContent;
+                        document.getElementById('resp-size').textContent = formatBytes(totalSize);
+                    }
+                } else {
+                    // Regular response
+                    const text = await response.text();
+                    document.getElementById('resp-size').textContent = formatBytes(text.length);
+                    responseMeta.style.display = 'flex';
+
+                    try {
+                        const json = JSON.parse(text);
+                        responseOutput.textContent = JSON.stringify(json, null, 2);
+                        responseOutput.className = 'response-output ' + (response.ok ? 'success' : 'error');
+                    } catch (e) {
+                        responseOutput.textContent = text;
+                        responseOutput.className = 'response-output ' + (response.ok ? 'success' : 'error');
+                    }
+                }
+            } catch (error) {
+                const endTime = performance.now();
+                document.getElementById('resp-status').textContent = 'Error';
+                document.getElementById('resp-status').className = 'status error';
+                document.getElementById('resp-time').textContent = (endTime - startTime).toFixed(0) + 'ms';
+                document.getElementById('resp-size').textContent = '-';
+                responseMeta.style.display = 'flex';
+
+                responseOutput.textContent = 'Error: ' + error.message + '\n\nMake sure:\n1. Llama Stack server is running on localhost:8321\n2. Run: ./dev/llama-dev start';
+                responseOutput.className = 'response-output error';
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.classList.remove('loading');
+                sendBtn.textContent = 'Send';
+            }
+        }
+
+        function switchTabDirect(tabName) {
+            document.querySelectorAll('.api-tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.textContent.toLowerCase() === tabName) {
+                    tab.classList.add('active');
+                }
+            });
+            document.querySelectorAll('.api-panel').forEach(panel => panel.classList.remove('active'));
+            document.getElementById('panel-' + tabName).classList.add('active');
+        }
+
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        // Update curl preview when body changes
+        document.getElementById('request-body')?.addEventListener('input', updateCurlPreview);
+        document.getElementById('url-input')?.addEventListener('input', updateCurlPreview);
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set initial URL based on how page is served
+            const urlInput = document.getElementById('url-input');
+            if (urlInput) {
+                urlInput.value = `${BASE_URL}/v1/chat/completions`;
+            }
+            updateCurlPreview();
+        });
+    </script>
+</body>
+</html>

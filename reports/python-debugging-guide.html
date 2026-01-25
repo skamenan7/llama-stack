@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Server Debugging: Zero to Hero Guide for Java Developers</title>
+
+    <!-- Mermaid.js for diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #e53935;
+            --secondary: #1565c0;
+            --accent: #ff6f00;
+            --bg-dark: #1a1a2e;
+            --bg-card: #16213e;
+            --bg-code: #0f0f23;
+            --text-yellow: #ffd54f;
+            --text-orange: #ffab40;
+            --border-color: #2a2a4a;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --font-mono: 'Fira Code', 'Consolas', 'Monaco', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-yellow);
+            line-height: 1.7;
+        }
+
+        .page-wrapper {
+            display: flex;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        /* Sidebar TOC */
+        .sidebar {
+            width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border-color);
+            padding: 2rem 1rem;
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            color: var(--primary);
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .toc-list {
+            list-style: none;
+        }
+
+        .toc-list li {
+            margin: 0.5rem 0;
+        }
+
+        .toc-list a {
+            color: var(--text-yellow);
+            text-decoration: none;
+            font-size: 0.9rem;
+            padding: 0.4rem 0.8rem;
+            display: block;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .toc-list a:hover,
+        .toc-list a.active {
+            background: rgba(229, 57, 53, 0.2);
+            color: var(--primary);
+        }
+
+        .toc-list .sub-item {
+            padding-left: 1.5rem;
+            font-size: 0.85rem;
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            padding: 2rem 3rem;
+            max-width: 1200px;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .hero .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-orange);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin: 0.2rem;
+        }
+
+        .badge-java { background: #b07219; color: #fff; }
+        .badge-python { background: #3572A5; color: #fff; }
+        .badge-cursor { background: #00d4aa; color: #000; }
+        .badge-pycharm { background: #21D789; color: #000; }
+
+        /* Sections with alternating colors */
+        section {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: var(--bg-card);
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+        }
+
+        section:nth-of-type(odd) {
+            color: var(--text-yellow);
+        }
+
+        section:nth-of-type(even) {
+            color: var(--text-orange);
+        }
+
+        section h2 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        section h3 {
+            color: var(--accent);
+            font-size: 1.3rem;
+            margin: 1.5rem 0 1rem;
+        }
+
+        section h4 {
+            color: var(--secondary);
+            font-size: 1.1rem;
+            margin: 1rem 0 0.5rem;
+        }
+
+        /* Comparison table */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 1rem;
+            text-align: left;
+            border: 1px solid var(--border-color);
+        }
+
+        .comparison-table th {
+            background: var(--bg-code);
+            color: var(--primary);
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background: rgba(15, 15, 35, 0.5);
+        }
+
+        /* Step cards */
+        .step-card {
+            background: var(--bg-code);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-left: 4px solid var(--accent);
+            position: relative;
+        }
+
+        .step-card::before {
+            content: attr(data-step);
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: var(--accent);
+            color: #000;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .step-card h4 {
+            margin-top: 0.5rem;
+        }
+
+        /* Warning and success boxes */
+        .warning-box {
+            background: rgba(255, 152, 0, 0.1);
+            border-left: 4px solid var(--warning);
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .warning-box::before {
+            content: "WARNING";
+            display: block;
+            color: var(--warning);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .success-box {
+            background: rgba(76, 175, 80, 0.1);
+            border-left: 4px solid var(--success);
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .success-box::before {
+            content: "TIP";
+            display: block;
+            color: var(--success);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-box {
+            background: rgba(21, 101, 192, 0.1);
+            border-left: 4px solid var(--secondary);
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .info-box::before {
+            content: "FOR JAVA DEVS";
+            display: block;
+            color: var(--secondary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Code blocks */
+        pre {
+            background: var(--bg-code) !important;
+            border-radius: 8px;
+            padding: 1.5rem !important;
+            margin: 1rem 0;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+        }
+
+        code {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+        }
+
+        code:not(.hljs) {
+            background: rgba(15, 15, 35, 0.8);
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            color: var(--text-orange);
+        }
+
+        .hljs {
+            background: var(--bg-code) !important;
+        }
+
+        /* Keyboard shortcuts */
+        kbd {
+            background: var(--bg-code);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 0.2rem 0.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-yellow);
+            box-shadow: 0 2px 0 var(--border-color);
+        }
+
+        /* Mermaid diagrams */
+        .diagram-container {
+            background: var(--bg-code);
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+
+        .mermaid {
+            min-height: 300px;
+            background: var(--bg-code);
+        }
+
+        .mermaid text {
+            fill: var(--text-yellow) !important;
+            font-size: 14px !important;
+        }
+
+        .mermaid .actor {
+            fill: var(--bg-card) !important;
+            stroke: var(--primary) !important;
+        }
+
+        .mermaid .messageText {
+            fill: var(--text-yellow) !important;
+        }
+
+        .mermaid .node rect {
+            fill: var(--bg-card) !important;
+            stroke: var(--primary) !important;
+        }
+
+        .mermaid .nodeLabel {
+            color: var(--text-yellow) !important;
+        }
+
+        /* File tree */
+        .file-tree {
+            background: var(--bg-code);
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            border: 1px solid var(--border-color);
+            white-space: pre;
+            line-height: 1.6;
+        }
+
+        .file-tree .folder { color: var(--accent); font-weight: bold; }
+        .file-tree .file { color: var(--text-yellow); }
+        .file-tree .comment { color: #6272a4; font-style: italic; }
+
+        /* Tabs for IDE comparison */
+        .tab-container {
+            margin: 1.5rem 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 0.8rem 1.5rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            color: var(--text-yellow);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            background: var(--bg-card);
+        }
+
+        .tab-btn.active {
+            background: var(--bg-card);
+            border-color: var(--primary);
+            border-top: 2px solid var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 0 8px 8px 8px;
+            padding: 1.5rem;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+        }
+
+        /* Shortcut grid */
+        .shortcut-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .shortcut-item {
+            background: var(--bg-code);
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .shortcut-item .action {
+            color: var(--text-yellow);
+        }
+
+        .shortcut-item .keys {
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar TOC -->
+        <nav class="sidebar">
+            <h2>Contents</h2>
+            <ul class="toc-list">
+                <li><a href="#java-vs-python">Java vs Python Debugging</a></li>
+                <li><a href="#mental-model">Debugging Mental Model</a></li>
+                <li><a href="#setup-cursor">Setup: Cursor IDE</a></li>
+                <li class="sub-item"><a href="#cursor-launch">launch.json Config</a></li>
+                <li class="sub-item"><a href="#cursor-breakpoints">Setting Breakpoints</a></li>
+                <li><a href="#setup-pycharm">Setup: PyCharm</a></li>
+                <li class="sub-item"><a href="#pycharm-config">Run Configuration</a></li>
+                <li class="sub-item"><a href="#pycharm-remote">Remote Debugging</a></li>
+                <li><a href="#debug-workflow">The Debug Workflow</a></li>
+                <li><a href="#breakpoint-types">Breakpoint Types</a></li>
+                <li><a href="#debug-panel">Debug Panel Deep Dive</a></li>
+                <li><a href="#server-debugging">Server Request Debugging</a></li>
+                <li><a href="#async-debugging">Async/Await Debugging</a></li>
+                <li><a href="#advanced">Advanced Techniques</a></li>
+                <li><a href="#shortcuts">Keyboard Shortcuts</a></li>
+                <li><a href="#troubleshooting">Troubleshooting</a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="hero">
+                <h1>Python Server Debugging</h1>
+                <p class="subtitle">Zero to Hero Guide for Java Developers</p>
+                <div style="margin-top: 1rem;">
+                    <span class="badge badge-java">Java Background</span>
+                    <span class="badge badge-python">Python</span>
+                    <span class="badge badge-cursor">Cursor IDE</span>
+                    <span class="badge badge-pycharm">PyCharm</span>
+                </div>
+            </header>
+
+            <!-- Section 1: Java vs Python -->
+            <section id="java-vs-python">
+                <h2>1. Java vs Python Debugging Concepts</h2>
+
+                <p>Good news: debugging concepts are universal. Your Java debugging skills transfer directly!</p>
+
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Concept</th>
+                            <th>Java (IntelliJ/Eclipse)</th>
+                            <th>Python (Cursor/PyCharm)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Debugger Protocol</td>
+                            <td>JDWP (Java Debug Wire Protocol)</td>
+                            <td>DAP (Debug Adapter Protocol) via debugpy</td>
+                        </tr>
+                        <tr>
+                            <td>Breakpoint</td>
+                            <td>Click in gutter</td>
+                            <td>Same - click in gutter</td>
+                        </tr>
+                        <tr>
+                            <td>Step Over</td>
+                            <td><kbd>F8</kbd></td>
+                            <td><kbd>F10</kbd> (Cursor) / <kbd>F8</kbd> (PyCharm)</td>
+                        </tr>
+                        <tr>
+                            <td>Step Into</td>
+                            <td><kbd>F7</kbd></td>
+                            <td><kbd>F11</kbd> (Cursor) / <kbd>F7</kbd> (PyCharm)</td>
+                        </tr>
+                        <tr>
+                            <td>Step Out</td>
+                            <td><kbd>Shift+F8</kbd></td>
+                            <td><kbd>Shift+F11</kbd> (Cursor) / <kbd>Shift+F8</kbd> (PyCharm)</td>
+                        </tr>
+                        <tr>
+                            <td>Continue</td>
+                            <td><kbd>F9</kbd></td>
+                            <td><kbd>F5</kbd> (Cursor) / <kbd>F9</kbd> (PyCharm)</td>
+                        </tr>
+                        <tr>
+                            <td>Watch Variables</td>
+                            <td>Variables panel</td>
+                            <td>Same - Variables panel</td>
+                        </tr>
+                        <tr>
+                            <td>Evaluate Expression</td>
+                            <td><kbd>Alt+F8</kbd></td>
+                            <td>Debug Console / <kbd>Alt+F8</kbd></td>
+                        </tr>
+                        <tr>
+                            <td>Conditional Breakpoint</td>
+                            <td>Right-click breakpoint</td>
+                            <td>Same - right-click breakpoint</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="info-box">
+                    The main difference: Python uses <code>debugpy</code> as the debug adapter, while Java uses JDWP.
+                    But the user experience is nearly identical. If you can debug Java, you can debug Python!
+                </div>
+            </section>
+
+            <!-- Section 2: Mental Model -->
+            <section id="mental-model">
+                <h2>2. The Debugging Mental Model</h2>
+
+                <p>When you click "Send Request" in your HTML form, here's the full flow:</p>
+
+                <div class="diagram-container">
+                    <div class="mermaid">
+sequenceDiagram
+    participant Browser as Browser/HTML
+    participant Server as Python Server
+    participant Route as Route Handler
+    participant Logic as Business Logic
+    participant DB as Database/API
+
+    Browser->>Server: HTTP Request (POST /api/chat)
+    Note over Server: Request hits ASGI/WSGI
+    Server->>Route: Route matched
+    Note over Route: YOUR BREAKPOINT HERE
+    Route->>Logic: Call service function
+    Logic->>DB: Query/External call
+    DB-->>Logic: Response data
+    Logic-->>Route: Return result
+    Route-->>Server: HTTP Response
+    Server-->>Browser: JSON Response
+                    </div>
+                </div>
+
+                <h3>Key Insight for Server Debugging</h3>
+                <p>Unlike Java Spring where you might debug from <code>main()</code>, Python web servers (FastAPI, Flask) are:</p>
+                <ul>
+                    <li><strong>Event-driven</strong> - code runs when requests arrive</li>
+                    <li><strong>Often async</strong> - uses <code>async/await</code> (like CompletableFuture)</li>
+                    <li><strong>Hot-reloadable</strong> - changes apply without restart (usually)</li>
+                </ul>
+
+                <div class="success-box">
+                    You don't need to trace from <code>if __name__ == "__main__"</code>.
+                    Just set a breakpoint in your route handler and send a request!
+                </div>
+            </section>
+
+            <!-- Section 3: Cursor Setup -->
+            <section id="setup-cursor">
+                <h2>3. Setup: Cursor IDE (VS Code)</h2>
+
+                <h3 id="cursor-launch">Step 1: Create launch.json</h3>
+
+                <div class="step-card" data-step="1">
+                    <h4>Open Run and Debug Panel</h4>
+                    <p>Press <kbd>Ctrl+Shift+D</kbd> (or click the bug icon in sidebar)</p>
+                </div>
+
+                <div class="step-card" data-step="2">
+                    <h4>Create launch.json</h4>
+                    <p>Click "create a launch.json file" > Select "Python Debugger"</p>
+                </div>
+
+                <div class="step-card" data-step="3">
+                    <h4>Configure for Your Server</h4>
+                    <p>Replace the contents with one of these configurations:</p>
+                </div>
+
+                <h4>For FastAPI (uvicorn):</h4>
+                <pre><code class="language-json">{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "FastAPI Debug",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "llama_stack.distribution.server.server:app",
+                "--host", "0.0.0.0",
+                "--port", "8321",
+                "--reload"
+            ],
+            "jinja": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "console": "integratedTerminal"
+        }
+    ]
+}</code></pre>
+
+                <h4>For Flask:</h4>
+                <pre><code class="language-json">{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Flask Debug",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "flask",
+            "args": ["run", "--debug", "--port", "5000"],
+            "env": {
+                "FLASK_APP": "app.py",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "console": "integratedTerminal"
+        }
+    ]
+}</code></pre>
+
+                <h4>For generic Python script:</h4>
+                <pre><code class="language-json">{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        }
+    ]
+}</code></pre>
+
+                <div class="warning-box">
+                    <strong>Common Mistake:</strong> Using <code>"type": "python"</code> instead of <code>"type": "debugpy"</code>.
+                    The old Python extension used "python", but the new debugger requires "debugpy".
+                </div>
+
+                <h3 id="cursor-breakpoints">Step 2: Set Breakpoints</h3>
+
+                <div class="diagram-container">
+                    <div class="mermaid">
+flowchart LR
+    A["Click line number gutter"] --> B["Red dot appears"]
+    B --> C["Run debugger F5"]
+    C --> D["Send HTTP request"]
+    D --> E["Execution pauses at breakpoint"]
+    E --> F["Inspect variables"]
+                    </div>
+                </div>
+
+                <p>Click in the gutter (left of line numbers) to set a breakpoint. A red dot appears.</p>
+
+                <pre><code class="language-python">from fastapi import FastAPI, Request
+
+app = FastAPI()
+
+@app.post("/api/chat")
+async def chat_endpoint(request: Request):
+    body = await request.json()  # <-- Set breakpoint here!
+
+    message = body.get("message")  # <-- Or here to see parsed body
+
+    # Your business logic
+    response = process_message(message)
+
+    return {"response": response}</code></pre>
+
+                <h3>Step 3: Start Debugging</h3>
+
+                <div class="step-card" data-step="1">
+                    <h4>Press F5 or click green play button</h4>
+                    <p>The server starts in debug mode. You'll see the debug toolbar appear.</p>
+                </div>
+
+                <div class="step-card" data-step="2">
+                    <h4>Send your request</h4>
+                    <p>Open your HTML page and click "Send Request". The debugger pauses at your breakpoint.</p>
+                </div>
+
+                <div class="step-card" data-step="3">
+                    <h4>Explore!</h4>
+                    <p>Use the debug panel to inspect variables, step through code, and understand the flow.</p>
+                </div>
+            </section>
+
+            <!-- Section 4: PyCharm Setup -->
+            <section id="setup-pycharm">
+                <h2>4. Setup: PyCharm</h2>
+
+                <p>PyCharm's debugging experience is very similar to IntelliJ (same company!). You'll feel right at home.</p>
+
+                <h3 id="pycharm-config">Creating a Run Configuration</h3>
+
+                <div class="step-card" data-step="1">
+                    <h4>Open Run Configurations</h4>
+                    <p><strong>Run</strong> > <strong>Edit Configurations...</strong> (or click dropdown near play button)</p>
+                </div>
+
+                <div class="step-card" data-step="2">
+                    <h4>Add New Configuration</h4>
+                    <p>Click <strong>+</strong> > <strong>Python</strong></p>
+                </div>
+
+                <div class="step-card" data-step="3">
+                    <h4>Configure for FastAPI/uvicorn</h4>
+                    <ul>
+                        <li><strong>Name:</strong> FastAPI Debug</li>
+                        <li><strong>Script path:</strong> Change to <strong>Module name</strong></li>
+                        <li><strong>Module:</strong> <code>uvicorn</code></li>
+                        <li><strong>Parameters:</strong> <code>llama_stack.distribution.server.server:app --host 0.0.0.0 --port 8321 --reload</code></li>
+                        <li><strong>Working directory:</strong> Your project root</li>
+                    </ul>
+                </div>
+
+                <div class="success-box">
+                    PyCharm Professional has built-in FastAPI support! Just right-click your main.py and select "Debug".
+                </div>
+
+                <h3 id="pycharm-remote">Remote Debugging (Attach to Running Process)</h3>
+
+                <p>If your server is already running (e.g., in Docker), you can attach the debugger:</p>
+
+                <div class="step-card" data-step="1">
+                    <h4>Install debugpy in your environment</h4>
+                    <pre><code class="language-bash">pip install debugpy</code></pre>
+                </div>
+
+                <div class="step-card" data-step="2">
+                    <h4>Add debug listener to your server</h4>
+                    <pre><code class="language-python"># At the top of your server file
+import debugpy
+debugpy.listen(("0.0.0.0", 5678))
+print("Waiting for debugger attach...")
+debugpy.wait_for_client()  # Optional: pause until debugger connects</code></pre>
+                </div>
+
+                <div class="step-card" data-step="3">
+                    <h4>Create Remote Debug config in PyCharm</h4>
+                    <p><strong>Run</strong> > <strong>Edit Configurations</strong> > <strong>+</strong> > <strong>Python Debug Server</strong></p>
+                    <ul>
+                        <li><strong>Host:</strong> localhost</li>
+                        <li><strong>Port:</strong> 5678</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Section 5: Debug Workflow -->
+            <section id="debug-workflow">
+                <h2>5. The Debug Workflow</h2>
+
+                <div class="diagram-container">
+                    <div class="mermaid">
+flowchart TB
+    subgraph Setup["One-time Setup"]
+        A["Create launch.json/Run Config"] --> B["Set breakpoints in route handlers"]
+    end
+
+    subgraph Loop["Debug Loop"]
+        C["Start debugger (F5)"] --> D["Send HTTP request"]
+        D --> E["Hit breakpoint"]
+        E --> F{"Understand state?"}
+        F -->|No| G["Step through code"]
+        G --> F
+        F -->|Yes| H["Continue (F5) or Stop"]
+        H --> D
+    end
+
+    Setup --> Loop
+                    </div>
+                </div>
+
+                <h3>Your First Debug Session</h3>
+
+                <p>Let's walk through debugging a request step by step:</p>
+
+                <div class="tab-container">
+                    <div class="tab-buttons">
+                        <button class="tab-btn active" onclick="showTab('cursor-tab')">Cursor IDE</button>
+                        <button class="tab-btn" onclick="showTab('pycharm-tab')">PyCharm</button>
+                    </div>
+
+                    <div id="cursor-tab" class="tab-content active">
+                        <ol>
+                            <li><strong>Set breakpoint:</strong> Click in gutter at your route handler</li>
+                            <li><strong>Start debugger:</strong> Press <kbd>F5</kbd></li>
+                            <li><strong>Send request:</strong> From your HTML page or curl</li>
+                            <li><strong>Inspect Variables panel:</strong> See all local vars</li>
+                            <li><strong>Step Over (<kbd>F10</kbd>):</strong> Execute current line</li>
+                            <li><strong>Step Into (<kbd>F11</kbd>):</strong> Go inside function call</li>
+                            <li><strong>Step Out (<kbd>Shift+F11</kbd>):</strong> Return from function</li>
+                            <li><strong>Continue (<kbd>F5</kbd>):</strong> Run to next breakpoint</li>
+                            <li><strong>Debug Console:</strong> Type expressions to evaluate</li>
+                        </ol>
+                    </div>
+
+                    <div id="pycharm-tab" class="tab-content">
+                        <ol>
+                            <li><strong>Set breakpoint:</strong> Click in gutter (or <kbd>Ctrl+F8</kbd>)</li>
+                            <li><strong>Start debugger:</strong> <kbd>Shift+F9</kbd> or click bug icon</li>
+                            <li><strong>Send request:</strong> From browser/Postman/curl</li>
+                            <li><strong>Variables tab:</strong> Shows all in-scope variables</li>
+                            <li><strong>Step Over (<kbd>F8</kbd>):</strong> Execute current line</li>
+                            <li><strong>Step Into (<kbd>F7</kbd>):</strong> Go inside function call</li>
+                            <li><strong>Step Out (<kbd>Shift+F8</kbd>):</strong> Return from function</li>
+                            <li><strong>Resume (<kbd>F9</kbd>):</strong> Continue to next breakpoint</li>
+                            <li><strong>Evaluate (<kbd>Alt+F8</kbd>):</strong> Evaluate any expression</li>
+                        </ol>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 6: Breakpoint Types -->
+            <section id="breakpoint-types">
+                <h2>6. Breakpoint Types</h2>
+
+                <p>Beyond simple breakpoints, both IDEs support advanced breakpoint features:</p>
+
+                <h3>Line Breakpoint (Basic)</h3>
+                <p>Click in gutter. Stops every time that line executes.</p>
+
+                <h3>Conditional Breakpoint</h3>
+                <p>Right-click the breakpoint > Add condition. Only stops when condition is true.</p>
+
+                <pre><code class="language-python"># Right-click breakpoint, add condition: message == "debug"
+@app.post("/api/chat")
+async def chat(request: Request):
+    body = await request.json()
+    message = body.get("message")  # <-- Conditional breakpoint here
+    # Only stops if message == "debug"</code></pre>
+
+                <div class="info-box">
+                    In Java, you'd right-click and add a condition in IntelliJ.
+                    Identical experience in Python IDEs!
+                </div>
+
+                <h3>Logpoint (Non-breaking)</h3>
+                <p>Right-click > Logpoint. Logs a message without stopping execution.</p>
+
+                <pre><code class="language-python"># Logpoint message: "Processing message: {message}"
+# This prints to debug console without pausing</code></pre>
+
+                <h3>Exception Breakpoint</h3>
+                <p>Stops when specific exceptions are raised.</p>
+
+                <div class="tab-container">
+                    <div class="tab-buttons">
+                        <button class="tab-btn active" onclick="showTab('exc-cursor')">Cursor</button>
+                        <button class="tab-btn" onclick="showTab('exc-pycharm')">PyCharm</button>
+                    </div>
+
+                    <div id="exc-cursor" class="tab-content active">
+                        <p>In Debug panel > Breakpoints section > Click "+" > "Exception Breakpoint"</p>
+                        <p>Or: Run and Debug > "Raised Exceptions" toggle</p>
+                    </div>
+
+                    <div id="exc-pycharm" class="tab-content">
+                        <p><strong>Run</strong> > <strong>View Breakpoints</strong> (<kbd>Ctrl+Shift+F8</kbd>)</p>
+                        <p>Click "+" > "Python Exception Breakpoint" > Enter exception class name</p>
+                    </div>
+                </div>
+
+                <h3>Function Breakpoint</h3>
+                <p>Break when a specific function is called (by name, without finding the code).</p>
+            </section>
+
+            <!-- Section 7: Debug Panel -->
+            <section id="debug-panel">
+                <h2>7. Debug Panel Deep Dive</h2>
+
+                <div class="diagram-container">
+                    <div class="mermaid">
+flowchart LR
+    subgraph Panel["Debug Panel"]
+        A["Variables"] --> B["Watch"]
+        B --> C["Call Stack"]
+        C --> D["Breakpoints"]
+    end
+
+    subgraph Toolbar["Debug Toolbar"]
+        E["Continue"] --> F["Step Over"]
+        F --> G["Step Into"]
+        G --> H["Step Out"]
+        H --> I["Restart"]
+        I --> J["Stop"]
+    end
+                    </div>
+                </div>
+
+                <h3>Variables Panel</h3>
+                <p>Shows all variables in current scope. Click to expand objects/dicts.</p>
+
+                <div class="success-box">
+                    You can modify variable values while debugging!
+                    Double-click a value in the Variables panel to edit it.
+                </div>
+
+                <h3>Watch Expressions</h3>
+                <p>Add expressions to monitor across steps. Example watches:</p>
+                <ul>
+                    <li><code>len(messages)</code></li>
+                    <li><code>request.headers.get("Authorization")</code></li>
+                    <li><code>user.is_authenticated</code></li>
+                </ul>
+
+                <h3>Call Stack</h3>
+                <p>Shows the function call chain. Click any frame to see its local variables.</p>
+
+                <div class="info-box">
+                    Just like IntelliJ's "Frames" panel. Click different stack frames to navigate up/down the call hierarchy.
+                </div>
+
+                <h3>Debug Console</h3>
+                <p>Interactive Python REPL at the breakpoint! Type any expression:</p>
+
+                <pre><code class="language-python"># In debug console:
+>>> body
+{'message': 'Hello', 'user_id': 123}
+>>> body['message'].upper()
+'HELLO'
+>>> import json; json.dumps(body, indent=2)
+'{\n  "message": "Hello",\n  "user_id": 123\n}'</code></pre>
+            </section>
+
+            <!-- Section 8: Server Debugging -->
+            <section id="server-debugging">
+                <h2>8. Server Request Debugging</h2>
+
+                <p>Here's the complete flow for debugging your server when a request comes in:</p>
+
+                <h3>The Complete Picture</h3>
+
+                <div class="diagram-container">
+                    <div class="mermaid">
+sequenceDiagram
+    participant HTML as Your HTML Page
+    participant IDE as Cursor/PyCharm
+    participant Server as Python Server
+    participant Code as Your Route Handler
+
+    Note over IDE: Start debugger (F5)
+    IDE->>Server: Launch server in debug mode
+    Server-->>IDE: Debugpy connected
+
+    Note over HTML: Click "Send Request"
+    HTML->>Server: POST /api/endpoint
+    Server->>Code: Route matched, call handler
+
+    Note over Code: BREAKPOINT HIT
+    Code-->>IDE: Execution paused
+
+    Note over IDE: You inspect variables,<br/>step through code...
+
+    IDE->>Code: Continue (F5)
+    Code-->>Server: Return response
+    Server-->>HTML: JSON response displayed
+                    </div>
+                </div>
+
+                <h3>Where to Set Breakpoints</h3>
+
+                <div class="file-tree">
+<span class="folder">llama_stack/</span>
+<span class="folder">  distribution/</span>
+<span class="folder">    server/</span>
+<span class="file">      server.py</span>              <span class="comment"># Main FastAPI app - good for middleware</span>
+<span class="folder">  providers/</span>
+<span class="folder">    impls/</span>
+<span class="folder">      inference/</span>
+<span class="file">        ollama/</span>            <span class="comment"># Provider implementation - set breakpoints here!</span>
+<span class="folder">  apis/</span>
+<span class="file">    inference/</span>              <span class="comment"># API definitions - route handlers</span>
+                </div>
+
+                <h3>Example: Debug a Chat Request</h3>
+
+                <pre><code class="language-python"># In your route handler (e.g., inference route)
+@router.post("/inference/chat_completion")
+async def chat_completion(
+    request: ChatCompletionRequest,
+    # ...
+):
+    # BREAKPOINT 1: See the incoming request
+    logger.info(f"Received request: {request}")
+
+    # BREAKPOINT 2: Before calling the provider
+    provider = self.get_provider(request.model)
+
+    # BREAKPOINT 3: See provider response
+    response = await provider.chat_completion(request)
+
+    return response  # BREAKPOINT 4: See final response</code></pre>
+
+                <div class="warning-box">
+                    <strong>Hot Reload Gotcha:</strong> With <code>--reload</code>, the server restarts on file changes.
+                    Your debugger may disconnect. Use <code>"justMyCode": false</code> in launch.json if you need to debug library code too.
+                </div>
+            </section>
+
+            <!-- Section 9: Async Debugging -->
+            <section id="async-debugging">
+                <h2>9. Async/Await Debugging</h2>
+
+                <p>Python's <code>async/await</code> is similar to Java's <code>CompletableFuture</code>. The debugger handles it seamlessly.</p>
+
+                <div class="info-box">
+                    Think of <code>await</code> like <code>.get()</code> on a Future.
+                    When you step over an <code>await</code>, the debugger waits for the async operation to complete.
+                </div>
+
+                <h3>Async Call Stack</h3>
+                <p>The call stack shows async frames. You'll see the full chain even across <code>await</code> boundaries.</p>
+
+                <pre><code class="language-python">async def handler():
+    result = await fetch_data()  # Stepping over this waits for completion
+    return result
+
+async def fetch_data():
+    async with aiohttp.ClientSession() as session:
+        response = await session.get(url)  # Breakpoint here shows full stack
+        return await response.json()</code></pre>
+
+                <h3>Debugging Concurrent Tasks</h3>
+                <p>When debugging <code>asyncio.gather()</code> or multiple tasks:</p>
+
+                <pre><code class="language-python">async def parallel_requests():
+    # All three run concurrently
+    results = await asyncio.gather(
+        fetch_users(),    # Task 1
+        fetch_orders(),   # Task 2
+        fetch_products()  # Task 3
+    )
+    return results  # Breakpoint here: all tasks completed</code></pre>
+
+                <div class="success-box">
+                    Set breakpoints in each async function. The debugger will stop at whichever completes first,
+                    letting you see the order of execution.
+                </div>
+            </section>
+
+            <!-- Section 10: Advanced Techniques -->
+            <section id="advanced">
+                <h2>10. Advanced Debugging Techniques</h2>
+
+                <h3>1. Post-Mortem Debugging</h3>
+                <p>Debug after an exception occurred:</p>
+
+                <pre><code class="language-python">import pdb
+
+try:
+    risky_operation()
+except Exception:
+    pdb.post_mortem()  # Drops into debugger at exception point</code></pre>
+
+                <h3>2. Remote Debugging</h3>
+                <p>Debug code running in Docker or on a remote server:</p>
+
+                <pre><code class="language-python"># In your server code:
+import debugpy
+debugpy.listen(("0.0.0.0", 5678))
+debugpy.wait_for_client()  # Server pauses until debugger attaches</code></pre>
+
+                <pre><code class="language-json">// In launch.json (Cursor)
+{
+    "name": "Attach to Remote",
+    "type": "debugpy",
+    "request": "attach",
+    "connect": {
+        "host": "localhost",
+        "port": 5678
+    }
+}</code></pre>
+
+                <h3>3. Debug Tests</h3>
+                <p>Both IDEs let you debug individual tests:</p>
+
+                <div class="tab-container">
+                    <div class="tab-buttons">
+                        <button class="tab-btn active" onclick="showTab('test-cursor')">Cursor</button>
+                        <button class="tab-btn" onclick="showTab('test-pycharm')">PyCharm</button>
+                    </div>
+
+                    <div id="test-cursor" class="tab-content active">
+                        <p>Click "Debug Test" above test function, or:</p>
+                        <pre><code class="language-json">{
+    "name": "Debug Tests",
+    "type": "debugpy",
+    "request": "launch",
+    "module": "pytest",
+    "args": ["tests/test_api.py", "-v", "-s"]
+}</code></pre>
+                    </div>
+
+                    <div id="test-pycharm" class="tab-content">
+                        <p>Right-click test > Debug 'test_function'</p>
+                        <p>Or click green arrow in gutter > Debug</p>
+                    </div>
+                </div>
+
+                <h3>4. Memory Profiling in Debugger</h3>
+                <p>Check object sizes while paused:</p>
+
+                <pre><code class="language-python"># In debug console:
+>>> import sys
+>>> sys.getsizeof(large_list)
+8448728
+>>> len(large_list)
+1000000</code></pre>
+            </section>
+
+            <!-- Section 11: Keyboard Shortcuts -->
+            <section id="shortcuts">
+                <h2>11. Keyboard Shortcuts Reference</h2>
+
+                <h3>Cursor IDE (VS Code)</h3>
+                <div class="shortcut-grid">
+                    <div class="shortcut-item">
+                        <span class="action">Start/Continue Debugging</span>
+                        <span class="keys"><kbd>F5</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">Step Over</span>
+                        <span class="keys"><kbd>F10</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">Step Into</span>
+                        <span class="keys"><kbd>F11</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">Step Out</span>
+                        <span class="keys"><kbd>Shift</kbd>+<kbd>F11</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">Stop Debugging</span>
+                        <span class="keys"><kbd>Shift</kbd>+<kbd>F5</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">Restart Debugging</span>
+                        <span class="keys"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F5</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">Toggle Breakpoint</span>
+                        <span class="keys"><kbd>F9</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">Show Debug Console</span>
+                        <span class="keys"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Y</kbd></span>
+                    </div>
+                </div>
+
+                <h3>PyCharm</h3>
+                <div class="shortcut-grid">
+                    <div class="shortcut-item">
+                        <span class="action">Start Debugging</span>
+                        <span class="keys"><kbd>Shift</kbd>+<kbd>F9</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">Resume (Continue)</span>
+                        <span class="keys"><kbd>F9</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">Step Over</span>
+                        <span class="keys"><kbd>F8</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">Step Into</span>
+                        <span class="keys"><kbd>F7</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">Step Out</span>
+                        <span class="keys"><kbd>Shift</kbd>+<kbd>F8</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">Stop</span>
+                        <span class="keys"><kbd>Ctrl</kbd>+<kbd>F2</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">Toggle Breakpoint</span>
+                        <span class="keys"><kbd>Ctrl</kbd>+<kbd>F8</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">Evaluate Expression</span>
+                        <span class="keys"><kbd>Alt</kbd>+<kbd>F8</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">View Breakpoints</span>
+                        <span class="keys"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F8</kbd></span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="action">Run to Cursor</span>
+                        <span class="keys"><kbd>Alt</kbd>+<kbd>F9</kbd></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 12: Troubleshooting -->
+            <section id="troubleshooting">
+                <h2>12. Troubleshooting Common Issues</h2>
+
+                <h3>Debugger Won't Start</h3>
+                <div class="warning-box">
+                    <strong>Problem:</strong> "Unable to import debugpy"<br>
+                    <strong>Solution:</strong> <code>pip install debugpy</code> in your active environment
+                </div>
+
+                <h3>Breakpoints Not Hit</h3>
+                <div class="warning-box">
+                    <strong>Causes:</strong>
+                    <ul>
+                        <li>Wrong Python interpreter selected</li>
+                        <li>Code path not executed (check your request)</li>
+                        <li>Hot reload created new process (restart debugger)</li>
+                        <li>Breakpoint in imported module not loaded yet</li>
+                    </ul>
+                    <strong>Solution:</strong> Check interpreter in status bar, verify route is correct
+                </div>
+
+                <h3>Variables Show "&lt;not available&gt;"</h3>
+                <div class="warning-box">
+                    <strong>Cause:</strong> Optimized code or variable out of scope<br>
+                    <strong>Solution:</strong> Set <code>PYTHONDONTWRITEBYTECODE=1</code> or disable optimization
+                </div>
+
+                <h3>Server Won't Stop</h3>
+                <div class="warning-box">
+                    <strong>Cause:</strong> Uvicorn/process not terminating cleanly<br>
+                    <strong>Solution:</strong> Kill manually: <code>pkill -f uvicorn</code> or use <kbd>Ctrl+C</kbd> multiple times
+                </div>
+
+                <h3>Timeout During Debugging</h3>
+                <div class="warning-box">
+                    <strong>Cause:</strong> HTTP client times out while you're stepping through code<br>
+                    <strong>Solution:</strong> Increase timeout in your HTTP client or use curl with no timeout
+                </div>
+
+                <div class="success-box">
+                    <strong>Pro tip:</strong> Use <code>curl</code> from terminal for requests during debugging - it's more patient than browsers!
+                    <pre><code class="language-bash">curl -X POST http://localhost:8321/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "test"}' \
+  --max-time 300</code></pre>
+                </div>
+            </section>
+
+            <footer style="text-align: center; padding: 3rem 0; color: #666; border-top: 1px solid var(--border-color); margin-top: 2rem;">
+                <p>Python Server Debugging Guide | For Java developers transitioning to Python</p>
+                <p style="margin-top: 0.5rem;">Cursor IDE | PyCharm | FastAPI | Flask</p>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            fontSize: 14,
+            themeVariables: {
+                primaryColor: '#e53935',
+                primaryTextColor: '#ffd54f',
+                primaryBorderColor: '#e53935',
+                lineColor: '#ffab40',
+                secondaryColor: '#16213e',
+                tertiaryColor: '#1a1a2e',
+                background: '#1a1a2e',
+                mainBkg: '#16213e',
+                secondBkg: '#1a1a2e',
+                nodeBorder: '#e53935',
+                nodeTextColor: '#ffd54f',
+                textColor: '#ffd54f',
+                actorTextColor: '#ffd54f',
+                actorLineColor: '#ffab40',
+                signalColor: '#ffd54f',
+                signalTextColor: '#ffd54f',
+                labelTextColor: '#ffd54f',
+                loopTextColor: '#ffab40',
+                noteBkgColor: '#16213e',
+                noteTextColor: '#ffd54f',
+                noteBorderColor: '#ff6f00'
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 15
+            },
+            sequence: {
+                mirrorActors: true,
+                actorMargin: 80,
+                messageMargin: 40
+            }
+        });
+
+        // Initialize Highlight.js
+        document.addEventListener('DOMContentLoaded', () => {
+            hljs.highlightAll();
+        });
+
+        // Tab switching
+        function showTab(tabId) {
+            // Find the parent tab container
+            const clickedBtn = event.target;
+            const container = clickedBtn.closest('.tab-container');
+
+            // Hide all tabs in this container
+            container.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            container.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            container.querySelector(`#${tabId}`).classList.add('active');
+            clickedBtn.classList.add('active');
+        }
+
+        // Scroll spy for TOC
+        const sections = document.querySelectorAll('section[id]');
+        const tocLinks = document.querySelectorAll('.toc-list a');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            tocLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${current}`) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Smooth scroll
+        tocLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                target.scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+    </script>
+</body>
+</html>
