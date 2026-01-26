@@ -65,9 +65,12 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         content_length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(content_length) if content_length > 0 else None
 
-        # Check if streaming
+        # Get content type from request (preserve multipart/form-data for file uploads)
+        content_type = self.headers.get("Content-Type", "application/json")
+
+        # Check if streaming (only for JSON requests)
         is_streaming = False
-        if body:
+        if body and "application/json" in content_type:
             try:
                 data = json.loads(body)
                 is_streaming = data.get("stream", False)
@@ -75,11 +78,14 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 pass
 
         try:
+            # Build headers - preserve Content-Type for multipart uploads
+            headers = {"Content-Type": content_type}
+
             req = urllib.request.Request(
                 target_url,
                 data=body,
                 method=method,
-                headers={"Content-Type": "application/json"},
+                headers=headers,
             )
 
             with urllib.request.urlopen(req, timeout=120) as response:
