@@ -37,8 +37,17 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg-dark);
             color: var(--text-yellow);
-            line-height: 1.7;
+            line-height: 1.8;
+            font-size: 20px;
         }
+
+        /* Increase all text sizes */
+        p, li, td, th { font-size: 1.1rem; }
+        code { font-size: 1rem; }
+        pre code { font-size: 0.95rem; }
+        .preset-btn { font-size: 1rem; padding: 0.6rem 1.2rem; }
+        .response-output { font-size: 1rem; }
+        textarea { font-size: 1rem; }
 
         .page-wrapper {
             display: flex;
@@ -807,7 +816,7 @@ sequenceDiagram
                         <p>The main API server that orchestrates everything.</p>
                         <table>
                             <tr><th>Endpoint</th><th>Description</th></tr>
-                            <tr><td>/health</td><td>Health check</td></tr>
+                            <tr><td>/v1/health</td><td>Health check</td></tr>
                             <tr><td>/v1/models</td><td>List models</td></tr>
                             <tr><td>/v1/chat/completions</td><td>OpenAI-compatible chat</td></tr>
                         </table>
@@ -964,6 +973,25 @@ print(response.completion_message.content)</code></pre>
                     <button class="preset-btn" onclick="loadPreset('providers')">List Providers</button>
                     <button class="preset-btn" onclick="loadPreset('routes')">List Routes</button>
                 </div>
+                <h4 style="margin-top: 1rem; color: var(--text-purple);">VectorIO <span style="font-size: 0.8rem; color: var(--warning);">(requires starter distribution with postgres)</span></h4>
+                <div class="preset-btns">
+                    <button class="preset-btn" onclick="loadPreset('vector-list')">List Stores</button>
+                    <button class="preset-btn" onclick="loadPreset('vector-create')">Create Store</button>
+                    <button class="preset-btn" onclick="loadPreset('vector-get')">Get Store</button>
+                    <button class="preset-btn" onclick="loadPreset('vector-delete')">Delete Store</button>
+                    <button class="preset-btn" onclick="loadPreset('vector-search')">Search</button>
+                    <button class="preset-btn" onclick="loadPreset('vector-attach-file')">Attach File</button>
+                    <button class="preset-btn" onclick="loadPreset('vector-list-files')">List Files</button>
+                </div>
+
+                <div id="captured-id-box" style="margin: 1rem 0; padding: 0.75rem 1rem; background: var(--bg-code); border-radius: 8px; border-left: 3px solid var(--accent);">
+                    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                        <span style="color: var(--accent); font-weight: bold;">Captured ID:</span>
+                        <code id="captured-id" style="color: var(--text-orange); cursor: pointer;" onclick="copyToClipboard(this.textContent)">None - click an ID in response to capture</code>
+                        <button onclick="insertCapturedId()" class="send-btn" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Insert into URL</button>
+                        <button onclick="clearCapturedId()" style="padding: 0.4rem 1rem; background: var(--border); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold;">Clear</button>
+                    </div>
+                </div>
 
                 <div id="breakpoint-info" class="card" style="display: none; margin: 1rem 0; padding: 0.75rem 1rem; background: var(--bg-card); border-left: 3px solid var(--primary);">
                     <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
@@ -1032,14 +1060,42 @@ print(response.completion_message.content)</code></pre>
                 </div>
 
                 <h3>Debugging Guide</h3>
+
+                <div class="card" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-left: 3px solid var(--text-purple); margin-bottom: 1rem;">
+                    <h4 style="color: var(--text-purple);">Multi-Worktree Workflow</h4>
+                    <p style="margin-top: 0.5rem;">
+                        This playground runs from <code>personal/local-dev</code> worktree. To debug code from
+                        <strong>other feature worktrees</strong>, follow this pattern:
+                    </p>
+                    <div class="diagram-container" style="margin: 1rem 0;">
+                        <pre style="background: var(--bg-code); padding: 1rem; border-radius: 8px; font-size: 0.85rem; overflow-x: auto;"><code style="color: var(--text-orange);">┌─────────────────────────────────────────────────────────────┐
+│  <span style="color: #ff79c6;">Cursor</span>: Open your FEATURE worktree                         │
+│  - Set breakpoints in feature code                          │
+│  - F5 → runs server on port 8321                            │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼ requests forwarded
+┌─────────────────────────────────────────────────────────────┐
+│  <span style="color: #ff79c6;">Browser</span>: http://localhost:8080 (this playground)           │
+│  - Proxy forwards to port 8321                              │
+│  - Debugger breaks on YOUR feature code                     │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+                    </div>
+                    <p><strong>Shell shortcuts</strong> (run from anywhere after <code>source ~/.bashrc</code>):</p>
+                    <pre style="margin-top: 0.5rem;"><code class="language-bash">lsp      # Start proxy (port 8080)
+lsh   # Open this playground in browser
+lss      # Status of all services
+lshelp   # Show all shortcuts</code></pre>
+                </div>
+
                 <div class="card warning">
                     <h4>Important: Stop Existing Servers First!</h4>
                     <p style="margin-top: 0.5rem;">
                         Before debugging, you MUST stop any running Llama Stack server. Otherwise, the proxy
                         will hit the existing server instead of your Cursor debugger.
                     </p>
-                    <pre style="margin-top: 0.5rem;"><code class="language-bash"># Stop existing server
-./dev/llama-dev stack-stop
+                    <pre style="margin-top: 0.5rem;"><code class="language-bash"># Stop existing server (run from anywhere)
+lsstop   # or: ./dev/llama-dev stack-stop
 
 # Verify port 8321 is free
 lsof -i :8321   # Should show nothing</code></pre>
@@ -1048,9 +1104,9 @@ lsof -i :8321   # Should show nothing</code></pre>
                 <div class="card info">
                     <h4>How to Debug API Requests</h4>
                     <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
-                        <li><strong>Stop existing server:</strong> <code>./dev/llama-dev stack-stop</code></li>
-                        <li>Open the file shown in "Breakpoint Location" column below</li>
-                        <li>Go to the line number and click in the gutter (red dot appears)</li>
+                        <li><strong>Start proxy:</strong> <code>lsp</code> (from any terminal)</li>
+                        <li><strong>Open Cursor</strong> in your feature worktree (not this one!)</li>
+                        <li>Set breakpoints in feature code at locations shown below</li>
                         <li>Select <strong>"Llama Stack Debug"</strong> in Cursor and press <kbd style="background: var(--bg-code); padding: 0.2rem 0.4rem; border-radius: 3px;">F5</kbd></li>
                         <li>Wait for server to show "Uvicorn running on http://0.0.0.0:8321"</li>
                         <li>Click the preset button above, then click <strong>Send</strong></li>
@@ -1073,7 +1129,7 @@ lsof -i :8321   # Should show nothing</code></pre>
                         <th>Breakpoint Location</th>
                     </tr>
                     <tr>
-                        <td><code>/health</code></td>
+                        <td><code>/v1/health</code></td>
                         <td><span class="method-badge get">GET</span></td>
                         <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/server/server.py</code></td>
                     </tr>
@@ -1103,9 +1159,32 @@ lsof -i :8321   # Should show nothing</code></pre>
                         <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/server/server.py</code><br><small style="color: var(--text-orange);">list_providers()</small></td>
                     </tr>
                     <tr>
-                        <td><code>/v1/routes</code></td>
+                        <td><code>/v1/inspect/routes</code></td>
                         <td><span class="method-badge get">GET</span></td>
                         <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/server/server.py</code><br><small style="color: var(--text-orange);">list_routes()</small></td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" style="background: var(--bg-code); color: var(--text-purple); font-weight: bold;">VectorIO Endpoints</td>
+                    </tr>
+                    <tr>
+                        <td><code>/v1/vector_stores</code></td>
+                        <td><span class="method-badge get">GET</span></td>
+                        <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/routers/vector_io.py:242</code><br><small style="color: var(--text-orange);">openai_list_vector_stores()</small></td>
+                    </tr>
+                    <tr>
+                        <td><code>/v1/vector_stores</code></td>
+                        <td><span class="method-badge post">POST</span></td>
+                        <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/routers/vector_io.py:147</code><br><small style="color: var(--text-orange);">openai_create_vector_store()</small></td>
+                    </tr>
+                    <tr>
+                        <td><code>/v1/vector_stores/{id}</code></td>
+                        <td><span class="method-badge get">GET</span></td>
+                        <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/routers/vector_io.py:294</code><br><small style="color: var(--text-orange);">openai_retrieve_vector_store()</small></td>
+                    </tr>
+                    <tr>
+                        <td><code>/v1/vector_stores/{id}/search</code></td>
+                        <td><span class="method-badge post">POST</span></td>
+                        <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/routers/vector_io.py:330</code><br><small style="color: var(--text-orange);">openai_search_vector_store()</small></td>
                     </tr>
                 </table>
                 <p style="font-size: 0.85rem; color: var(--text-orange); margin-top: 0.5rem;">
@@ -1300,7 +1379,7 @@ ollama list
         const presets = {
             health: {
                 method: 'GET',
-                url: `${BASE_URL}/health`,
+                url: `${BASE_URL}/v1/health`,
                 body: '',
                 description: 'Check if the server is running',
                 breakpoint: 'src/llama_stack/core/server/server.py',
@@ -1351,13 +1430,113 @@ ollama list
             },
             routes: {
                 method: 'GET',
-                url: `${BASE_URL}/v1/routes`,
+                url: `${BASE_URL}/v1/inspect/routes`,
                 body: '',
                 description: 'List available API routes',
                 breakpoint: 'src/llama_stack/core/server/server.py',
                 func: 'list_routes()'
+            },
+            'vector-list': {
+                method: 'GET',
+                url: `${BASE_URL}/v1/vector_stores`,
+                body: '',
+                description: 'List all vector stores',
+                breakpoint: 'src/llama_stack/core/routers/vector_io.py:242',
+                func: 'openai_list_vector_stores()'
+            },
+            'vector-create': {
+                method: 'POST',
+                url: `${BASE_URL}/v1/vector_stores`,
+                body: JSON.stringify({
+                    name: 'test-vector-store'
+                }, null, 2),
+                description: 'Create a new vector store',
+                breakpoint: 'src/llama_stack/core/routers/vector_io.py:147',
+                func: 'openai_create_vector_store()'
+            },
+            'vector-get': {
+                method: 'GET',
+                url: `${BASE_URL}/v1/vector_stores/{vector_store_id}`,
+                body: '',
+                description: 'Get a vector store by ID (use Insert ID button)',
+                breakpoint: 'src/llama_stack/core/routers/vector_io.py:294',
+                func: 'openai_retrieve_vector_store()'
+            },
+            'vector-delete': {
+                method: 'DELETE',
+                url: `${BASE_URL}/v1/vector_stores/{vector_store_id}`,
+                body: '',
+                description: 'Delete a vector store by ID',
+                breakpoint: 'src/llama_stack/core/routers/vector_io.py:323',
+                func: 'openai_delete_vector_store()'
+            },
+            'vector-search': {
+                method: 'POST',
+                url: `${BASE_URL}/v1/vector_stores/{vector_store_id}/search`,
+                body: JSON.stringify({
+                    query: 'search query here',
+                    max_num_results: 10
+                }, null, 2),
+                description: 'Search a vector store',
+                breakpoint: 'src/llama_stack/core/routers/vector_io.py:330',
+                func: 'openai_search_vector_store()'
+            },
+            'vector-attach-file': {
+                method: 'POST',
+                url: `${BASE_URL}/v1/vector_stores/{vector_store_id}/files`,
+                body: JSON.stringify({
+                    file_id: 'file-xxx'
+                }, null, 2),
+                description: 'Attach a file to vector store',
+                breakpoint: 'src/llama_stack/core/routers/vector_io.py:361',
+                func: 'openai_attach_file_to_vector_store()'
+            },
+            'vector-list-files': {
+                method: 'GET',
+                url: `${BASE_URL}/v1/vector_stores/{vector_store_id}/files`,
+                body: '',
+                description: 'List files in a vector store',
+                breakpoint: 'src/llama_stack/core/routers/vector_io.py:378',
+                func: 'openai_list_files_in_vector_store()'
             }
         };
+
+        // Captured ID for quick insertion
+        let capturedId = null;
+
+        function captureId(id) {
+            capturedId = id;
+            document.getElementById('captured-id').textContent = id;
+            document.getElementById('captured-id').style.color = 'var(--success)';
+        }
+
+        function insertCapturedId() {
+            if (!capturedId) {
+                alert('No ID captured. Click an ID in the response first.');
+                return;
+            }
+            const urlInput = document.getElementById('url-input');
+            urlInput.value = urlInput.value.replace(/{[^}]+}/, capturedId);
+            updateCurlPreview();
+        }
+
+        function clearCapturedId() {
+            capturedId = null;
+            document.getElementById('captured-id').textContent = 'None - click an ID in response to capture';
+            document.getElementById('captured-id').style.color = 'var(--text-orange)';
+        }
+
+        function copyToClipboard(text) {
+            if (text && text !== 'None - click an ID in response to capture') {
+                navigator.clipboard.writeText(text);
+            }
+        }
+
+        function makeIdsClickable(text) {
+            // Match IDs like vs_xxx, file-xxx, batch_xxx
+            return text.replace(/"(vs_[a-zA-Z0-9-]+|file-[a-zA-Z0-9-]+|batch_[a-zA-Z0-9-]+)"/g,
+                '"<span class="clickable-id" onclick="captureId(\'$1\')" style="color: var(--success); cursor: pointer; text-decoration: underline;">$1</span>"');
+        }
 
         function loadPreset(name) {
             const preset = presets[name];
@@ -1380,6 +1559,9 @@ ollama list
             } else {
                 bpInfo.style.display = 'none';
             }
+
+            // Switch to Body tab to show the request
+            switchTabDirect('body');
 
             // Highlight active preset
             document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
@@ -1547,7 +1729,9 @@ ollama list
 
                     try {
                         const json = JSON.parse(text);
-                        responseOutput.textContent = JSON.stringify(json, null, 2);
+                        const formatted = JSON.stringify(json, null, 2);
+                        // Make IDs clickable
+                        responseOutput.innerHTML = makeIdsClickable(formatted.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
                         responseOutput.className = 'response-output ' + (response.ok ? 'success' : 'error');
                     } catch (e) {
                         responseOutput.textContent = text;
