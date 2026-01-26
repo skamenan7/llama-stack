@@ -1488,9 +1488,9 @@ ollama list
             },
             'vector-list': {
                 method: 'GET',
-                url: `${BASE_URL}/v1/vector_stores`,
+                url: `${BASE_URL}/v1/vector_stores?limit=20&order=desc`,
                 body: '',
-                description: 'List all vector stores',
+                description: 'List all vector stores (query params: limit, order, after, before)',
                 breakpoint: 'src/llama_stack/core/routers/vector_io.py:242',
                 func: 'openai_list_vector_stores()'
             },
@@ -1498,7 +1498,13 @@ ollama list
                 method: 'POST',
                 url: `${BASE_URL}/v1/vector_stores`,
                 body: JSON.stringify({
-                    name: 'test-vector-store'
+                    name: 'my-vector-store',
+                    file_ids: [],
+                    expires_after: null,
+                    chunking_strategy: {
+                        type: 'auto'
+                    },
+                    metadata: {}
                 }, null, 2),
                 description: 'Create a new vector store',
                 breakpoint: 'src/llama_stack/core/routers/vector_io.py:147',
@@ -1541,7 +1547,11 @@ ollama list
                 method: 'POST',
                 url: `${BASE_URL}/v1/vector_stores/{vector_store_id}/files`,
                 body: JSON.stringify({
-                    file_id: 'file-xxx'
+                    file_id: 'file-xxx',
+                    attributes: {},
+                    chunking_strategy: {
+                        type: 'auto'
+                    }
                 }, null, 2),
                 description: 'Attach a file to vector store',
                 breakpoint: 'src/llama_stack/core/routers/vector_io.py:361',
@@ -1549,17 +1559,17 @@ ollama list
             },
             'vector-list-files': {
                 method: 'GET',
-                url: `${BASE_URL}/v1/vector_stores/{vector_store_id}/files`,
+                url: `${BASE_URL}/v1/vector_stores/{vector_store_id}/files?limit=20&order=desc`,
                 body: '',
-                description: 'List files in a vector store',
+                description: 'List files in a vector store (query params: limit, order, after, before, filter)',
                 breakpoint: 'src/llama_stack/core/routers/vector_io.py:378',
                 func: 'openai_list_files_in_vector_store()'
             },
             'files-list': {
                 method: 'GET',
-                url: `${BASE_URL}/v1/files`,
+                url: `${BASE_URL}/v1/files?purpose=assistants&limit=20&order=desc`,
                 body: '',
-                description: 'List all uploaded files',
+                description: 'List uploaded files (query params: purpose, limit, order, after)',
                 breakpoint: 'src/llama_stack/providers/inline/files/localfs/files.py:140',
                 func: 'openai_list_files()'
             },
