@@ -986,33 +986,43 @@ print(response.completion_message.content)</code></pre>
 
                 <h4 style="margin-top: 1rem; color: var(--success);">Files API <span style="font-size: 0.8rem; color: var(--warning);">(requires starter distribution)</span></h4>
                 <div class="preset-btns">
+                    <button class="preset-btn" onclick="openUploadModal()" style="background: var(--success); color: #000; font-weight: bold;">Upload File</button>
                     <button class="preset-btn" onclick="loadPreset('files-list')">List Files</button>
                     <button class="preset-btn" onclick="loadPreset('files-get')">Get File</button>
                     <button class="preset-btn" onclick="loadPreset('files-delete')">Delete File</button>
                 </div>
 
-                <!-- File Upload Form -->
-                <div id="file-upload-box" class="card" style="margin: 1rem 0; background: var(--bg-code); border-left: 3px solid var(--success);">
-                    <h4 style="color: var(--success); margin-bottom: 0.75rem;">Upload File (Multipart Form)</h4>
-                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                            <label style="color: var(--text-yellow);">Purpose:</label>
-                            <select id="file-purpose" style="padding: 0.4rem 0.75rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-yellow); font-size: 0.9rem;">
-                                <option value="assistants">assistants</option>
-                                <option value="batch">batch</option>
-                                <option value="fine-tune">fine-tune</option>
-                                <option value="vision">vision</option>
-                            </select>
-                            <input type="file" id="file-input" style="color: var(--text-yellow); font-size: 0.9rem;">
-                            <button onclick="uploadFile()" class="send-btn" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Upload</button>
+                <!-- File Upload Modal -->
+                <div id="upload-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+                    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h4 style="color: var(--success); margin: 0;">Upload File</h4>
+                            <button onclick="closeUploadModal()" style="background: none; border: none; color: var(--text-yellow); font-size: 1.5rem; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
                         </div>
-                        <div id="upload-status" style="display: none; padding: 0.5rem; border-radius: 4px; font-size: 0.9rem;"></div>
-                    </div>
-                    <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
-                        <p style="font-size: 0.85rem; color: var(--text-orange); margin-bottom: 0.5rem;">Or use curl:</p>
-                        <pre style="margin: 0; font-size: 0.8rem; background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 4px;"><code style="color: var(--text-yellow);">curl http://localhost:8321/v1/files \
-  -F "purpose=assistants" \
-  -F "file=@/path/to/your/file.txt"</code></pre>
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <label style="color: var(--text-yellow); min-width: 70px;">Purpose:</label>
+                                <select id="file-purpose" style="flex: 1; padding: 0.5rem 0.75rem; background: var(--bg-code); border: 1px solid var(--border); border-radius: 4px; color: var(--text-yellow); font-size: 0.95rem;">
+                                    <option value="assistants">assistants</option>
+                                    <option value="batch">batch</option>
+                                    <option value="fine-tune">fine-tune</option>
+                                    <option value="vision">vision</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <label style="color: var(--text-yellow); min-width: 70px;">File:</label>
+                                <input type="file" id="file-input" style="flex: 1; color: var(--text-yellow); font-size: 0.95rem;">
+                            </div>
+                            <div id="upload-status" style="display: none; padding: 0.75rem; border-radius: 4px; font-size: 0.9rem;"></div>
+                            <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                                <button onclick="closeUploadModal()" style="padding: 0.5rem 1rem; background: var(--border); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Cancel</button>
+                                <button onclick="uploadFile()" class="send-btn" style="padding: 0.5rem 1.25rem;">Upload</button>
+                            </div>
+                        </div>
+                        <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
+                            <p style="font-size: 0.8rem; color: var(--text-orange); margin-bottom: 0.5rem;">Or use curl:</p>
+                            <pre style="margin: 0; font-size: 0.75rem; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 4px; overflow-x: auto;"><code style="color: var(--text-yellow);">curl http://localhost:8321/v1/files -F "purpose=assistants" -F "file=@/path/to/file.txt"</code></pre>
+                        </div>
                     </div>
                 </div>
 
@@ -1582,6 +1592,26 @@ ollama list
             document.getElementById('captured-id').style.color = 'var(--text-orange)';
         }
 
+        function openUploadModal() {
+            const modal = document.getElementById('upload-modal');
+            modal.style.display = 'flex';
+            // Reset status
+            document.getElementById('upload-status').style.display = 'none';
+            document.getElementById('file-input').value = '';
+        }
+
+        function closeUploadModal() {
+            document.getElementById('upload-modal').style.display = 'none';
+        }
+
+        // Close modal on Escape key or clicking outside
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeUploadModal();
+        });
+        document.getElementById('upload-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'upload-modal') closeUploadModal();
+        });
+
         async function uploadFile() {
             const fileInput = document.getElementById('file-input');
             const purposeSelect = document.getElementById('file-purpose');
@@ -1619,9 +1649,11 @@ ollama list
                     statusDiv.style.background = 'rgba(76, 175, 80, 0.2)';
                     statusDiv.style.color = 'var(--success)';
                     const fileId = result.id || 'unknown';
-                    statusDiv.innerHTML = `Uploaded successfully! File ID: <code style="cursor: pointer; text-decoration: underline;" onclick="captureId('${fileId}')">${fileId}</code> (click to capture)`;
+                    statusDiv.innerHTML = `Success! File ID: <strong>${fileId}</strong> captured. Closing...`;
                     // Auto-capture the file ID
                     captureId(fileId);
+                    // Close modal after brief delay
+                    setTimeout(() => closeUploadModal(), 1500);
                 } else {
                     statusDiv.style.background = 'rgba(229, 57, 53, 0.2)';
                     statusDiv.style.color = 'var(--primary)';
