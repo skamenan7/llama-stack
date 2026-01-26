@@ -14,9 +14,9 @@ It replaces the legacy @webmethod-driven route discovery for VectorIO.
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, NoReturn, cast
 
-from fastapi import APIRouter, Body, Path, Query, Response, status
+from fastapi import APIRouter, Body, HTTPException, Path, Query, Request, Response, status
 from pydantic import BaseModel, Field
 
 from llama_stack_api.common.content_types import InterleavedContent
@@ -359,8 +359,12 @@ def create_router(impl: VectorIO) -> APIRouter:
     async def openai_create_vector_store_file_batch(
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
         params: Annotated[OpenAICreateVectorStoreFileBatchRequestWithExtraBody, Body(...)],
+        request: Request = _MISSING_REQUEST,
     ) -> VectorStoreFileBatchObject:
-        return await impl.openai_create_vector_store_file_batch(vector_store_id=vector_store_id, params=params)
+        try:
+            return await impl.openai_create_vector_store_file_batch(vector_store_id=vector_store_id, params=params)
+        except ValueError as exc:
+            _raise_or_http_400_for_value_error(request, exc)
 
     @router.get(
         "/vector_stores/{vector_store_id}/file_batches/{batch_id}",
@@ -372,8 +376,14 @@ def create_router(impl: VectorIO) -> APIRouter:
     async def openai_retrieve_vector_store_file_batch(
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
         batch_id: Annotated[str, Path(description="The file batch identifier.")],
+        request: Request = _MISSING_REQUEST,
     ) -> VectorStoreFileBatchObject:
-        return await impl.openai_retrieve_vector_store_file_batch(batch_id=batch_id, vector_store_id=vector_store_id)
+        try:
+            return await impl.openai_retrieve_vector_store_file_batch(
+                batch_id=batch_id, vector_store_id=vector_store_id
+            )
+        except ValueError as exc:
+            _raise_or_http_400_for_value_error(request, exc)
 
     @router.get(
         "/vector_stores/{vector_store_id}/file_batches/{batch_id}/files",
@@ -425,3 +435,13 @@ def create_router(impl: VectorIO) -> APIRouter:
         return await impl.openai_cancel_vector_store_file_batch(batch_id=batch_id, vector_store_id=vector_store_id)
 
     return router
+
+
+_MISSING_REQUEST: Request = cast(Request, None)
+
+
+def _raise_or_http_400_for_value_error(request: Request, exc: ValueError) -> NoReturn:
+    # In library mode, FastAPI doesn't inject a Request.
+    if request is _MISSING_REQUEST:
+        raise
+    raise HTTPException(status_code=400, detail=str(exc)) from exc
