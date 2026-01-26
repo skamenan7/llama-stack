@@ -1026,12 +1026,20 @@ print(response.completion_message.content)</code></pre>
                     </div>
                 </div>
 
-                <div id="captured-id-box" style="margin: 1rem 0; padding: 0.75rem 1rem; background: var(--bg-code); border-radius: 8px; border-left: 3px solid var(--accent);">
-                    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                        <span style="color: var(--accent); font-weight: bold;">Captured ID:</span>
-                        <code id="captured-id" style="color: var(--text-orange); cursor: pointer;" onclick="copyToClipboard(this.textContent)">None - click an ID in response to capture</code>
-                        <button onclick="insertCapturedId()" class="send-btn" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Insert into URL</button>
-                        <button onclick="clearCapturedId()" style="padding: 0.4rem 1rem; background: var(--border); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold;">Clear</button>
+                <div id="captured-ids-box" style="margin: 1rem 0; padding: 0.75rem 1rem; background: var(--bg-code); border-radius: 8px; display: flex; gap: 1.5rem; flex-wrap: wrap;">
+                    <!-- Store ID -->
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="color: var(--accent); font-weight: bold; font-size: 0.9rem;">Store:</span>
+                        <code id="captured-store-id" style="color: var(--text-orange); cursor: pointer; min-width: 80px;" onclick="copyToClipboard(this.textContent)" title="Click to copy">none</code>
+                        <button onclick="insertStoreId()" class="send-btn" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">Insert</button>
+                        <button onclick="clearStoreId()" style="padding: 0.3rem 0.5rem; background: var(--border); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">X</button>
+                    </div>
+                    <!-- File ID -->
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="color: var(--success); font-weight: bold; font-size: 0.9rem;">File:</span>
+                        <code id="captured-file-id" style="color: var(--text-orange); cursor: pointer; min-width: 80px;" onclick="copyToClipboard(this.textContent)" title="Click to copy">none</code>
+                        <button onclick="insertFileId()" class="send-btn" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">Insert</button>
+                        <button onclick="clearFileId()" style="padding: 0.3rem 0.5rem; background: var(--border); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">X</button>
                     </div>
                 </div>
 
@@ -1567,29 +1575,77 @@ ollama list
             }
         };
 
-        // Captured ID for quick insertion
-        let capturedId = null;
+        // Captured IDs for quick insertion
+        let capturedStoreId = null;
+        let capturedFileId = null;
 
         function captureId(id) {
-            capturedId = id;
-            document.getElementById('captured-id').textContent = id;
-            document.getElementById('captured-id').style.color = 'var(--success)';
+            // Auto-detect ID type and capture appropriately
+            if (id.startsWith('vs_')) {
+                captureStoreId(id);
+            } else if (id.startsWith('file-') || id.startsWith('file_')) {
+                captureFileId(id);
+            } else {
+                // Unknown type - try to guess from context or capture as store
+                captureStoreId(id);
+            }
         }
 
-        function insertCapturedId() {
-            if (!capturedId) {
-                alert('No ID captured. Click an ID in the response first.');
+        function captureStoreId(id) {
+            capturedStoreId = id;
+            const el = document.getElementById('captured-store-id');
+            el.textContent = id;
+            el.style.color = 'var(--success)';
+        }
+
+        function captureFileId(id) {
+            capturedFileId = id;
+            const el = document.getElementById('captured-file-id');
+            el.textContent = id;
+            el.style.color = 'var(--success)';
+        }
+
+        function insertStoreId() {
+            if (!capturedStoreId || capturedStoreId === 'none') {
+                alert('No Store ID captured. Click a vs_xxx ID in the response first.');
                 return;
             }
             const urlInput = document.getElementById('url-input');
-            urlInput.value = urlInput.value.replace(/{[^}]+}/, capturedId);
+            // Replace {vector_store_id} or any {placeholder}
+            urlInput.value = urlInput.value.replace(/{vector_store_id}|{[^}]*store[^}]*}/i, capturedStoreId);
             updateCurlPreview();
         }
 
-        function clearCapturedId() {
-            capturedId = null;
-            document.getElementById('captured-id').textContent = 'None - click an ID in response to capture';
-            document.getElementById('captured-id').style.color = 'var(--text-orange)';
+        function insertFileId() {
+            if (!capturedFileId || capturedFileId === 'none') {
+                alert('No File ID captured. Upload a file or click a file-xxx ID in the response.');
+                return;
+            }
+            const urlInput = document.getElementById('url-input');
+            const bodyInput = document.getElementById('request-body');
+            // Replace in URL if there's a file_id placeholder
+            if (urlInput.value.includes('{file_id}') || urlInput.value.includes('{file-id}')) {
+                urlInput.value = urlInput.value.replace(/{file[-_]id}/i, capturedFileId);
+            }
+            // Also replace in body if there's file_id field
+            if (bodyInput.value.includes('"file_id"')) {
+                bodyInput.value = bodyInput.value.replace(/"file_id":\s*"[^"]*"/, `"file_id": "${capturedFileId}"`);
+            }
+            updateCurlPreview();
+        }
+
+        function clearStoreId() {
+            capturedStoreId = null;
+            const el = document.getElementById('captured-store-id');
+            el.textContent = 'none';
+            el.style.color = 'var(--text-orange)';
+        }
+
+        function clearFileId() {
+            capturedFileId = null;
+            const el = document.getElementById('captured-file-id');
+            el.textContent = 'none';
+            el.style.color = 'var(--text-orange)';
         }
 
         function openUploadModal() {
@@ -1651,7 +1707,7 @@ ollama list
                     const fileId = result.id || 'unknown';
                     statusDiv.innerHTML = `Success! File ID: <strong>${fileId}</strong> captured. Closing...`;
                     // Auto-capture the file ID
-                    captureId(fileId);
+                    captureFileId(fileId);
                     // Close modal after brief delay
                     setTimeout(() => closeUploadModal(), 1500);
                 } else {
