@@ -1525,7 +1525,13 @@ ollama list
                 url: `${BASE_URL}/v1/vector_stores/{vector_store_id}/search`,
                 body: JSON.stringify({
                     query: 'search query here',
-                    max_num_results: 10
+                    max_num_results: 10,
+                    filters: null,
+                    ranking_options: {
+                        ranker: 'auto',
+                        score_threshold: 0.0
+                    },
+                    rewrite_query: false
                 }, null, 2),
                 description: 'Search a vector store',
                 breakpoint: 'src/llama_stack/core/routers/vector_io.py:330',
