@@ -992,6 +992,24 @@ print(response.completion_message.content)</code></pre>
                     <button class="preset-btn" onclick="loadPreset('files-delete')">Delete File</button>
                 </div>
 
+                <h4 style="margin-top: 1rem; color: var(--text-purple);">Responses API <span style="font-size: 0.8rem; color: var(--text-orange);">(OpenAI Responses compatible)</span></h4>
+                <div class="preset-btns">
+                    <button class="preset-btn" onclick="loadPreset('response-create')">Create Response</button>
+                    <button class="preset-btn" onclick="loadPreset('response-create-stream')">Create (Streaming)</button>
+                    <button class="preset-btn" onclick="loadPreset('response-list')">List Responses</button>
+                    <button class="preset-btn" onclick="loadPreset('response-get')">Get Response</button>
+                    <button class="preset-btn" onclick="loadPreset('response-delete')">Delete Response</button>
+                    <button class="preset-btn" onclick="loadPreset('response-input-items')">Input Items</button>
+                </div>
+
+                <h4 style="margin-top: 1rem; color: var(--text-yellow);">Tools API</h4>
+                <div class="preset-btns">
+                    <button class="preset-btn" onclick="loadPreset('toolgroups-list')">List Tool Groups</button>
+                    <button class="preset-btn" onclick="loadPreset('toolgroups-get')">Get Tool Group</button>
+                    <button class="preset-btn" onclick="loadPreset('tools-list')">List Tools</button>
+                    <button class="preset-btn" onclick="loadPreset('tool-invoke')">Invoke Tool</button>
+                </div>
+
                 <!-- File Upload Modal -->
                 <div id="upload-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
                     <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
@@ -1029,17 +1047,24 @@ print(response.completion_message.content)</code></pre>
                 <div id="captured-ids-box" style="margin: 1.5rem 0; padding: 0.75rem 1rem; background: var(--bg-code); border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.5rem;">
                     <!-- Store ID -->
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="color: var(--accent); font-weight: bold; font-size: 0.85rem; min-width: 45px;">Store:</span>
+                        <span style="color: var(--accent); font-weight: bold; font-size: 0.85rem; min-width: 60px;">Store:</span>
                         <code id="captured-store-id" style="color: var(--text-orange); cursor: pointer; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" onclick="copyToClipboard(this.textContent)" title="Click to copy">none</code>
                         <button onclick="insertStoreId()" class="send-btn" style="padding: 0.25rem 0.5rem; font-size: 0.7rem;">Insert</button>
                         <button onclick="clearStoreId()" style="padding: 0.25rem 0.4rem; background: var(--border); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.7rem;">X</button>
                     </div>
                     <!-- File ID -->
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="color: var(--accent); font-weight: bold; font-size: 0.85rem; min-width: 45px;">File:</span>
+                        <span style="color: var(--accent); font-weight: bold; font-size: 0.85rem; min-width: 60px;">File:</span>
                         <code id="captured-file-id" style="color: var(--text-orange); cursor: pointer; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" onclick="copyToClipboard(this.textContent)" title="Click to copy">none</code>
                         <button onclick="insertFileId()" class="send-btn" style="padding: 0.25rem 0.5rem; font-size: 0.7rem;">Insert</button>
                         <button onclick="clearFileId()" style="padding: 0.25rem 0.4rem; background: var(--border); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.7rem;">X</button>
+                    </div>
+                    <!-- Response ID -->
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="color: var(--accent); font-weight: bold; font-size: 0.85rem; min-width: 60px;">Response:</span>
+                        <code id="captured-response-id" style="color: var(--text-orange); cursor: pointer; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" onclick="copyToClipboard(this.textContent)" title="Click to copy">none</code>
+                        <button onclick="insertResponseId()" class="send-btn" style="padding: 0.25rem 0.5rem; font-size: 0.7rem;">Insert</button>
+                        <button onclick="clearResponseId()" style="padding: 0.25rem 0.4rem; background: var(--border); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.7rem;">X</button>
                     </div>
                 </div>
 
@@ -1588,12 +1613,124 @@ ollama list
                 description: 'Delete a file by ID',
                 breakpoint: 'src/llama_stack/providers/inline/files/localfs/files.py:181',
                 func: 'openai_delete_file()'
+            },
+            // Responses API
+            'response-create': {
+                method: 'POST',
+                url: `${BASE_URL}/v1/responses`,
+                body: JSON.stringify({
+                    model: 'meta-llama/Llama-3.2-3B-Instruct',
+                    input: 'What is the capital of France?',
+                    instructions: null,
+                    stream: false,
+                    temperature: 0.7,
+                    max_infer_iters: 10,
+                    tools: [],
+                    tool_choice: 'auto',
+                    parallel_tool_calls: true,
+                    previous_response_id: null,
+                    store: true,
+                    metadata: {}
+                }, null, 2),
+                description: 'Create a response (OpenAI Responses API)',
+                breakpoint: 'src/llama_stack_api/agents/fastapi_routes.py:208',
+                func: 'create_openai_response()'
+            },
+            'response-create-stream': {
+                method: 'POST',
+                url: `${BASE_URL}/v1/responses`,
+                body: JSON.stringify({
+                    model: 'meta-llama/Llama-3.2-3B-Instruct',
+                    input: 'Tell me a short story about a llama.',
+                    instructions: null,
+                    stream: true,
+                    temperature: 0.7,
+                    max_infer_iters: 10,
+                    tools: [],
+                    tool_choice: 'auto',
+                    parallel_tool_calls: true,
+                    store: true
+                }, null, 2),
+                description: 'Create a streaming response',
+                breakpoint: 'src/llama_stack_api/agents/fastapi_routes.py:208',
+                func: 'create_openai_response()'
+            },
+            'response-list': {
+                method: 'GET',
+                url: `${BASE_URL}/v1/responses?limit=20&order=desc`,
+                body: '',
+                description: 'List all responses (query params: limit, order, after, model)',
+                breakpoint: 'src/llama_stack_api/agents/fastapi_routes.py:232',
+                func: 'list_openai_responses()'
+            },
+            'response-get': {
+                method: 'GET',
+                url: `${BASE_URL}/v1/responses/{response_id}`,
+                body: '',
+                description: 'Get a response by ID',
+                breakpoint: 'src/llama_stack_api/agents/fastapi_routes.py:184',
+                func: 'get_openai_response()'
+            },
+            'response-delete': {
+                method: 'DELETE',
+                url: `${BASE_URL}/v1/responses/{response_id}`,
+                body: '',
+                description: 'Delete a response by ID',
+                breakpoint: 'src/llama_stack_api/agents/fastapi_routes.py:260',
+                func: 'delete_openai_response()'
+            },
+            'response-input-items': {
+                method: 'GET',
+                url: `${BASE_URL}/v1/responses/{response_id}/input_items?limit=20&order=desc`,
+                body: '',
+                description: 'List input items for a response',
+                breakpoint: 'src/llama_stack_api/agents/fastapi_routes.py:246',
+                func: 'list_openai_response_input_items()'
+            },
+            // Tools API
+            'toolgroups-list': {
+                method: 'GET',
+                url: `${BASE_URL}/v1/tool-groups`,
+                body: '',
+                description: 'List all registered tool groups',
+                breakpoint: 'src/llama_stack/core/routing_tables/toolgroups.py',
+                func: 'list_tool_groups()'
+            },
+            'toolgroups-get': {
+                method: 'GET',
+                url: `${BASE_URL}/v1/tool-groups/{toolgroup_id}`,
+                body: '',
+                description: 'Get a tool group by ID',
+                breakpoint: 'src/llama_stack/core/routing_tables/toolgroups.py',
+                func: 'get_tool_group()'
+            },
+            'tools-list': {
+                method: 'GET',
+                url: `${BASE_URL}/v1/tools?toolgroup_id=builtin::websearch`,
+                body: '',
+                description: 'List tools in a tool group',
+                breakpoint: 'src/llama_stack/core/routing_tables/toolgroups.py',
+                func: 'list_tools()'
+            },
+            'tool-invoke': {
+                method: 'POST',
+                url: `${BASE_URL}/v1/tool-runtime/invoke`,
+                body: JSON.stringify({
+                    tool_name: 'web_search',
+                    kwargs: {
+                        query: 'latest news about llama AI'
+                    }
+                }, null, 2),
+                description: 'Invoke a tool directly',
+                breakpoint: 'src/llama_stack/core/routers/tool_runtime.py',
+                func: 'invoke_tool()'
             }
         };
 
         // Captured IDs for quick insertion
         let capturedStoreId = null;
         let capturedFileId = null;
+        let capturedResponseId = null;
 
         function captureId(id) {
             // Auto-detect ID type and capture appropriately
@@ -1601,6 +1738,8 @@ ollama list
                 captureStoreId(id);
             } else if (id.startsWith('file-') || id.startsWith('file_')) {
                 captureFileId(id);
+            } else if (id.startsWith('resp_')) {
+                captureResponseId(id);
             } else {
                 // Unknown type - try to guess from context or capture as store
                 captureStoreId(id);
@@ -1660,6 +1799,30 @@ ollama list
         function clearFileId() {
             capturedFileId = null;
             const el = document.getElementById('captured-file-id');
+            el.textContent = 'none';
+            el.style.color = 'var(--text-orange)';
+        }
+
+        function captureResponseId(id) {
+            capturedResponseId = id;
+            const el = document.getElementById('captured-response-id');
+            el.textContent = id;
+            el.style.color = 'var(--success)';
+        }
+
+        function insertResponseId() {
+            if (!capturedResponseId || capturedResponseId === 'none') {
+                alert('No Response ID captured. Click a resp_xxx ID in the response first.');
+                return;
+            }
+            const urlInput = document.getElementById('url-input');
+            urlInput.value = urlInput.value.replace(/{response_id}|{[^}]*response[^}]*}/i, capturedResponseId);
+            updateCurlPreview();
+        }
+
+        function clearResponseId() {
+            capturedResponseId = null;
+            const el = document.getElementById('captured-response-id');
             el.textContent = 'none';
             el.style.color = 'var(--text-orange)';
         }
@@ -1745,8 +1908,8 @@ ollama list
         }
 
         function makeIdsClickable(text) {
-            // Match IDs like vs_xxx, file-xxx, batch_xxx
-            return text.replace(/"(vs_[a-zA-Z0-9-]+|file-[a-zA-Z0-9-]+|batch_[a-zA-Z0-9-]+)"/g,
+            // Match IDs like vs_xxx, file-xxx, batch_xxx, resp_xxx
+            return text.replace(/"(vs_[a-zA-Z0-9-]+|file-[a-zA-Z0-9-]+|batch_[a-zA-Z0-9-]+|resp_[a-zA-Z0-9-]+)"/g,
                 '"<span class="clickable-id" onclick="captureId(\'$1\')" style="color: var(--success); cursor: pointer; text-decoration: underline;">$1</span>"');
         }
 
