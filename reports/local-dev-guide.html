@@ -973,7 +973,7 @@ print(response.completion_message.content)</code></pre>
                     <button class="preset-btn" onclick="loadPreset('providers')">List Providers</button>
                     <button class="preset-btn" onclick="loadPreset('routes')">List Routes</button>
                 </div>
-                <h4 style="margin-top: 1rem; color: var(--text-purple);">VectorIO <span style="font-size: 0.8rem; color: var(--warning);">(requires starter distribution with postgres)</span></h4>
+                <h4 style="margin-top: 1rem; color: var(--accent);">VectorIO <span style="font-size: 0.8rem; color: var(--warning);">(requires starter distribution with postgres)</span></h4>
                 <div class="preset-btns">
                     <button class="preset-btn" onclick="loadPreset('vector-list')">List Stores</button>
                     <button class="preset-btn" onclick="loadPreset('vector-create')">Create Store</button>
@@ -982,6 +982,38 @@ print(response.completion_message.content)</code></pre>
                     <button class="preset-btn" onclick="loadPreset('vector-search')">Search</button>
                     <button class="preset-btn" onclick="loadPreset('vector-attach-file')">Attach File</button>
                     <button class="preset-btn" onclick="loadPreset('vector-list-files')">List Files</button>
+                </div>
+
+                <h4 style="margin-top: 1rem; color: var(--success);">Files API <span style="font-size: 0.8rem; color: var(--warning);">(requires starter distribution)</span></h4>
+                <div class="preset-btns">
+                    <button class="preset-btn" onclick="loadPreset('files-list')">List Files</button>
+                    <button class="preset-btn" onclick="loadPreset('files-get')">Get File</button>
+                    <button class="preset-btn" onclick="loadPreset('files-delete')">Delete File</button>
+                </div>
+
+                <!-- File Upload Form -->
+                <div id="file-upload-box" class="card" style="margin: 1rem 0; background: var(--bg-code); border-left: 3px solid var(--success);">
+                    <h4 style="color: var(--success); margin-bottom: 0.75rem;">Upload File (Multipart Form)</h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                            <label style="color: var(--text-yellow);">Purpose:</label>
+                            <select id="file-purpose" style="padding: 0.4rem 0.75rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-yellow); font-size: 0.9rem;">
+                                <option value="assistants">assistants</option>
+                                <option value="batch">batch</option>
+                                <option value="fine-tune">fine-tune</option>
+                                <option value="vision">vision</option>
+                            </select>
+                            <input type="file" id="file-input" style="color: var(--text-yellow); font-size: 0.9rem;">
+                            <button onclick="uploadFile()" class="send-btn" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Upload</button>
+                        </div>
+                        <div id="upload-status" style="display: none; padding: 0.5rem; border-radius: 4px; font-size: 0.9rem;"></div>
+                    </div>
+                    <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
+                        <p style="font-size: 0.85rem; color: var(--text-orange); margin-bottom: 0.5rem;">Or use curl:</p>
+                        <pre style="margin: 0; font-size: 0.8rem; background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 4px;"><code style="color: var(--text-yellow);">curl http://localhost:8321/v1/files \
+  -F "purpose=assistants" \
+  -F "file=@/path/to/your/file.txt"</code></pre>
+                    </div>
                 </div>
 
                 <div id="captured-id-box" style="margin: 1rem 0; padding: 0.75rem 1rem; background: var(--bg-code); border-radius: 8px; border-left: 3px solid var(--accent);">
@@ -1498,6 +1530,30 @@ ollama list
                 description: 'List files in a vector store',
                 breakpoint: 'src/llama_stack/core/routers/vector_io.py:378',
                 func: 'openai_list_files_in_vector_store()'
+            },
+            'files-list': {
+                method: 'GET',
+                url: `${BASE_URL}/v1/files`,
+                body: '',
+                description: 'List all uploaded files',
+                breakpoint: 'src/llama_stack/providers/inline/files/localfs/files.py:140',
+                func: 'openai_list_files()'
+            },
+            'files-get': {
+                method: 'GET',
+                url: `${BASE_URL}/v1/files/{file_id}`,
+                body: '',
+                description: 'Get file metadata by ID (use Insert ID button)',
+                breakpoint: 'src/llama_stack/providers/inline/files/localfs/files.py:168',
+                func: 'openai_retrieve_file()'
+            },
+            'files-delete': {
+                method: 'DELETE',
+                url: `${BASE_URL}/v1/files/{file_id}`,
+                body: '',
+                description: 'Delete a file by ID',
+                breakpoint: 'src/llama_stack/providers/inline/files/localfs/files.py:181',
+                func: 'openai_delete_file()'
             }
         };
 
@@ -1524,6 +1580,58 @@ ollama list
             capturedId = null;
             document.getElementById('captured-id').textContent = 'None - click an ID in response to capture';
             document.getElementById('captured-id').style.color = 'var(--text-orange)';
+        }
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('file-input');
+            const purposeSelect = document.getElementById('file-purpose');
+            const statusDiv = document.getElementById('upload-status');
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                statusDiv.style.display = 'block';
+                statusDiv.style.background = 'rgba(229, 57, 53, 0.2)';
+                statusDiv.style.color = 'var(--primary)';
+                statusDiv.textContent = 'Please select a file first.';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const purpose = purposeSelect.value;
+
+            statusDiv.style.display = 'block';
+            statusDiv.style.background = 'rgba(255, 171, 64, 0.2)';
+            statusDiv.style.color = 'var(--text-orange)';
+            statusDiv.textContent = `Uploading ${file.name}...`;
+
+            try {
+                const formData = new FormData();
+                formData.append('purpose', purpose);
+                formData.append('file', file);
+
+                const response = await fetch(`${BASE_URL}/v1/files`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    statusDiv.style.background = 'rgba(76, 175, 80, 0.2)';
+                    statusDiv.style.color = 'var(--success)';
+                    const fileId = result.id || 'unknown';
+                    statusDiv.innerHTML = `Uploaded successfully! File ID: <code style="cursor: pointer; text-decoration: underline;" onclick="captureId('${fileId}')">${fileId}</code> (click to capture)`;
+                    // Auto-capture the file ID
+                    captureId(fileId);
+                } else {
+                    statusDiv.style.background = 'rgba(229, 57, 53, 0.2)';
+                    statusDiv.style.color = 'var(--primary)';
+                    statusDiv.textContent = `Upload failed: ${result.error || result.detail || JSON.stringify(result)}`;
+                }
+            } catch (error) {
+                statusDiv.style.background = 'rgba(229, 57, 53, 0.2)';
+                statusDiv.style.color = 'var(--primary)';
+                statusDiv.textContent = `Upload error: ${error.message}`;
+            }
         }
 
         function copyToClipboard(text) {
