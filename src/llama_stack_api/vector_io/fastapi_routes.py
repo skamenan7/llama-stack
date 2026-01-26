@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, HTTPException, Path, Query, Response, status
+from fastapi import APIRouter, Body, Path, Query, Response, status
 from pydantic import BaseModel, Field
 
 from llama_stack_api.common.content_types import InterleavedContent
@@ -112,14 +112,11 @@ def create_router(impl: VectorIO) -> APIRouter:
         responses={204: {"description": "Chunks were inserted."}},
     )
     async def insert_chunks(request: Annotated[InsertChunksRequest, Body(...)]) -> None:
-        try:
-            await impl.insert_chunks(
-                vector_store_id=request.vector_store_id,
-                chunks=request.chunks,
-                ttl_seconds=request.ttl_seconds,
-            )
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        await impl.insert_chunks(
+            vector_store_id=request.vector_store_id,
+            chunks=request.chunks,
+            ttl_seconds=request.ttl_seconds,
+        )
         return None
 
     @router.post(
@@ -130,14 +127,11 @@ def create_router(impl: VectorIO) -> APIRouter:
         responses={200: {"description": "A QueryChunksResponse."}},
     )
     async def query_chunks(request: Annotated[QueryChunksRequest, Body(...)]) -> QueryChunksResponse:
-        try:
-            return await impl.query_chunks(
-                vector_store_id=request.vector_store_id,
-                query=request.query,
-                params=request.params,
-            )
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.query_chunks(
+            vector_store_id=request.vector_store_id,
+            query=request.query,
+            params=request.params,
+        )
 
     @router.post(
         "/vector_stores",
@@ -149,10 +143,7 @@ def create_router(impl: VectorIO) -> APIRouter:
     async def openai_create_vector_store(
         params: Annotated[OpenAICreateVectorStoreRequestWithExtraBody, Body(...)],
     ) -> VectorStoreObject:
-        try:
-            return await impl.openai_create_vector_store(params)
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_create_vector_store(params)
 
     @router.get(
         "/vector_stores",
@@ -177,10 +168,7 @@ def create_router(impl: VectorIO) -> APIRouter:
             ),
         ] = None,
     ) -> VectorStoreListResponse:
-        try:
-            return await impl.openai_list_vector_stores(limit=limit, order=order, after=after, before=before)
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_list_vector_stores(limit=limit, order=order, after=after, before=before)
 
     @router.get(
         "/vector_stores/{vector_store_id}",
@@ -192,10 +180,7 @@ def create_router(impl: VectorIO) -> APIRouter:
     async def openai_retrieve_vector_store(
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
     ) -> VectorStoreObject:
-        try:
-            return await impl.openai_retrieve_vector_store(vector_store_id=vector_store_id)
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_retrieve_vector_store(vector_store_id=vector_store_id)
 
     @router.post(
         "/vector_stores/{vector_store_id}",
@@ -208,15 +193,12 @@ def create_router(impl: VectorIO) -> APIRouter:
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
         request: Annotated[OpenAIUpdateVectorStoreRequest, Body(...)],
     ) -> VectorStoreObject:
-        try:
-            return await impl.openai_update_vector_store(
-                vector_store_id=vector_store_id,
-                name=request.name,
-                expires_after=request.expires_after,
-                metadata=request.metadata,
-            )
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_update_vector_store(
+            vector_store_id=vector_store_id,
+            name=request.name,
+            expires_after=request.expires_after,
+            metadata=request.metadata,
+        )
 
     @router.delete(
         "/vector_stores/{vector_store_id}",
@@ -228,10 +210,7 @@ def create_router(impl: VectorIO) -> APIRouter:
     async def openai_delete_vector_store(
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
     ) -> VectorStoreDeleteResponse:
-        try:
-            return await impl.openai_delete_vector_store(vector_store_id=vector_store_id)
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_delete_vector_store(vector_store_id=vector_store_id)
 
     @router.post(
         "/vector_stores/{vector_store_id}/search",
@@ -244,18 +223,15 @@ def create_router(impl: VectorIO) -> APIRouter:
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
         request: Annotated[OpenAISearchVectorStoreRequest, Body(...)],
     ) -> VectorStoreSearchResponsePage:
-        try:
-            return await impl.openai_search_vector_store(
-                vector_store_id=vector_store_id,
-                query=request.query,
-                filters=request.filters,
-                max_num_results=request.max_num_results,
-                ranking_options=request.ranking_options,
-                rewrite_query=request.rewrite_query,
-                search_mode=request.search_mode,
-            )
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_search_vector_store(
+            vector_store_id=vector_store_id,
+            query=request.query,
+            filters=request.filters,
+            max_num_results=request.max_num_results,
+            ranking_options=request.ranking_options,
+            rewrite_query=request.rewrite_query,
+            search_mode=request.search_mode,
+        )
 
     @router.post(
         "/vector_stores/{vector_store_id}/files",
@@ -268,15 +244,12 @@ def create_router(impl: VectorIO) -> APIRouter:
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
         request: Annotated[OpenAIAttachFileRequest, Body(...)],
     ) -> VectorStoreFileObject:
-        try:
-            return await impl.openai_attach_file_to_vector_store(
-                vector_store_id=vector_store_id,
-                file_id=request.file_id,
-                attributes=request.attributes,
-                chunking_strategy=request.chunking_strategy,
-            )
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_attach_file_to_vector_store(
+            vector_store_id=vector_store_id,
+            file_id=request.file_id,
+            attributes=request.attributes,
+            chunking_strategy=request.chunking_strategy,
+        )
 
     @router.get(
         "/vector_stores/{vector_store_id}/files",
@@ -303,17 +276,14 @@ def create_router(impl: VectorIO) -> APIRouter:
         ] = None,
         filter: Annotated[VectorStoreFileStatus | None, Query(description="Filter by file status.")] = None,
     ) -> VectorStoreListFilesResponse:
-        try:
-            return await impl.openai_list_files_in_vector_store(
-                vector_store_id=vector_store_id,
-                limit=limit,
-                order=order,
-                after=after,
-                before=before,
-                filter=filter,
-            )
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_list_files_in_vector_store(
+            vector_store_id=vector_store_id,
+            limit=limit,
+            order=order,
+            after=after,
+            before=before,
+            filter=filter,
+        )
 
     @router.get(
         "/vector_stores/{vector_store_id}/files/{file_id}",
@@ -326,10 +296,7 @@ def create_router(impl: VectorIO) -> APIRouter:
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
         file_id: Annotated[str, Path(description="The file identifier.")],
     ) -> VectorStoreFileObject:
-        try:
-            return await impl.openai_retrieve_vector_store_file(vector_store_id=vector_store_id, file_id=file_id)
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_retrieve_vector_store_file(vector_store_id=vector_store_id, file_id=file_id)
 
     @router.get(
         "/vector_stores/{vector_store_id}/files/{file_id}/content",
@@ -344,15 +311,12 @@ def create_router(impl: VectorIO) -> APIRouter:
         include_embeddings: Annotated[bool | None, Query(description="Include embedding vectors.")] = False,
         include_metadata: Annotated[bool | None, Query(description="Include chunk metadata.")] = False,
     ) -> VectorStoreFileContentResponse:
-        try:
-            return await impl.openai_retrieve_vector_store_file_contents(
-                vector_store_id=vector_store_id,
-                file_id=file_id,
-                include_embeddings=include_embeddings,
-                include_metadata=include_metadata,
-            )
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_retrieve_vector_store_file_contents(
+            vector_store_id=vector_store_id,
+            file_id=file_id,
+            include_embeddings=include_embeddings,
+            include_metadata=include_metadata,
+        )
 
     @router.post(
         "/vector_stores/{vector_store_id}/files/{file_id}",
@@ -366,14 +330,11 @@ def create_router(impl: VectorIO) -> APIRouter:
         file_id: Annotated[str, Path(description="The file identifier.")],
         request: Annotated[OpenAIUpdateVectorStoreFileRequest, Body(...)],
     ) -> VectorStoreFileObject:
-        try:
-            return await impl.openai_update_vector_store_file(
-                vector_store_id=vector_store_id,
-                file_id=file_id,
-                attributes=request.attributes,
-            )
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_update_vector_store_file(
+            vector_store_id=vector_store_id,
+            file_id=file_id,
+            attributes=request.attributes,
+        )
 
     @router.delete(
         "/vector_stores/{vector_store_id}/files/{file_id}",
@@ -386,10 +347,7 @@ def create_router(impl: VectorIO) -> APIRouter:
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
         file_id: Annotated[str, Path(description="The file identifier.")],
     ) -> VectorStoreFileDeleteResponse:
-        try:
-            return await impl.openai_delete_vector_store_file(vector_store_id=vector_store_id, file_id=file_id)
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_delete_vector_store_file(vector_store_id=vector_store_id, file_id=file_id)
 
     @router.post(
         "/vector_stores/{vector_store_id}/file_batches",
@@ -402,10 +360,7 @@ def create_router(impl: VectorIO) -> APIRouter:
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
         params: Annotated[OpenAICreateVectorStoreFileBatchRequestWithExtraBody, Body(...)],
     ) -> VectorStoreFileBatchObject:
-        try:
-            return await impl.openai_create_vector_store_file_batch(vector_store_id=vector_store_id, params=params)
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_create_vector_store_file_batch(vector_store_id=vector_store_id, params=params)
 
     @router.get(
         "/vector_stores/{vector_store_id}/file_batches/{batch_id}",
@@ -418,12 +373,7 @@ def create_router(impl: VectorIO) -> APIRouter:
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
         batch_id: Annotated[str, Path(description="The file batch identifier.")],
     ) -> VectorStoreFileBatchObject:
-        try:
-            return await impl.openai_retrieve_vector_store_file_batch(
-                batch_id=batch_id, vector_store_id=vector_store_id
-            )
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_retrieve_vector_store_file_batch(batch_id=batch_id, vector_store_id=vector_store_id)
 
     @router.get(
         "/vector_stores/{vector_store_id}/file_batches/{batch_id}/files",
@@ -451,18 +401,15 @@ def create_router(impl: VectorIO) -> APIRouter:
         limit: Annotated[int | None, Query(description="Maximum number of files to return.")] = 20,
         order: Annotated[str | None, Query(description="Sort order by created_at: asc or desc.")] = "desc",
     ) -> VectorStoreFilesListInBatchResponse:
-        try:
-            return await impl.openai_list_files_in_vector_store_file_batch(
-                batch_id=batch_id,
-                vector_store_id=vector_store_id,
-                after=after,
-                before=before,
-                filter=filter,
-                limit=limit,
-                order=order,
-            )
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_list_files_in_vector_store_file_batch(
+            batch_id=batch_id,
+            vector_store_id=vector_store_id,
+            after=after,
+            before=before,
+            filter=filter,
+            limit=limit,
+            order=order,
+        )
 
     @router.post(
         "/vector_stores/{vector_store_id}/file_batches/{batch_id}/cancel",
@@ -475,21 +422,6 @@ def create_router(impl: VectorIO) -> APIRouter:
         vector_store_id: Annotated[str, Path(description="The vector store identifier.")],
         batch_id: Annotated[str, Path(description="The file batch identifier.")],
     ) -> VectorStoreFileBatchObject:
-        try:
-            return await impl.openai_cancel_vector_store_file_batch(batch_id=batch_id, vector_store_id=vector_store_id)
-        except ValueError as exc:
-            raise _http_exception_from_value_error(exc) from exc
+        return await impl.openai_cancel_vector_store_file_batch(batch_id=batch_id, vector_store_id=vector_store_id)
 
     return router
-
-
-def _http_exception_from_value_error(exc: ValueError) -> HTTPException:
-    """Convert implementation `ValueError` into an OpenAI-compatible HTTP error.
-
-    The OpenAI client maps HTTP 400 -> `BadRequestError`. Existing integration
-    tests for the OpenAI-compatible Vector Stores API expect "not found" cases
-    to surface as 400, not 404.
-    """
-
-    detail = str(exc) or "Invalid value"
-    return HTTPException(status_code=400, detail=detail)
