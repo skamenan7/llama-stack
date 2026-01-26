@@ -821,15 +821,15 @@ sequenceDiagram
 
                 <h3 id="cmd-start">Start All Services</h3>
                 <pre><code class="language-bash">./dev/llama-dev start</code></pre>
-                <p>Starts Ollama, PostgreSQL, and Llama Stack server in order.</p>
+                <p>Starts Ollama, PostgreSQL, Llama Stack server, and Proxy in order.</p>
 
                 <h3 id="cmd-stop">Stop All Services</h3>
                 <pre><code class="language-bash">./dev/llama-dev stop</code></pre>
-                <p>Gracefully stops all services.</p>
+                <p>Gracefully stops all services (Proxy, Llama Stack, PostgreSQL, Ollama).</p>
 
                 <h3 id="cmd-status">Check Status</h3>
                 <pre><code class="language-bash">./dev/llama-dev status</code></pre>
-                <p>Shows which services are running.</p>
+                <p>Shows status of all 4 services: Ollama, PostgreSQL, Llama Stack, Proxy.</p>
 
                 <h3 id="cmd-test">Run Tests</h3>
                 <pre><code class="language-bash"># Quick health check
@@ -851,6 +851,9 @@ sequenceDiagram
 # Tail Ollama logs
 ./dev/llama-dev logs ollama
 
+# Tail Proxy logs
+./dev/llama-dev logs proxy
+
 # Tail all logs
 ./dev/llama-dev logs all</code></pre>
 
@@ -871,7 +874,12 @@ sequenceDiagram
 
 # Llama Stack
 ./dev/llama-dev stack-start
-./dev/llama-dev stack-stop</code></pre>
+./dev/llama-dev stack-stop
+
+# Proxy (API Playground)
+./dev/llama-dev proxy-start
+./dev/llama-dev proxy-stop
+./dev/llama-dev playground     # Foreground/interactive mode</code></pre>
             </section>
 
             <!-- Section 6: Daily Workflow -->
@@ -957,6 +965,14 @@ print(response.completion_message.content)</code></pre>
                     <button class="preset-btn" onclick="loadPreset('routes')">List Routes</button>
                 </div>
 
+                <div id="breakpoint-info" class="card" style="display: none; margin: 1rem 0; padding: 0.75rem 1rem; background: var(--bg-card); border-left: 3px solid var(--primary);">
+                    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                        <span style="color: var(--text-orange); font-weight: bold;">Breakpoint:</span>
+                        <code id="breakpoint-path" class="debug-file" onclick="copyDebugPath(this)" style="cursor: pointer; font-size: 0.9rem;"></code>
+                        <span id="breakpoint-func" style="color: var(--text-purple); font-size: 0.85rem;"></span>
+                    </div>
+                </div>
+
                 <div class="api-playground" id="main-playground">
                     <div class="api-header">
                         <select id="method-select" class="method-badge post" onchange="updateMethodStyle()">
@@ -1016,18 +1032,40 @@ print(response.completion_message.content)</code></pre>
                 </div>
 
                 <h3>Debugging Guide</h3>
+                <div class="card warning">
+                    <h4>Important: Stop Existing Servers First!</h4>
+                    <p style="margin-top: 0.5rem;">
+                        Before debugging, you MUST stop any running Llama Stack server. Otherwise, the proxy
+                        will hit the existing server instead of your Cursor debugger.
+                    </p>
+                    <pre style="margin-top: 0.5rem;"><code class="language-bash"># Stop existing server
+./dev/llama-dev stack-stop
+
+# Verify port 8321 is free
+lsof -i :8321   # Should show nothing</code></pre>
+                </div>
+
                 <div class="card info">
                     <h4>How to Debug API Requests</h4>
                     <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li><strong>Stop existing server:</strong> <code>./dev/llama-dev stack-stop</code></li>
                         <li>Open the file shown in "Breakpoint Location" column below</li>
                         <li>Go to the line number and click in the gutter (red dot appears)</li>
-                        <li>Select <strong>"FastAPI Debug"</strong> in Cursor and press <kbd style="background: var(--bg-code); padding: 0.2rem 0.4rem; border-radius: 3px;">F5</kbd></li>
+                        <li>Select <strong>"Llama Stack Debug"</strong> in Cursor and press <kbd style="background: var(--bg-code); padding: 0.2rem 0.4rem; border-radius: 3px;">F5</kbd></li>
+                        <li>Wait for server to show "Uvicorn running on http://0.0.0.0:8321"</li>
                         <li>Click the preset button above, then click <strong>Send</strong></li>
                         <li>Debugger pauses at your breakpoint!</li>
                     </ol>
                 </div>
 
                 <h3>API Reference with Debug Locations</h3>
+                <div class="card info" style="margin-bottom: 1rem;">
+                    <h4>OpenAI vs Native Endpoints</h4>
+                    <p style="margin-top: 0.5rem;">
+                        Llama Stack has two API styles. <strong>/v1/*</strong> endpoints are OpenAI-compatible,
+                        while endpoints without /v1/ prefix are native Llama Stack APIs. They use different code paths!
+                    </p>
+                </div>
                 <table>
                     <tr>
                         <th>Endpoint</th>
@@ -1040,17 +1078,22 @@ print(response.completion_message.content)</code></pre>
                         <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/server/server.py</code></td>
                     </tr>
                     <tr>
-                        <td><code>/v1/models</code></td>
+                        <td><code>/v1/models</code><br><small style="color: var(--text-purple);">OpenAI-compatible</small></td>
+                        <td><span class="method-badge get">GET</span></td>
+                        <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/routing_tables/models.py:147</code><br><small style="color: var(--text-orange);">openai_list_models()</small></td>
+                    </tr>
+                    <tr>
+                        <td><code>/models</code><br><small style="color: var(--text-purple);">Native API</small></td>
                         <td><span class="method-badge get">GET</span></td>
                         <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/routing_tables/models.py:134</code><br><small style="color: var(--text-orange);">list_models()</small></td>
                     </tr>
                     <tr>
-                        <td><code>/v1/chat/completions</code></td>
+                        <td><code>/v1/chat/completions</code><br><small style="color: var(--text-purple);">OpenAI-compatible</small></td>
                         <td><span class="method-badge post">POST</span></td>
                         <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/routers/inference.py:175</code><br><small style="color: var(--text-orange);">openai_chat_completion()</small></td>
                     </tr>
                     <tr>
-                        <td><code>/v1/completions</code></td>
+                        <td><code>/v1/completions</code><br><small style="color: var(--text-purple);">OpenAI-compatible</small></td>
                         <td><span class="method-badge post">POST</span></td>
                         <td><code class="debug-file" onclick="copyDebugPath(this)">src/llama_stack/core/routers/inference.py:157</code><br><small style="color: var(--text-orange);">openai_completion()</small></td>
                     </tr>
@@ -1259,13 +1302,17 @@ ollama list
                 method: 'GET',
                 url: `${BASE_URL}/health`,
                 body: '',
-                description: 'Check if the server is running'
+                description: 'Check if the server is running',
+                breakpoint: 'src/llama_stack/core/server/server.py',
+                func: 'health()'
             },
             models: {
                 method: 'GET',
                 url: `${BASE_URL}/v1/models`,
                 body: '',
-                description: 'List all available models'
+                description: 'List all available models',
+                breakpoint: 'src/llama_stack/core/routing_tables/models.py:147',
+                func: 'openai_list_models()'
             },
             chat: {
                 method: 'POST',
@@ -1276,7 +1323,9 @@ ollama list
                         { role: 'user', content: 'Say hello in 10 words or less' }
                     ]
                 }, null, 2),
-                description: 'Simple chat completion'
+                description: 'Simple chat completion',
+                breakpoint: 'src/llama_stack/core/routers/inference.py:175',
+                func: 'openai_chat_completion()'
             },
             'chat-stream': {
                 method: 'POST',
@@ -1288,19 +1337,25 @@ ollama list
                     ],
                     stream: true
                 }, null, 2),
-                description: 'Streaming chat completion'
+                description: 'Streaming chat completion',
+                breakpoint: 'src/llama_stack/core/routers/inference.py:175',
+                func: 'openai_chat_completion()'
             },
             providers: {
                 method: 'GET',
                 url: `${BASE_URL}/v1/providers`,
                 body: '',
-                description: 'List configured providers'
+                description: 'List configured providers',
+                breakpoint: 'src/llama_stack/core/server/server.py',
+                func: 'list_providers()'
             },
             routes: {
                 method: 'GET',
                 url: `${BASE_URL}/v1/routes`,
                 body: '',
-                description: 'List available API routes'
+                description: 'List available API routes',
+                breakpoint: 'src/llama_stack/core/server/server.py',
+                func: 'list_routes()'
             }
         };
 
@@ -1313,6 +1368,18 @@ ollama list
             document.getElementById('request-body').value = preset.body;
             updateMethodStyle();
             updateCurlPreview();
+
+            // Show breakpoint info
+            const bpInfo = document.getElementById('breakpoint-info');
+            const bpPath = document.getElementById('breakpoint-path');
+            const bpFunc = document.getElementById('breakpoint-func');
+            if (preset.breakpoint) {
+                bpPath.textContent = preset.breakpoint;
+                bpFunc.textContent = preset.func || '';
+                bpInfo.style.display = 'block';
+            } else {
+                bpInfo.style.display = 'none';
+            }
 
             // Highlight active preset
             document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));

@@ -201,12 +201,14 @@ start_all() {
     ollama_start
     postgres_start
     stack_start "${1:-ollama}"
+    proxy_start
     echo ""
     status_all
 }
 
 stop_all() {
     log_info "=== Stopping All Services ==="
+    proxy_stop
     stack_stop
     postgres_stop
     ollama_stop
@@ -244,6 +246,13 @@ status_all() {
         echo -e "Llama Stack: ${RED}Stopped${NC}"
     fi
 
+    # Proxy
+    if pgrep -f "serve-report.py" >/dev/null 2>&1; then
+        echo -e "Proxy:       ${GREEN}Running${NC} (PID: $(pgrep -f 'serve-report.py'), port $PROXY_PORT)"
+    else
+        echo -e "Proxy:       ${RED}Stopped${NC}"
+    fi
+
     echo ""
 }
 
@@ -263,12 +272,15 @@ logs_tail() {
         stack|llama-stack)
             tail -f "$LOG_DIR/llama-stack.log"
             ;;
+        proxy)
+            tail -f "$LOG_DIR/proxy.log"
+            ;;
         all)
             tail -f "$LOG_DIR"/*.log
             ;;
         *)
             log_error "Unknown service: $service"
-            echo "Available: ollama, postgres, stack, all"
+            echo "Available: ollama, postgres, stack, proxy, all"
             ;;
     esac
 }
@@ -343,26 +355,68 @@ generate_report() {
 }
 
 #------------------------------------------------------------------------------
-# API Playground Server
+# API Playground Proxy Server Management
 #------------------------------------------------------------------------------
-serve_playground() {
-    local port=8080
+PROXY_PORT=8080
 
-    # Check if already running
-    if lsof -i ":$port" >/dev/null 2>&1; then
-        log_warn "Port $port already in use. Killing existing server..."
-        pkill -f "serve-report.py" 2>/dev/null || true
-        sleep 1
+proxy_start() {
+    if pgrep -f "serve-report.py" >/dev/null 2>&1; then
+        log_ok "Proxy already running"
+        return 0
     fi
 
-    log_info "Starting API Playground server on port $port..."
+    log_info "Starting Proxy server..."
+    nohup python3 "$SCRIPT_DIR/serve-report.py" > "$LOG_DIR/proxy.log" 2>&1 &
+
+    local pid=$!
+    echo "$pid" > "$LOG_DIR/proxy.pid"
+
+    # Wait for proxy to be ready
+    local retries=10
+    while ! curl -s "http://localhost:$PROXY_PORT/" >/dev/null 2>&1; do
+        ((retries--)) || { log_error "Proxy failed to start"; return 1; }
+        sleep 1
+    done
+    log_ok "Proxy started (PID: $pid, port $PROXY_PORT)"
+    log_info "Open: http://localhost:$PROXY_PORT/local-dev-guide.html"
+}
+
+proxy_stop() {
+    if [[ -f "$LOG_DIR/proxy.pid" ]]; then
+        local pid
+        pid=$(cat "$LOG_DIR/proxy.pid")
+        if kill -0 "$pid" 2>/dev/null; then
+            log_info "Stopping Proxy (PID: $pid)..."
+            kill "$pid" || true
+            rm -f "$LOG_DIR/proxy.pid"
+            log_ok "Proxy stopped"
+        else
+            rm -f "$LOG_DIR/proxy.pid"
+            log_warn "Proxy not running (stale PID file removed)"
+        fi
+    else
+        if pgrep -f "serve-report.py" >/dev/null 2>&1; then
+            log_info "Stopping Proxy..."
+            pkill -f "serve-report.py" || true
+            log_ok "Proxy stopped"
+        else
+            log_warn "Proxy not running"
+        fi
+    fi
+}
+
+serve_playground() {
+    # Foreground mode for interactive use
+    proxy_stop 2>/dev/null || true
+
+    log_info "Starting API Playground server on port $PROXY_PORT (foreground)..."
     log_info "Proxying /api/* -> http://localhost:8321"
     echo ""
-    log_ok "Open: http://localhost:$port/local-dev-guide.html"
+    log_ok "Open: http://localhost:$PROXY_PORT/local-dev-guide.html"
     echo ""
 
-    # Run the proxy server
-    python3 "$DEV_DIR/serve-report.py"
+    # Run the proxy server in foreground
+    python3 "$SCRIPT_DIR/serve-report.py"
 }
 
 #------------------------------------------------------------------------------
@@ -393,11 +447,14 @@ COMMANDS:
     stack-start [cfg]  Start Llama Stack server only
     stack-stop         Stop Llama Stack server only
 
-    logs [service]     Tail logs (ollama|postgres|stack|all)
+    proxy-start        Start Proxy server (background)
+    proxy-stop         Stop Proxy server
+
+    logs [service]     Tail logs (ollama|postgres|stack|proxy|all)
 
     test [type]        Run tests (quick|unit|integration|inference)
     report             Generate HTML status report
-    playground         Start API Playground server (interactive API testing)
+    playground         Start API Playground server (foreground/interactive)
 
     help               Show this help
 
@@ -435,6 +492,9 @@ main() {
 
         stack-start)    stack_start "$@" ;;
         stack-stop)     stack_stop ;;
+
+        proxy-start)    proxy_start ;;
+        proxy-stop)     proxy_stop ;;
 
         logs)           logs_tail "$@" ;;
         test)           run_tests "$@" ;;
