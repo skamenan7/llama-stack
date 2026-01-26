@@ -629,13 +629,13 @@
         <aside class="sidebar">
             <h2>Contents</h2>
             <nav>
+                <a href="#playground" class="active">API Playground</a>
                 <a href="#overview">Overview</a>
                 <a href="#architecture">Architecture</a>
                 <a href="#file-structure">File Structure</a>
                 <a href="#services">Services</a>
                 <a href="#scripts">Scripts Reference</a>
                 <a href="#workflow">Daily Workflow</a>
-                <a href="#playground">API Playground</a>
                 <a href="#testing">Testing</a>
                 <a href="#troubleshooting">Troubleshooting</a>
             </nav>
@@ -664,300 +664,8 @@
                 <p class="subtitle">Your personal learning environment for Llama Stack</p>
             </header>
 
-            <!-- Section 1: Overview -->
-            <section id="overview">
-                <h2>1. Overview</h2>
-                <p>
-                    This local development environment lets you run Llama Stack on your machine
-                    without requiring a GPU. It uses <strong>Ollama</strong> for inference (CPU-optimized)
-                    and <strong>PostgreSQL</strong> for persistence.
-                </p>
-
-                <div class="grid">
-                    <div class="card success">
-                        <h4>What You Get</h4>
-                        <ul>
-                            <li>Full Llama Stack server on localhost:8321</li>
-                            <li>OpenAI-compatible API endpoints</li>
-                            <li>Ollama for local LLM inference</li>
-                            <li>PostgreSQL for vector stores & persistence</li>
-                            <li>One-command start/stop/restart</li>
-                        </ul>
-                    </div>
-                    <div class="card info">
-                        <h4>Requirements</h4>
-                        <ul>
-                            <li><span class="badge required">Required</span> Ollama installed</li>
-                            <li><span class="badge required">Required</span> Docker for PostgreSQL</li>
-                            <li><span class="badge required">Required</span> Python 3.12 + uv</li>
-                            <li><span class="badge optional">Optional</span> 16GB+ RAM for larger models</li>
-                        </ul>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Section 2: Architecture -->
-            <section id="architecture">
-                <h2>2. Architecture</h2>
-                <p>Here's how the local dev environment is structured:</p>
-
-                <div class="diagram-container">
-                    <div class="mermaid">
-flowchart TB
-    subgraph Client["Your Code / curl / Python"]
-        REQ["HTTP Requests"]
-    end
-
-    subgraph Stack["Llama Stack Server :8321"]
-        API["API Layer"]
-        ROUTER["Provider Router"]
-        INFER["Inference Provider"]
-        VECTOR["Vector IO Provider"]
-        SAFETY["Safety Provider"]
-    end
-
-    subgraph Services["Backend Services"]
-        OLLAMA["Ollama :11434"]
-        PG["PostgreSQL :5432"]
-    end
-
-    subgraph Models["Ollama Models"]
-        LLAMA["llama3.2:3b"]
-        GUARD["llama-guard3:1b"]
-    end
-
-    REQ --> API
-    API --> ROUTER
-    ROUTER --> INFER
-    ROUTER --> VECTOR
-    ROUTER --> SAFETY
-    INFER --> OLLAMA
-    VECTOR --> PG
-    SAFETY --> OLLAMA
-    OLLAMA --> LLAMA
-    OLLAMA --> GUARD
-                    </div>
-                </div>
-
-                <h3>Request Flow</h3>
-                <div class="diagram-container">
-                    <div class="mermaid">
-sequenceDiagram
-    participant C as Client
-    participant S as Llama Stack
-    participant O as Ollama
-    participant P as PostgreSQL
-
-    C->>S: POST /v1/chat/completions
-    S->>S: Route to inference provider
-    S->>O: Forward to Ollama
-    O->>O: Run llama3.2:3b
-    O-->>S: Stream tokens
-    S-->>C: SSE stream response
-
-    Note over C,P: Vector Store Example
-    C->>S: POST /v1/vector_stores
-    S->>P: Create table
-    P-->>S: OK
-    S-->>C: Vector store created
-                    </div>
-                </div>
-            </section>
-
-            <!-- Section 3: File Structure -->
-            <section id="file-structure">
-                <h2>3. File Structure</h2>
-                <p>Your worktree is organized like this:</p>
-
-                <div class="file-tree">
-<span class="folder">.worktrees/learn/local-dev/</span>
-├── <span class="folder">dev/</span>                      <span class="comment"># Your local dev scripts</span>
-│   ├── <span class="file">llama-dev</span>             <span class="comment"># Main control script</span>
-│   ├── <span class="file">setup-once.sh</span>         <span class="comment"># First-time setup</span>
-│   ├── <span class="file">test-quick.sh</span>         <span class="comment"># Quick health checks</span>
-│   ├── <span class="file">test-inference.sh</span>     <span class="comment"># Inference API tests</span>
-│   ├── <span class="file">generate-report.sh</span>    <span class="comment"># HTML report generator</span>
-│   ├── <span class="file">docker-compose.yml</span>    <span class="comment"># PostgreSQL container</span>
-│   └── <span class="file">.env</span>                  <span class="comment"># Environment config</span>
-├── <span class="folder">logs/</span>                     <span class="comment"># Service logs</span>
-│   ├── <span class="file">ollama.log</span>
-│   ├── <span class="file">llama-stack.log</span>
-│   └── <span class="file">llama-stack.pid</span>
-├── <span class="folder">reports/</span>                  <span class="comment"># Generated HTML reports</span>
-├── <span class="folder">src/</span>                      <span class="comment"># Llama Stack source code</span>
-├── <span class="folder">tests/</span>                    <span class="comment"># Test suites</span>
-└── <span class="file">pyproject.toml</span>           <span class="comment"># Python project config</span>
-                </div>
-            </section>
-
-            <!-- Section 4: Services -->
-            <section id="services">
-                <h2>4. Services</h2>
-
-                <div class="grid">
-                    <div class="card">
-                        <h4>Ollama <span class="badge running">:11434</span></h4>
-                        <p>Local LLM inference engine. Runs models on CPU (or GPU if available).</p>
-                        <table>
-                            <tr><th>Model</th><th>Purpose</th><th>Size</th></tr>
-                            <tr><td>llama3.2:3b-instruct-fp16</td><td>Chat/Completion</td><td>~6GB</td></tr>
-                            <tr><td>llama-guard3:1b</td><td>Safety filtering</td><td>~2GB</td></tr>
-                        </table>
-                    </div>
-                    <div class="card">
-                        <h4>PostgreSQL <span class="badge running">:5432</span></h4>
-                        <p>Database for vector stores and persistence.</p>
-                        <table>
-                            <tr><th>Setting</th><th>Value</th></tr>
-                            <tr><td>Container</td><td>llama-stack-postgres</td></tr>
-                            <tr><td>Database</td><td>llamastack</td></tr>
-                            <tr><td>User</td><td>llamastack</td></tr>
-                            <tr><td>Password</td><td>llamastack</td></tr>
-                        </table>
-                    </div>
-                    <div class="card">
-                        <h4>Llama Stack <span class="badge running">:8321</span></h4>
-                        <p>The main API server that orchestrates everything.</p>
-                        <table>
-                            <tr><th>Endpoint</th><th>Description</th></tr>
-                            <tr><td>/v1/health</td><td>Health check</td></tr>
-                            <tr><td>/v1/models</td><td>List models</td></tr>
-                            <tr><td>/v1/chat/completions</td><td>OpenAI-compatible chat</td></tr>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Section 5: Scripts Reference -->
-            <section id="scripts">
-                <h2>5. Scripts Reference</h2>
-
-                <h3 id="cmd-start">Start All Services</h3>
-                <pre><code class="language-bash">./dev/llama-dev start</code></pre>
-                <p>Starts Ollama, PostgreSQL, Llama Stack server, and Proxy in order.</p>
-
-                <h3 id="cmd-stop">Stop All Services</h3>
-                <pre><code class="language-bash">./dev/llama-dev stop</code></pre>
-                <p>Gracefully stops all services (Proxy, Llama Stack, PostgreSQL, Ollama).</p>
-
-                <h3 id="cmd-status">Check Status</h3>
-                <pre><code class="language-bash">./dev/llama-dev status</code></pre>
-                <p>Shows status of all 4 services: Ollama, PostgreSQL, Llama Stack, Proxy.</p>
-
-                <h3 id="cmd-test">Run Tests</h3>
-                <pre><code class="language-bash"># Quick health check
-./dev/llama-dev test quick
-
-# Test inference APIs
-./dev/llama-dev test inference
-
-# Run unit tests
-./dev/llama-dev test unit
-
-# Run integration tests
-./dev/llama-dev test integration</code></pre>
-
-                <h3 id="cmd-logs">View Logs</h3>
-                <pre><code class="language-bash"># Tail Llama Stack logs
-./dev/llama-dev logs stack
-
-# Tail Ollama logs
-./dev/llama-dev logs ollama
-
-# Tail Proxy logs
-./dev/llama-dev logs proxy
-
-# Tail all logs
-./dev/llama-dev logs all</code></pre>
-
-                <h3>Generate Report</h3>
-                <pre><code class="language-bash">./dev/llama-dev report</code></pre>
-                <p>Creates an HTML status report and opens it in your browser.</p>
-
-                <h3>Individual Service Control</h3>
-                <pre><code class="language-bash"># Ollama
-./dev/llama-dev ollama-start
-./dev/llama-dev ollama-stop
-./dev/llama-dev ollama-pull    # Pull models
-
-# PostgreSQL
-./dev/llama-dev postgres-start
-./dev/llama-dev postgres-stop
-./dev/llama-dev postgres-reset  # Clear all data
-
-# Llama Stack
-./dev/llama-dev stack-start
-./dev/llama-dev stack-stop
-
-# Proxy (API Playground)
-./dev/llama-dev proxy-start
-./dev/llama-dev proxy-stop
-./dev/llama-dev playground     # Foreground/interactive mode</code></pre>
-            </section>
-
-            <!-- Section 6: Daily Workflow -->
-            <section id="workflow">
-                <h2>6. Daily Workflow</h2>
-
-                <div class="step">
-                    <div class="step-number">1</div>
-                    <div class="step-content">
-                        <h4>Start Your Environment</h4>
-                        <pre><code class="language-bash">cd ~/.worktrees/learn/local-dev
-./dev/llama-dev start</code></pre>
-                    </div>
-                </div>
-
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <div class="step-content">
-                        <h4>Verify Everything Works</h4>
-                        <pre><code class="language-bash">./dev/llama-dev test quick</code></pre>
-                    </div>
-                </div>
-
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <div class="step-content">
-                        <h4>Make API Calls</h4>
-                        <pre><code class="language-bash"># Simple chat completion
-curl http://localhost:8321/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "ollama/llama3.2:3b-instruct-fp16",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'</code></pre>
-                    </div>
-                </div>
-
-                <div class="step">
-                    <div class="step-number">4</div>
-                    <div class="step-content">
-                        <h4>Use Python Client</h4>
-                        <pre><code class="language-python">from llama_stack_client import LlamaStackClient
-
-client = LlamaStackClient(base_url="http://localhost:8321")
-
-response = client.inference.chat_completion(
-    model_id="ollama/llama3.2:3b-instruct-fp16",
-    messages=[{"role": "user", "content": "Hello!"}]
-)
-print(response.completion_message.content)</code></pre>
-                    </div>
-                </div>
-
-                <div class="step">
-                    <div class="step-number">5</div>
-                    <div class="step-content">
-                        <h4>When Done</h4>
-                        <pre><code class="language-bash">./dev/llama-dev stop</code></pre>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Section 7: API Playground -->
-            <section id="playground">
-                <h2>7. API Playground</h2>
+<section id="playground">
+                <h2>1. API Playground</h2>
                 <p>
                     Try API calls directly from this page. Edit the request body, click Send,
                     and see the response. Make sure your Llama Stack server is running on localhost:8321.
@@ -1270,6 +978,299 @@ lsof -i :8321   # Should show nothing</code></pre>
                     Click any file path to copy it. Then in Cursor: <kbd>Ctrl+P</kbd> > paste > <kbd>Enter</kbd> to open.
                 </p>
             </section>
+
+            <!-- Section 2: Overview -->
+            <section id="overview">
+                <h2>2. Overview</h2>
+                <p>
+                    This local development environment lets you run Llama Stack on your machine
+                    without requiring a GPU. It uses <strong>Ollama</strong> for inference (CPU-optimized)
+                    and <strong>PostgreSQL</strong> for persistence.
+                </p>
+
+                <div class="grid">
+                    <div class="card success">
+                        <h4>What You Get</h4>
+                        <ul>
+                            <li>Full Llama Stack server on localhost:8321</li>
+                            <li>OpenAI-compatible API endpoints</li>
+                            <li>Ollama for local LLM inference</li>
+                            <li>PostgreSQL for vector stores & persistence</li>
+                            <li>One-command start/stop/restart</li>
+                        </ul>
+                    </div>
+                    <div class="card info">
+                        <h4>Requirements</h4>
+                        <ul>
+                            <li><span class="badge required">Required</span> Ollama installed</li>
+                            <li><span class="badge required">Required</span> Docker for PostgreSQL</li>
+                            <li><span class="badge required">Required</span> Python 3.12 + uv</li>
+                            <li><span class="badge optional">Optional</span> 16GB+ RAM for larger models</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 3: Architecture -->
+            <section id="architecture">
+                <h2>3. Architecture</h2>
+                <p>Here's how the local dev environment is structured:</p>
+
+                <div class="diagram-container">
+                    <div class="mermaid">
+flowchart TB
+    subgraph Client["Your Code / curl / Python"]
+        REQ["HTTP Requests"]
+    end
+
+    subgraph Stack["Llama Stack Server :8321"]
+        API["API Layer"]
+        ROUTER["Provider Router"]
+        INFER["Inference Provider"]
+        VECTOR["Vector IO Provider"]
+        SAFETY["Safety Provider"]
+    end
+
+    subgraph Services["Backend Services"]
+        OLLAMA["Ollama :11434"]
+        PG["PostgreSQL :5432"]
+    end
+
+    subgraph Models["Ollama Models"]
+        LLAMA["llama3.2:3b"]
+        GUARD["llama-guard3:1b"]
+    end
+
+    REQ --> API
+    API --> ROUTER
+    ROUTER --> INFER
+    ROUTER --> VECTOR
+    ROUTER --> SAFETY
+    INFER --> OLLAMA
+    VECTOR --> PG
+    SAFETY --> OLLAMA
+    OLLAMA --> LLAMA
+    OLLAMA --> GUARD
+                    </div>
+                </div>
+
+                <h3>Request Flow</h3>
+                <div class="diagram-container">
+                    <div class="mermaid">
+sequenceDiagram
+    participant C as Client
+    participant S as Llama Stack
+    participant O as Ollama
+    participant P as PostgreSQL
+
+    C->>S: POST /v1/chat/completions
+    S->>S: Route to inference provider
+    S->>O: Forward to Ollama
+    O->>O: Run llama3.2:3b
+    O-->>S: Stream tokens
+    S-->>C: SSE stream response
+
+    Note over C,P: Vector Store Example
+    C->>S: POST /v1/vector_stores
+    S->>P: Create table
+    P-->>S: OK
+    S-->>C: Vector store created
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 4: File Structure -->
+            <section id="file-structure">
+                <h2>4. File Structure</h2>
+                <p>Your worktree is organized like this:</p>
+
+                <div class="file-tree">
+<span class="folder">.worktrees/learn/local-dev/</span>
+├── <span class="folder">dev/</span>                      <span class="comment"># Your local dev scripts</span>
+│   ├── <span class="file">llama-dev</span>             <span class="comment"># Main control script</span>
+│   ├── <span class="file">setup-once.sh</span>         <span class="comment"># First-time setup</span>
+│   ├── <span class="file">test-quick.sh</span>         <span class="comment"># Quick health checks</span>
+│   ├── <span class="file">test-inference.sh</span>     <span class="comment"># Inference API tests</span>
+│   ├── <span class="file">generate-report.sh</span>    <span class="comment"># HTML report generator</span>
+│   ├── <span class="file">docker-compose.yml</span>    <span class="comment"># PostgreSQL container</span>
+│   └── <span class="file">.env</span>                  <span class="comment"># Environment config</span>
+├── <span class="folder">logs/</span>                     <span class="comment"># Service logs</span>
+│   ├── <span class="file">ollama.log</span>
+│   ├── <span class="file">llama-stack.log</span>
+│   └── <span class="file">llama-stack.pid</span>
+├── <span class="folder">reports/</span>                  <span class="comment"># Generated HTML reports</span>
+├── <span class="folder">src/</span>                      <span class="comment"># Llama Stack source code</span>
+├── <span class="folder">tests/</span>                    <span class="comment"># Test suites</span>
+└── <span class="file">pyproject.toml</span>           <span class="comment"># Python project config</span>
+                </div>
+            </section>
+
+            <!-- Section 5: Services -->
+            <section id="services">
+                <h2>5. Services</h2>
+
+                <div class="grid">
+                    <div class="card">
+                        <h4>Ollama <span class="badge running">:11434</span></h4>
+                        <p>Local LLM inference engine. Runs models on CPU (or GPU if available).</p>
+                        <table>
+                            <tr><th>Model</th><th>Purpose</th><th>Size</th></tr>
+                            <tr><td>llama3.2:3b-instruct-fp16</td><td>Chat/Completion</td><td>~6GB</td></tr>
+                            <tr><td>llama-guard3:1b</td><td>Safety filtering</td><td>~2GB</td></tr>
+                        </table>
+                    </div>
+                    <div class="card">
+                        <h4>PostgreSQL <span class="badge running">:5432</span></h4>
+                        <p>Database for vector stores and persistence.</p>
+                        <table>
+                            <tr><th>Setting</th><th>Value</th></tr>
+                            <tr><td>Container</td><td>llama-stack-postgres</td></tr>
+                            <tr><td>Database</td><td>llamastack</td></tr>
+                            <tr><td>User</td><td>llamastack</td></tr>
+                            <tr><td>Password</td><td>llamastack</td></tr>
+                        </table>
+                    </div>
+                    <div class="card">
+                        <h4>Llama Stack <span class="badge running">:8321</span></h4>
+                        <p>The main API server that orchestrates everything.</p>
+                        <table>
+                            <tr><th>Endpoint</th><th>Description</th></tr>
+                            <tr><td>/v1/health</td><td>Health check</td></tr>
+                            <tr><td>/v1/models</td><td>List models</td></tr>
+                            <tr><td>/v1/chat/completions</td><td>OpenAI-compatible chat</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 5: Scripts Reference -->
+            <section id="scripts">
+                <h2>6. Scripts Reference</h2>
+
+                <h3 id="cmd-start">Start All Services</h3>
+                <pre><code class="language-bash">./dev/llama-dev start</code></pre>
+                <p>Starts Ollama, PostgreSQL, Llama Stack server, and Proxy in order.</p>
+
+                <h3 id="cmd-stop">Stop All Services</h3>
+                <pre><code class="language-bash">./dev/llama-dev stop</code></pre>
+                <p>Gracefully stops all services (Proxy, Llama Stack, PostgreSQL, Ollama).</p>
+
+                <h3 id="cmd-status">Check Status</h3>
+                <pre><code class="language-bash">./dev/llama-dev status</code></pre>
+                <p>Shows status of all 4 services: Ollama, PostgreSQL, Llama Stack, Proxy.</p>
+
+                <h3 id="cmd-test">Run Tests</h3>
+                <pre><code class="language-bash"># Quick health check
+./dev/llama-dev test quick
+
+# Test inference APIs
+./dev/llama-dev test inference
+
+# Run unit tests
+./dev/llama-dev test unit
+
+# Run integration tests
+./dev/llama-dev test integration</code></pre>
+
+                <h3 id="cmd-logs">View Logs</h3>
+                <pre><code class="language-bash"># Tail Llama Stack logs
+./dev/llama-dev logs stack
+
+# Tail Ollama logs
+./dev/llama-dev logs ollama
+
+# Tail Proxy logs
+./dev/llama-dev logs proxy
+
+# Tail all logs
+./dev/llama-dev logs all</code></pre>
+
+                <h3>Generate Report</h3>
+                <pre><code class="language-bash">./dev/llama-dev report</code></pre>
+                <p>Creates an HTML status report and opens it in your browser.</p>
+
+                <h3>Individual Service Control</h3>
+                <pre><code class="language-bash"># Ollama
+./dev/llama-dev ollama-start
+./dev/llama-dev ollama-stop
+./dev/llama-dev ollama-pull    # Pull models
+
+# PostgreSQL
+./dev/llama-dev postgres-start
+./dev/llama-dev postgres-stop
+./dev/llama-dev postgres-reset  # Clear all data
+
+# Llama Stack
+./dev/llama-dev stack-start
+./dev/llama-dev stack-stop
+
+# Proxy (API Playground)
+./dev/llama-dev proxy-start
+./dev/llama-dev proxy-stop
+./dev/llama-dev playground     # Foreground/interactive mode</code></pre>
+            </section>
+
+            <!-- Section 6: Daily Workflow -->
+            <section id="workflow">
+                <h2>7. Daily Workflow</h2>
+
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Start Your Environment</h4>
+                        <pre><code class="language-bash">cd ~/.worktrees/learn/local-dev
+./dev/llama-dev start</code></pre>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Verify Everything Works</h4>
+                        <pre><code class="language-bash">./dev/llama-dev test quick</code></pre>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Make API Calls</h4>
+                        <pre><code class="language-bash"># Simple chat completion
+curl http://localhost:8321/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "ollama/llama3.2:3b-instruct-fp16",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'</code></pre>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h4>Use Python Client</h4>
+                        <pre><code class="language-python">from llama_stack_client import LlamaStackClient
+
+client = LlamaStackClient(base_url="http://localhost:8321")
+
+response = client.inference.chat_completion(
+    model_id="ollama/llama3.2:3b-instruct-fp16",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.completion_message.content)</code></pre>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h4>When Done</h4>
+                        <pre><code class="language-bash">./dev/llama-dev stop</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 7: API Playground -->
 
             <!-- Section 8: Testing -->
             <section id="testing">
