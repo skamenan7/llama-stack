@@ -756,26 +756,30 @@
                     </div>
                 </div>
 
-                <div id="captured-ids-box" style="margin: 1.5rem 0; padding: 0.75rem 1rem; background: var(--bg-code); border-radius: 8px; border: 1px solid var(--border); display: grid; grid-template-columns: 70px 1fr; gap: 0.5rem 0.75rem; align-items: center;">
+                <div id="captured-ids-box" style="margin: 1.5rem 0; padding: 0.75rem 1rem; background: var(--bg-code); border-radius: 8px; border: 1px solid var(--border); display: grid; grid-template-columns: 70px 1fr auto; gap: 0.5rem 0.75rem; align-items: center;">
                     <span style="color: var(--accent); font-weight: bold; font-size: 0.9rem;">Model:</span>
                     <select id="model-dropdown" onchange="insertFromDropdown('model')" style="padding: 0.4rem 0.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-yellow); font-size: 0.9rem; cursor: pointer;">
-                        <option value="">-- List Models to populate --</option>
+                        <option value="">-- click Load to populate --</option>
                     </select>
+                    <button onclick="fetchList('model')" class="send-btn" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">Load</button>
 
                     <span style="color: var(--accent); font-weight: bold; font-size: 0.9rem;">Store:</span>
                     <select id="store-dropdown" onchange="insertFromDropdown('store')" style="padding: 0.4rem 0.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-yellow); font-size: 0.9rem; cursor: pointer;">
-                        <option value="">-- List Stores to populate --</option>
+                        <option value="">-- click Load to populate --</option>
                     </select>
+                    <button onclick="fetchList('store')" class="send-btn" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">Load</button>
 
                     <span style="color: var(--accent); font-weight: bold; font-size: 0.9rem;">File:</span>
                     <select id="file-dropdown" onchange="insertFromDropdown('file')" style="padding: 0.4rem 0.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-yellow); font-size: 0.9rem; cursor: pointer;">
-                        <option value="">-- List Files to populate --</option>
+                        <option value="">-- click Load to populate --</option>
                     </select>
+                    <button onclick="fetchList('file')" class="send-btn" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">Load</button>
 
                     <span style="color: var(--accent); font-weight: bold; font-size: 0.9rem;">Response:</span>
                     <select id="response-dropdown" onchange="insertFromDropdown('response')" style="padding: 0.4rem 0.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-yellow); font-size: 0.9rem; cursor: pointer;">
-                        <option value="">-- List Responses to populate --</option>
+                        <option value="">-- click Load to populate --</option>
                     </select>
+                    <button onclick="fetchList('response')" class="send-btn" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">Load</button>
                 </div>
 
                 <div id="breakpoint-info" class="card" style="display: none; margin: 1rem 0; padding: 0.75rem 1rem; background: var(--bg-card); border-left: 3px solid var(--primary);">
@@ -1799,6 +1803,41 @@ ollama list
             if (url.includes('/v1/responses') && !url.includes('{') && data?.data) {
                 const ids = data.data.map(r => r.id).filter(Boolean);
                 if (ids.length) populateDropdown('response', ids);
+            }
+        }
+
+        async function fetchList(type) {
+            const endpoints = {
+                model: '/api/v1/models',
+                store: '/api/v1/vector_stores',
+                file: '/api/v1/files',
+                response: '/api/v1/responses'
+            };
+            const url = endpoints[type];
+            if (!url) return;
+
+            const dropdown = document.getElementById(`${type}-dropdown`);
+            dropdown.innerHTML = '<option value="">Loading...</option>';
+            dropdown.style.borderColor = 'var(--warning)';
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data?.data) {
+                    const ids = data.data.map(item => item.id).filter(Boolean);
+                    if (ids.length) {
+                        populateDropdown(type, ids);
+                    } else {
+                        dropdown.innerHTML = `<option value="">-- No ${type}s found --</option>`;
+                        dropdown.style.borderColor = 'var(--border)';
+                    }
+                } else {
+                    dropdown.innerHTML = `<option value="">-- Error loading --</option>`;
+                    dropdown.style.borderColor = 'var(--error)';
+                }
+            } catch (e) {
+                dropdown.innerHTML = `<option value="">-- Failed: ${e.message} --</option>`;
+                dropdown.style.borderColor = 'var(--error)';
             }
         }
 
