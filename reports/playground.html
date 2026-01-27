@@ -18,6 +18,7 @@
             --text-yellow: #ffd54f;
             --text-orange: #ffab40;
             --text-purple: #ce93d8;
+            --sidebar-width: 180px;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -28,65 +29,74 @@
             color: var(--text-yellow);
             height: 100vh;
             display: flex;
+            overflow: hidden;
         }
 
         /* Sidebar */
         .sidebar {
-            width: 220px;
+            width: var(--sidebar-width);
+            min-width: 120px;
+            max-width: 400px;
             background: var(--bg-card);
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            position: relative;
         }
 
         .sidebar h1 {
             color: var(--primary);
-            font-size: 1.1rem;
-            padding: 1rem;
+            font-size: 1rem;
+            padding: 0.75rem;
             border-bottom: 1px solid var(--border);
+            white-space: nowrap;
         }
 
-        .api-group {
-            border-bottom: 1px solid var(--border);
+        /* Resize Handle */
+        .resize-handle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+            cursor: col-resize;
+            background: transparent;
         }
+        .resize-handle:hover, .resize-handle.dragging {
+            background: var(--primary);
+        }
+
+        .api-group { border-bottom: 1px solid var(--border); }
 
         .api-group-header {
-            padding: 0.75rem 1rem;
+            padding: 0.5rem 0.75rem;
             color: var(--accent);
             font-weight: bold;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
-            align-items: center;
         }
+        .api-group-header:hover { background: rgba(255, 111, 0, 0.1); }
 
-        .api-group-header:hover {
-            background: rgba(255, 111, 0, 0.1);
-        }
-
-        .api-group-items {
-            display: none;
-        }
-
-        .api-group.open .api-group-items {
-            display: block;
-        }
+        .api-group-items { display: none; }
+        .api-group.open .api-group-items { display: block; }
 
         .api-item {
-            padding: 0.5rem 1rem 0.5rem 1.5rem;
+            padding: 0.4rem 0.5rem 0.4rem 0.75rem;
             color: var(--text-yellow);
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             cursor: pointer;
             border-left: 3px solid transparent;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-
         .api-item:hover {
             background: rgba(255, 213, 79, 0.1);
             border-left-color: var(--text-yellow);
         }
-
         .api-item.active {
             background: rgba(229, 57, 53, 0.2);
             border-left-color: var(--primary);
@@ -94,10 +104,10 @@
         }
 
         .method-tag {
-            font-size: 0.65rem;
-            padding: 0.1rem 0.3rem;
-            border-radius: 3px;
-            margin-right: 0.4rem;
+            font-size: 0.6rem;
+            padding: 0.1rem 0.25rem;
+            border-radius: 2px;
+            margin-right: 0.3rem;
             font-weight: bold;
         }
         .method-tag.get { background: var(--success); color: #000; }
@@ -112,13 +122,13 @@
             overflow: hidden;
         }
 
-        /* Top Bar - ID Selectors */
+        /* Top Bar */
         .top-bar {
             background: var(--bg-card);
             border-bottom: 1px solid var(--border);
-            padding: 0.5rem 1rem;
+            padding: 0.4rem 0.75rem;
             display: flex;
-            gap: 1rem;
+            gap: 0.75rem;
             align-items: center;
             flex-wrap: wrap;
         }
@@ -126,73 +136,71 @@
         .id-selector {
             display: flex;
             align-items: center;
-            gap: 0.4rem;
+            gap: 0.3rem;
         }
-
         .id-selector label {
             color: var(--accent);
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: bold;
         }
-
         .id-selector button {
-            padding: 0.25rem 0.5rem;
+            padding: 0.2rem 0.4rem;
             background: var(--primary);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 3px;
             cursor: pointer;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
         }
-
         .id-selector select {
-            width: 180px;
-            padding: 0.3rem;
+            width: 140px;
+            padding: 0.25rem;
             background: var(--bg-code);
             border: 1px solid var(--border);
-            border-radius: 4px;
+            border-radius: 3px;
             color: var(--text-yellow);
-            font-size: 0.8rem;
+            font-size: 0.75rem;
         }
 
         /* Request Area */
         .request-area {
-            padding: 1rem;
+            padding: 0.75rem;
             border-bottom: 1px solid var(--border);
         }
 
         .url-bar {
             display: flex;
             gap: 0.5rem;
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
         }
 
         .method-select {
-            padding: 0.5rem;
+            padding: 0.4rem 0.5rem;
             background: var(--warning);
             color: #000;
             border: none;
             border-radius: 4px;
             font-weight: bold;
             cursor: pointer;
+            font-size: 0.85rem;
         }
         .method-select.get { background: var(--success); }
         .method-select.post { background: var(--warning); }
         .method-select.delete { background: var(--error); color: #fff; }
 
         .url-input {
-            flex: 1;
-            padding: 0.5rem;
+            width: 400px;
+            padding: 0.4rem 0.5rem;
             background: var(--bg-code);
             border: 1px solid var(--border);
             border-radius: 4px;
             color: var(--text-orange);
             font-family: monospace;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
 
         .send-btn {
-            padding: 0.5rem 1.5rem;
+            padding: 0.4rem 1rem;
             background: var(--primary);
             color: white;
             border: none;
@@ -204,14 +212,14 @@
 
         .request-body {
             width: 100%;
-            min-height: 150px;
-            padding: 0.75rem;
+            min-height: 120px;
+            padding: 0.5rem;
             background: var(--bg-code);
             border: 1px solid var(--border);
             border-radius: 4px;
             color: var(--text-yellow);
             font-family: monospace;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             resize: vertical;
         }
 
@@ -221,40 +229,77 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            padding: 1rem;
+            padding: 0.75rem;
         }
 
         .response-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .response-tabs {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .response-tab {
+            padding: 0.3rem 0.6rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-yellow);
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .response-tab.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
         }
 
         .response-meta {
             display: flex;
             gap: 1rem;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
         }
-
         .response-meta .status { font-weight: bold; }
         .response-meta .status.ok { color: var(--success); }
         .response-meta .status.error { color: var(--error); }
 
         .response-output {
             flex: 1;
-            padding: 0.75rem;
+            padding: 0.5rem;
             background: var(--bg-code);
             border: 1px solid var(--border);
             border-radius: 4px;
-            color: var(--text-yellow);
-            font-family: monospace;
-            font-size: 0.85rem;
             overflow: auto;
-            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 0.8rem;
         }
 
-        /* File Upload Modal */
+        /* JSON Tree */
+        .json-tree { color: var(--text-yellow); }
+        .json-key { color: var(--text-purple); }
+        .json-string { color: var(--success); }
+        .json-number { color: var(--text-orange); }
+        .json-boolean { color: var(--warning); }
+        .json-null { color: var(--error); }
+
+        .json-toggle {
+            cursor: pointer;
+            user-select: none;
+            color: var(--accent);
+            margin-right: 0.3rem;
+        }
+        .json-toggle:hover { color: var(--primary); }
+
+        .json-collapsed { display: none; }
+        .json-bracket { color: var(--text-yellow); }
+        .json-item { margin-left: 1.2rem; }
+        .json-preview { color: #666; font-style: italic; }
+
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -265,22 +310,18 @@
             justify-content: center;
         }
         .modal.open { display: flex; }
-
         .modal-content {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 1.5rem;
-            width: 400px;
+            width: 380px;
         }
-
         .modal-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
             margin-bottom: 1rem;
         }
-
         .modal-header h3 { color: var(--success); }
         .modal-close {
             background: none;
@@ -292,62 +333,52 @@
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
         <h1>API Playground</h1>
+        <div class="resize-handle" id="resize-handle"></div>
 
         <div class="api-group open">
-            <div class="api-group-header" onclick="toggleGroup(this)">
-                Core <span>-</span>
-            </div>
+            <div class="api-group-header" onclick="toggleGroup(this)">Core <span>-</span></div>
             <div class="api-group-items">
                 <div class="api-item" onclick="loadEndpoint('health')"><span class="method-tag get">GET</span>Health</div>
-                <div class="api-item" onclick="loadEndpoint('models')"><span class="method-tag get">GET</span>List Models</div>
+                <div class="api-item" onclick="loadEndpoint('models')"><span class="method-tag get">GET</span>Models</div>
                 <div class="api-item" onclick="loadEndpoint('providers')"><span class="method-tag get">GET</span>Providers</div>
                 <div class="api-item" onclick="loadEndpoint('routes')"><span class="method-tag get">GET</span>Routes</div>
             </div>
         </div>
 
         <div class="api-group open">
-            <div class="api-group-header" onclick="toggleGroup(this)">
-                Inference <span>-</span>
-            </div>
+            <div class="api-group-header" onclick="toggleGroup(this)">Inference <span>-</span></div>
             <div class="api-group-items">
                 <div class="api-item" onclick="loadEndpoint('chat')"><span class="method-tag post">POST</span>Chat</div>
-                <div class="api-item" onclick="loadEndpoint('chat-stream')"><span class="method-tag post">POST</span>Chat (Stream)</div>
+                <div class="api-item" onclick="loadEndpoint('chat-stream')"><span class="method-tag post">POST</span>Stream</div>
             </div>
         </div>
 
         <div class="api-group open">
-            <div class="api-group-header" onclick="toggleGroup(this)">
-                VectorIO <span>-</span>
-            </div>
+            <div class="api-group-header" onclick="toggleGroup(this)">VectorIO <span>-</span></div>
             <div class="api-group-items">
-                <div class="api-item" onclick="loadEndpoint('vector-list')"><span class="method-tag get">GET</span>List Stores</div>
-                <div class="api-item" onclick="loadEndpoint('vector-create')"><span class="method-tag post">POST</span>Create Store</div>
-                <div class="api-item" onclick="loadEndpoint('vector-get')"><span class="method-tag get">GET</span>Get Store</div>
-                <div class="api-item" onclick="loadEndpoint('vector-delete')"><span class="method-tag delete">DEL</span>Delete Store</div>
+                <div class="api-item" onclick="loadEndpoint('vector-list')"><span class="method-tag get">GET</span>List</div>
+                <div class="api-item" onclick="loadEndpoint('vector-create')"><span class="method-tag post">POST</span>Create</div>
+                <div class="api-item" onclick="loadEndpoint('vector-get')"><span class="method-tag get">GET</span>Get</div>
+                <div class="api-item" onclick="loadEndpoint('vector-delete')"><span class="method-tag delete">DEL</span>Delete</div>
                 <div class="api-item" onclick="loadEndpoint('vector-search')"><span class="method-tag post">POST</span>Search</div>
-                <div class="api-item" onclick="loadEndpoint('vector-attach')"><span class="method-tag post">POST</span>Attach File</div>
+                <div class="api-item" onclick="loadEndpoint('vector-attach')"><span class="method-tag post">POST</span>Attach</div>
             </div>
         </div>
 
         <div class="api-group open">
-            <div class="api-group-header" onclick="toggleGroup(this)">
-                Files <span>-</span>
-            </div>
+            <div class="api-group-header" onclick="toggleGroup(this)">Files <span>-</span></div>
             <div class="api-group-items">
-                <div class="api-item" onclick="openUploadModal()"><span class="method-tag post">POST</span>Upload File</div>
-                <div class="api-item" onclick="loadEndpoint('files-list')"><span class="method-tag get">GET</span>List Files</div>
-                <div class="api-item" onclick="loadEndpoint('files-get')"><span class="method-tag get">GET</span>Get File</div>
-                <div class="api-item" onclick="loadEndpoint('files-delete')"><span class="method-tag delete">DEL</span>Delete File</div>
+                <div class="api-item" onclick="openUploadModal()"><span class="method-tag post">POST</span>Upload</div>
+                <div class="api-item" onclick="loadEndpoint('files-list')"><span class="method-tag get">GET</span>List</div>
+                <div class="api-item" onclick="loadEndpoint('files-get')"><span class="method-tag get">GET</span>Get</div>
+                <div class="api-item" onclick="loadEndpoint('files-delete')"><span class="method-tag delete">DEL</span>Delete</div>
             </div>
         </div>
 
         <div class="api-group">
-            <div class="api-group-header" onclick="toggleGroup(this)">
-                Responses <span>+</span>
-            </div>
+            <div class="api-group-header" onclick="toggleGroup(this)">Responses <span>+</span></div>
             <div class="api-group-items">
                 <div class="api-item" onclick="loadEndpoint('response-create')"><span class="method-tag post">POST</span>Create</div>
                 <div class="api-item" onclick="loadEndpoint('response-list')"><span class="method-tag get">GET</span>List</div>
@@ -357,58 +388,44 @@
         </div>
 
         <div class="api-group">
-            <div class="api-group-header" onclick="toggleGroup(this)">
-                Tools <span>+</span>
-            </div>
+            <div class="api-group-header" onclick="toggleGroup(this)">Tools <span>+</span></div>
             <div class="api-group-items">
-                <div class="api-item" onclick="loadEndpoint('tools-list')"><span class="method-tag get">GET</span>List Tools</div>
-                <div class="api-item" onclick="loadEndpoint('toolgroups-list')"><span class="method-tag get">GET</span>Tool Groups</div>
+                <div class="api-item" onclick="loadEndpoint('tools-list')"><span class="method-tag get">GET</span>List</div>
+                <div class="api-item" onclick="loadEndpoint('toolgroups-list')"><span class="method-tag get">GET</span>Groups</div>
                 <div class="api-item" onclick="loadEndpoint('tool-invoke')"><span class="method-tag post">POST</span>Invoke</div>
             </div>
         </div>
     </aside>
 
-    <!-- Main Content -->
     <main class="main">
-        <!-- Top Bar - ID Selectors -->
         <div class="top-bar">
             <div class="id-selector">
                 <button onclick="fetchList('model')">Load</button>
                 <label>Model:</label>
-                <select id="model-dropdown" onchange="insertFromDropdown('model')">
-                    <option value="">--</option>
-                </select>
+                <select id="model-dropdown" onchange="insertFromDropdown('model')"><option value="">--</option></select>
             </div>
             <div class="id-selector">
                 <button onclick="fetchList('store')">Load</button>
                 <label>Store:</label>
-                <select id="store-dropdown" onchange="insertFromDropdown('store')">
-                    <option value="">--</option>
-                </select>
+                <select id="store-dropdown" onchange="insertFromDropdown('store')"><option value="">--</option></select>
             </div>
             <div class="id-selector">
                 <button onclick="fetchList('file')">Load</button>
                 <label>File:</label>
-                <select id="file-dropdown" onchange="insertFromDropdown('file')">
-                    <option value="">--</option>
-                </select>
+                <select id="file-dropdown" onchange="insertFromDropdown('file')"><option value="">--</option></select>
             </div>
             <div class="id-selector">
                 <button onclick="fetchList('response')">Load</button>
-                <label>Response:</label>
-                <select id="response-dropdown" onchange="insertFromDropdown('response')">
-                    <option value="">--</option>
-                </select>
+                <label>Resp:</label>
+                <select id="response-dropdown" onchange="insertFromDropdown('response')"><option value="">--</option></select>
             </div>
         </div>
 
-        <!-- Request Area -->
         <div class="request-area">
             <div class="url-bar">
                 <select id="method-select" class="method-select post" onchange="updateMethodStyle()">
                     <option value="GET">GET</option>
                     <option value="POST" selected>POST</option>
-                    <option value="PUT">PUT</option>
                     <option value="DELETE">DELETE</option>
                 </select>
                 <input type="text" id="url-input" class="url-input" value="/api/v1/chat/completions">
@@ -420,40 +437,41 @@
 }</textarea>
         </div>
 
-        <!-- Response Area -->
         <div class="response-area">
             <div class="response-header">
-                <span style="color: var(--accent); font-weight: bold;">Response</span>
+                <div class="response-tabs">
+                    <button class="response-tab active" onclick="setViewMode('tree')">Tree</button>
+                    <button class="response-tab" onclick="setViewMode('raw')">Raw</button>
+                </div>
                 <div class="response-meta" id="response-meta" style="display: none;">
                     <span>Status: <span id="resp-status" class="status">-</span></span>
                     <span>Time: <span id="resp-time">-</span></span>
                     <span>Size: <span id="resp-size">-</span></span>
                 </div>
             </div>
-            <pre id="response-output" class="response-output">Click an API endpoint from the sidebar, then click Send.</pre>
+            <div id="response-output" class="response-output">Click an endpoint, then Send.</div>
         </div>
     </main>
 
-    <!-- Upload Modal -->
     <div id="upload-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Upload File</h3>
                 <button class="modal-close" onclick="closeUploadModal()">&times;</button>
             </div>
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <label style="width: 60px;">Purpose:</label>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <label style="width: 55px;">Purpose:</label>
                     <select id="file-purpose" style="flex: 1; padding: 0.4rem; background: var(--bg-code); border: 1px solid var(--border); border-radius: 4px; color: var(--text-yellow);">
                         <option value="assistants">assistants</option>
                         <option value="batch">batch</option>
                     </select>
                 </div>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <label style="width: 60px;">File:</label>
-                    <input type="file" id="file-input" style="flex: 1; color: var(--text-yellow);">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <label style="width: 55px;">File:</label>
+                    <input type="file" id="file-input" style="flex: 1; color: var(--text-yellow); font-size: 0.85rem;">
                 </div>
-                <div id="upload-status" style="display: none;"></div>
+                <div id="upload-status" style="display: none; font-size: 0.85rem;"></div>
                 <button onclick="uploadFile()" class="send-btn" style="align-self: flex-end;">Upload</button>
             </div>
         </div>
@@ -461,59 +479,60 @@
 
     <script>
         const BASE_URL = '/api';
+        let viewMode = 'tree';
+        let lastJsonResponse = null;
 
         const endpoints = {
             'health': { method: 'GET', url: `${BASE_URL}/v1/health`, body: '' },
             'models': { method: 'GET', url: `${BASE_URL}/v1/models`, body: '' },
             'providers': { method: 'GET', url: `${BASE_URL}/v1/providers`, body: '' },
             'routes': { method: 'GET', url: `${BASE_URL}/v1/inspect/routes`, body: '' },
-
-            'chat': { method: 'POST', url: `${BASE_URL}/v1/chat/completions`, body: JSON.stringify({
-                model: 'openai/gpt-4o-mini',
-                messages: [{ role: 'user', content: 'Say hello in 10 words or less' }],
-                stream: false
-            }, null, 2) },
-            'chat-stream': { method: 'POST', url: `${BASE_URL}/v1/chat/completions`, body: JSON.stringify({
-                model: 'openai/gpt-4o-mini',
-                messages: [{ role: 'user', content: 'Count to 5' }],
-                stream: true
-            }, null, 2) },
-
+            'chat': { method: 'POST', url: `${BASE_URL}/v1/chat/completions`, body: JSON.stringify({ model: 'openai/gpt-4o-mini', messages: [{ role: 'user', content: 'Hello!' }], stream: false }, null, 2) },
+            'chat-stream': { method: 'POST', url: `${BASE_URL}/v1/chat/completions`, body: JSON.stringify({ model: 'openai/gpt-4o-mini', messages: [{ role: 'user', content: 'Count to 5' }], stream: true }, null, 2) },
             'vector-list': { method: 'GET', url: `${BASE_URL}/v1/vector_stores`, body: '' },
-            'vector-create': { method: 'POST', url: `${BASE_URL}/v1/vector_stores`, body: JSON.stringify({
-                name: 'my-store',
-                chunking_strategy: { type: 'auto' },
-                metadata: {}
-            }, null, 2) },
+            'vector-create': { method: 'POST', url: `${BASE_URL}/v1/vector_stores`, body: JSON.stringify({ name: 'my-store', chunking_strategy: { type: 'auto' } }, null, 2) },
             'vector-get': { method: 'GET', url: `${BASE_URL}/v1/vector_stores/{vector_store_id}`, body: '' },
             'vector-delete': { method: 'DELETE', url: `${BASE_URL}/v1/vector_stores/{vector_store_id}`, body: '' },
-            'vector-search': { method: 'POST', url: `${BASE_URL}/v1/vector_stores/{vector_store_id}/search`, body: JSON.stringify({
-                query: 'your search query',
-                max_num_results: 10
-            }, null, 2) },
-            'vector-attach': { method: 'POST', url: `${BASE_URL}/v1/vector_stores/{vector_store_id}/files`, body: JSON.stringify({
-                file_id: '{file_id}'
-            }, null, 2) },
-
+            'vector-search': { method: 'POST', url: `${BASE_URL}/v1/vector_stores/{vector_store_id}/search`, body: JSON.stringify({ query: 'search query', max_num_results: 10 }, null, 2) },
+            'vector-attach': { method: 'POST', url: `${BASE_URL}/v1/vector_stores/{vector_store_id}/files`, body: JSON.stringify({ file_id: '{file_id}' }, null, 2) },
             'files-list': { method: 'GET', url: `${BASE_URL}/v1/files`, body: '' },
             'files-get': { method: 'GET', url: `${BASE_URL}/v1/files/{file_id}`, body: '' },
             'files-delete': { method: 'DELETE', url: `${BASE_URL}/v1/files/{file_id}`, body: '' },
-
-            'response-create': { method: 'POST', url: `${BASE_URL}/v1/responses`, body: JSON.stringify({
-                model: 'openai/gpt-4o-mini',
-                input: 'What is 2+2?'
-            }, null, 2) },
+            'response-create': { method: 'POST', url: `${BASE_URL}/v1/responses`, body: JSON.stringify({ model: 'openai/gpt-4o-mini', input: 'What is 2+2?' }, null, 2) },
             'response-list': { method: 'GET', url: `${BASE_URL}/v1/responses`, body: '' },
             'response-get': { method: 'GET', url: `${BASE_URL}/v1/responses/{response_id}`, body: '' },
             'response-delete': { method: 'DELETE', url: `${BASE_URL}/v1/responses/{response_id}`, body: '' },
-
             'tools-list': { method: 'GET', url: `${BASE_URL}/v1/tools`, body: '' },
             'toolgroups-list': { method: 'GET', url: `${BASE_URL}/v1/toolgroups`, body: '' },
-            'tool-invoke': { method: 'POST', url: `${BASE_URL}/v1/tool-runtime/invoke`, body: JSON.stringify({
-                tool_name: 'web_search',
-                kwargs: { query: 'llama stack' }
-            }, null, 2) }
+            'tool-invoke': { method: 'POST', url: `${BASE_URL}/v1/tool-runtime/invoke`, body: JSON.stringify({ tool_name: 'web_search', kwargs: { query: 'llama stack' } }, null, 2) }
         };
+
+        // Sidebar resize
+        const sidebar = document.getElementById('sidebar');
+        const handle = document.getElementById('resize-handle');
+        let isResizing = false;
+
+        handle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            handle.classList.add('dragging');
+            document.addEventListener('mousemove', resize);
+            document.addEventListener('mouseup', stopResize);
+        });
+
+        function resize(e) {
+            if (!isResizing) return;
+            const width = e.clientX;
+            if (width >= 120 && width <= 400) {
+                sidebar.style.width = width + 'px';
+            }
+        }
+
+        function stopResize() {
+            isResizing = false;
+            handle.classList.remove('dragging');
+            document.removeEventListener('mousemove', resize);
+            document.removeEventListener('mouseup', stopResize);
+        }
 
         function toggleGroup(header) {
             const group = header.parentElement;
@@ -524,13 +543,10 @@
         function loadEndpoint(name) {
             const ep = endpoints[name];
             if (!ep) return;
-
             document.getElementById('method-select').value = ep.method;
             document.getElementById('url-input').value = ep.url;
             document.getElementById('request-body').value = ep.body;
             updateMethodStyle();
-
-            // Highlight active item
             document.querySelectorAll('.api-item').forEach(el => el.classList.remove('active'));
             event.target.closest('.api-item')?.classList.add('active');
         }
@@ -538,6 +554,77 @@
         function updateMethodStyle() {
             const select = document.getElementById('method-select');
             select.className = 'method-select ' + select.value.toLowerCase();
+        }
+
+        function setViewMode(mode) {
+            viewMode = mode;
+            document.querySelectorAll('.response-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            if (lastJsonResponse) renderResponse(lastJsonResponse);
+        }
+
+        // JSON Tree Renderer
+        function renderJsonTree(data, collapsed = false) {
+            if (data === null) return '<span class="json-null">null</span>';
+            if (typeof data === 'boolean') return `<span class="json-boolean">${data}</span>`;
+            if (typeof data === 'number') return `<span class="json-number">${data}</span>`;
+            if (typeof data === 'string') return `<span class="json-string">"${escapeHtml(data)}"</span>`;
+
+            if (Array.isArray(data)) {
+                if (data.length === 0) return '<span class="json-bracket">[]</span>';
+                const id = 'j' + Math.random().toString(36).substr(2, 9);
+                const preview = data.length + ' items';
+                let html = `<span class="json-toggle" onclick="toggleJson('${id}')">▼</span><span class="json-bracket">[</span><span class="json-preview" id="${id}-preview" style="display:none"> ${preview} </span>`;
+                html += `<div class="json-item" id="${id}">`;
+                data.forEach((item, i) => {
+                    html += renderJsonTree(item) + (i < data.length - 1 ? ',' : '') + '<br>';
+                });
+                html += '</div><span class="json-bracket">]</span>';
+                return html;
+            }
+
+            if (typeof data === 'object') {
+                const keys = Object.keys(data);
+                if (keys.length === 0) return '<span class="json-bracket">{}</span>';
+                const id = 'j' + Math.random().toString(36).substr(2, 9);
+                const preview = keys.length + ' keys';
+                let html = `<span class="json-toggle" onclick="toggleJson('${id}')">▼</span><span class="json-bracket">{</span><span class="json-preview" id="${id}-preview" style="display:none"> ${preview} </span>`;
+                html += `<div class="json-item" id="${id}">`;
+                keys.forEach((key, i) => {
+                    html += `<span class="json-key">"${escapeHtml(key)}"</span>: ${renderJsonTree(data[key])}${i < keys.length - 1 ? ',' : ''}<br>`;
+                });
+                html += '</div><span class="json-bracket">}</span>';
+                return html;
+            }
+            return String(data);
+        }
+
+        function toggleJson(id) {
+            const el = document.getElementById(id);
+            const preview = document.getElementById(id + '-preview');
+            const toggle = el.previousElementSibling.previousElementSibling;
+            if (el.classList.contains('json-collapsed')) {
+                el.classList.remove('json-collapsed');
+                preview.style.display = 'none';
+                toggle.textContent = '▼';
+            } else {
+                el.classList.add('json-collapsed');
+                preview.style.display = 'inline';
+                toggle.textContent = '▶';
+            }
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function renderResponse(json) {
+            const output = document.getElementById('response-output');
+            if (viewMode === 'tree') {
+                output.innerHTML = '<div class="json-tree">' + renderJsonTree(json) + '</div>';
+            } else {
+                output.textContent = JSON.stringify(json, null, 2);
+            }
         }
 
         async function sendRequest() {
@@ -548,6 +635,7 @@
             const meta = document.getElementById('response-meta');
 
             output.textContent = 'Loading...';
+            lastJsonResponse = null;
             const startTime = performance.now();
 
             try {
@@ -567,8 +655,8 @@
 
                 try {
                     const json = JSON.parse(text);
-                    output.textContent = JSON.stringify(json, null, 2);
-                    // Auto-populate dropdowns
+                    lastJsonResponse = json;
+                    renderResponse(json);
                     extractIdsFromResponse(url, json);
                 } catch {
                     output.textContent = text;
@@ -579,130 +667,70 @@
             }
         }
 
-        // ID Dropdown functions
+        // Dropdowns
         function populateDropdown(type, ids) {
             const dropdown = document.getElementById(`${type}-dropdown`);
-            dropdown.innerHTML = '<option value="">-- Select --</option>';
-            ids.forEach(id => {
+            dropdown.innerHTML = '<option value="">--</option>';
+            ids.slice(0, 50).forEach(id => {
                 const opt = document.createElement('option');
                 opt.value = id;
-                opt.textContent = id.length > 25 ? id.substring(0, 25) + '...' : id;
+                opt.textContent = id.length > 20 ? id.substring(0, 20) + '...' : id;
                 dropdown.appendChild(opt);
             });
             dropdown.style.borderColor = 'var(--success)';
-            setTimeout(() => dropdown.style.borderColor = 'var(--border)', 1000);
+            setTimeout(() => dropdown.style.borderColor = 'var(--border)', 800);
         }
 
         function insertFromDropdown(type) {
             const value = document.getElementById(`${type}-dropdown`).value;
             if (!value) return;
-
             const urlInput = document.getElementById('url-input');
             const bodyInput = document.getElementById('request-body');
-
-            switch(type) {
-                case 'model':
-                    bodyInput.value = bodyInput.value.replace(/"model":\s*"[^"]*"/, `"model": "${value}"`);
-                    break;
-                case 'store':
-                    urlInput.value = urlInput.value.replace(/{vector_store_id}/g, value);
-                    break;
-                case 'file':
-                    urlInput.value = urlInput.value.replace(/{file_id}/g, value);
-                    bodyInput.value = bodyInput.value.replace(/"{file_id}"/g, `"${value}"`);
-                    break;
-                case 'response':
-                    urlInput.value = urlInput.value.replace(/{response_id}/g, value);
-                    break;
-            }
+            if (type === 'model') bodyInput.value = bodyInput.value.replace(/"model":\s*"[^"]*"/, `"model": "${value}"`);
+            if (type === 'store') urlInput.value = urlInput.value.replace(/{vector_store_id}/g, value);
+            if (type === 'file') { urlInput.value = urlInput.value.replace(/{file_id}/g, value); bodyInput.value = bodyInput.value.replace(/"{file_id}"/g, `"${value}"`); }
+            if (type === 'response') urlInput.value = urlInput.value.replace(/{response_id}/g, value);
         }
 
         async function fetchList(type) {
-            const urls = {
-                model: '/api/v1/models',
-                store: '/api/v1/vector_stores',
-                file: '/api/v1/files',
-                response: '/api/v1/responses'
-            };
-
+            const urls = { model: '/api/v1/models', store: '/api/v1/vector_stores', file: '/api/v1/files', response: '/api/v1/responses' };
             const dropdown = document.getElementById(`${type}-dropdown`);
-            dropdown.innerHTML = '<option>Loading...</option>';
-
+            dropdown.innerHTML = '<option>...</option>';
             try {
                 const res = await fetch(urls[type]);
                 const data = await res.json();
-                if (data?.data) {
-                    const ids = data.data.map(item => item.id).filter(Boolean);
-                    populateDropdown(type, ids);
-                }
-            } catch (e) {
-                dropdown.innerHTML = '<option>Error</option>';
-            }
+                if (data?.data) populateDropdown(type, data.data.map(i => i.id).filter(Boolean));
+            } catch { dropdown.innerHTML = '<option>Error</option>'; }
         }
 
         function extractIdsFromResponse(url, data) {
-            if (url.includes('/models') && data?.data) {
-                populateDropdown('model', data.data.map(m => m.id).filter(Boolean));
-            }
-            if (url.includes('/vector_stores') && !url.includes('{') && data?.data) {
-                populateDropdown('store', data.data.map(s => s.id).filter(Boolean));
-            }
-            if (url.includes('/files') && !url.includes('{') && data?.data) {
-                populateDropdown('file', data.data.map(f => f.id).filter(Boolean));
-            }
-            if (url.includes('/responses') && !url.includes('{') && data?.data) {
-                populateDropdown('response', data.data.map(r => r.id).filter(Boolean));
-            }
+            if (url.includes('/models') && data?.data) populateDropdown('model', data.data.map(m => m.id).filter(Boolean));
+            if (url.includes('/vector_stores') && !url.includes('{') && data?.data) populateDropdown('store', data.data.map(s => s.id).filter(Boolean));
+            if (url.includes('/files') && !url.includes('{') && data?.data) populateDropdown('file', data.data.map(f => f.id).filter(Boolean));
+            if (url.includes('/responses') && !url.includes('{') && data?.data) populateDropdown('response', data.data.map(r => r.id).filter(Boolean));
         }
 
-        // Upload Modal
-        function openUploadModal() {
-            document.getElementById('upload-modal').classList.add('open');
-        }
-        function closeUploadModal() {
-            document.getElementById('upload-modal').classList.remove('open');
-        }
+        function openUploadModal() { document.getElementById('upload-modal').classList.add('open'); }
+        function closeUploadModal() { document.getElementById('upload-modal').classList.remove('open'); }
 
         async function uploadFile() {
             const fileInput = document.getElementById('file-input');
             const purpose = document.getElementById('file-purpose').value;
             const status = document.getElementById('upload-status');
-
-            if (!fileInput.files[0]) {
-                status.textContent = 'Select a file first';
-                status.style.display = 'block';
-                status.style.color = 'var(--error)';
-                return;
-            }
-
+            if (!fileInput.files[0]) { status.textContent = 'Select a file'; status.style.display = 'block'; status.style.color = 'var(--error)'; return; }
             const formData = new FormData();
             formData.append('purpose', purpose);
             formData.append('file', fileInput.files[0]);
-
-            status.textContent = 'Uploading...';
-            status.style.display = 'block';
-            status.style.color = 'var(--warning)';
-
+            status.textContent = 'Uploading...'; status.style.display = 'block'; status.style.color = 'var(--warning)';
             try {
                 const res = await fetch('/api/v1/files', { method: 'POST', body: formData });
                 const data = await res.json();
-                if (res.ok) {
-                    status.textContent = 'Uploaded: ' + data.id;
-                    status.style.color = 'var(--success)';
-                    fetchList('file');
-                } else {
-                    status.textContent = 'Error: ' + (data.error || res.statusText);
-                    status.style.color = 'var(--error)';
-                }
-            } catch (e) {
-                status.textContent = 'Error: ' + e.message;
-                status.style.color = 'var(--error)';
-            }
+                if (res.ok) { status.textContent = 'Done: ' + data.id; status.style.color = 'var(--success)'; fetchList('file'); }
+                else { status.textContent = 'Error: ' + (data.error || res.statusText); status.style.color = 'var(--error)'; }
+            } catch (e) { status.textContent = 'Error: ' + e.message; status.style.color = 'var(--error)'; }
         }
 
-        document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') closeUploadModal();
-        });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeUploadModal(); });
     </script>
 </body>
 </html>
