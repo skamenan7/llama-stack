@@ -756,35 +756,26 @@
                     </div>
                 </div>
 
-                <div id="captured-ids-box" style="margin: 1.5rem 0; padding: 0.75rem 1rem; background: var(--bg-code); border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.5rem;">
-                    <!-- Model ID -->
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="color: var(--accent); font-weight: bold; font-size: 0.85rem; min-width: 60px;">Model:</span>
-                        <code id="captured-model-id" style="color: var(--text-orange); cursor: pointer; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" onclick="copyToClipboard(this.textContent)" title="Click to copy">none</code>
-                        <button onclick="insertModelId()" class="send-btn" style="padding: 0.25rem 0.5rem; font-size: 0.7rem;">Insert</button>
-                        <button onclick="clearModelId()" style="padding: 0.25rem 0.4rem; background: var(--border); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.7rem;">X</button>
-                    </div>
-                    <!-- Store ID -->
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="color: var(--accent); font-weight: bold; font-size: 0.85rem; min-width: 60px;">Store:</span>
-                        <code id="captured-store-id" style="color: var(--text-orange); cursor: pointer; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" onclick="copyToClipboard(this.textContent)" title="Click to copy">none</code>
-                        <button onclick="insertStoreId()" class="send-btn" style="padding: 0.25rem 0.5rem; font-size: 0.7rem;">Insert</button>
-                        <button onclick="clearStoreId()" style="padding: 0.25rem 0.4rem; background: var(--border); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.7rem;">X</button>
-                    </div>
-                    <!-- File ID -->
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="color: var(--accent); font-weight: bold; font-size: 0.85rem; min-width: 60px;">File:</span>
-                        <code id="captured-file-id" style="color: var(--text-orange); cursor: pointer; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" onclick="copyToClipboard(this.textContent)" title="Click to copy">none</code>
-                        <button onclick="insertFileId()" class="send-btn" style="padding: 0.25rem 0.5rem; font-size: 0.7rem;">Insert</button>
-                        <button onclick="clearFileId()" style="padding: 0.25rem 0.4rem; background: var(--border); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.7rem;">X</button>
-                    </div>
-                    <!-- Response ID -->
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="color: var(--accent); font-weight: bold; font-size: 0.85rem; min-width: 60px;">Response:</span>
-                        <code id="captured-response-id" style="color: var(--text-orange); cursor: pointer; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" onclick="copyToClipboard(this.textContent)" title="Click to copy">none</code>
-                        <button onclick="insertResponseId()" class="send-btn" style="padding: 0.25rem 0.5rem; font-size: 0.7rem;">Insert</button>
-                        <button onclick="clearResponseId()" style="padding: 0.25rem 0.4rem; background: var(--border); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.7rem;">X</button>
-                    </div>
+                <div id="captured-ids-box" style="margin: 1.5rem 0; padding: 0.75rem 1rem; background: var(--bg-code); border-radius: 8px; border: 1px solid var(--border); display: grid; grid-template-columns: 70px 1fr; gap: 0.5rem 0.75rem; align-items: center;">
+                    <span style="color: var(--accent); font-weight: bold; font-size: 0.9rem;">Model:</span>
+                    <select id="model-dropdown" onchange="insertFromDropdown('model')" style="padding: 0.4rem 0.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-yellow); font-size: 0.9rem; cursor: pointer;">
+                        <option value="">-- List Models to populate --</option>
+                    </select>
+
+                    <span style="color: var(--accent); font-weight: bold; font-size: 0.9rem;">Store:</span>
+                    <select id="store-dropdown" onchange="insertFromDropdown('store')" style="padding: 0.4rem 0.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-yellow); font-size: 0.9rem; cursor: pointer;">
+                        <option value="">-- List Stores to populate --</option>
+                    </select>
+
+                    <span style="color: var(--accent); font-weight: bold; font-size: 0.9rem;">File:</span>
+                    <select id="file-dropdown" onchange="insertFromDropdown('file')" style="padding: 0.4rem 0.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-yellow); font-size: 0.9rem; cursor: pointer;">
+                        <option value="">-- List Files to populate --</option>
+                    </select>
+
+                    <span style="color: var(--accent); font-weight: bold; font-size: 0.9rem;">Response:</span>
+                    <select id="response-dropdown" onchange="insertFromDropdown('response')" style="padding: 0.4rem 0.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-yellow); font-size: 0.9rem; cursor: pointer;">
+                        <option value="">-- List Responses to populate --</option>
+                    </select>
                 </div>
 
                 <div id="breakpoint-info" class="card" style="display: none; margin: 1rem 0; padding: 0.75rem 1rem; background: var(--bg-card); border-left: 3px solid var(--primary);">
@@ -1739,135 +1730,76 @@ ollama list
             }
         };
 
-        // Captured IDs for quick insertion
-        let capturedModelId = null;
-        let capturedStoreId = null;
-        let capturedFileId = null;
-        let capturedResponseId = null;
-
-        function captureId(id) {
-            // Auto-detect ID type and capture appropriately
-            if (id.startsWith('vs_')) {
-                captureStoreId(id);
-            } else if (id.startsWith('file-') || id.startsWith('file_')) {
-                captureFileId(id);
-            } else if (id.startsWith('resp_')) {
-                captureResponseId(id);
-            } else if (id.includes('/') || id.includes(':')) {
-                // Model IDs typically have provider/model format or contain colons
-                captureModelId(id);
-            } else {
-                // Unknown type - try to guess from context or capture as store
-                captureStoreId(id);
+        // Dropdown-based ID selection
+        function populateDropdown(type, ids) {
+            const dropdown = document.getElementById(`${type}-dropdown`);
+            const currentValue = dropdown.value;
+            dropdown.innerHTML = `<option value="">-- Select ${type} --</option>`;
+            ids.forEach(id => {
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = id;
+                dropdown.appendChild(option);
+            });
+            // Restore selection if still valid
+            if (ids.includes(currentValue)) {
+                dropdown.value = currentValue;
             }
+            // Flash to indicate update
+            dropdown.style.borderColor = 'var(--success)';
+            setTimeout(() => dropdown.style.borderColor = 'var(--border)', 1000);
         }
 
-        function captureStoreId(id) {
-            capturedStoreId = id;
-            const el = document.getElementById('captured-store-id');
-            el.textContent = id;
-            el.style.color = 'var(--success)';
-        }
+        function insertFromDropdown(type) {
+            const dropdown = document.getElementById(`${type}-dropdown`);
+            const value = dropdown.value;
+            if (!value) return;
 
-        function captureFileId(id) {
-            capturedFileId = id;
-            const el = document.getElementById('captured-file-id');
-            el.textContent = id;
-            el.style.color = 'var(--success)';
-        }
-
-        function insertStoreId() {
-            if (!capturedStoreId || capturedStoreId === 'none') {
-                alert('No Store ID captured. Click a vs_xxx ID in the response first.');
-                return;
-            }
-            const urlInput = document.getElementById('url-input');
-            // Replace {vector_store_id} or any {placeholder}
-            urlInput.value = urlInput.value.replace(/{vector_store_id}|{[^}]*store[^}]*}/i, capturedStoreId);
-            updateCurlPreview();
-        }
-
-        function insertFileId() {
-            if (!capturedFileId || capturedFileId === 'none') {
-                alert('No File ID captured. Upload a file or click a file-xxx ID in the response.');
-                return;
-            }
             const urlInput = document.getElementById('url-input');
             const bodyInput = document.getElementById('request-body');
-            // Replace in URL if there's a file_id placeholder
-            if (urlInput.value.includes('{file_id}') || urlInput.value.includes('{file-id}')) {
-                urlInput.value = urlInput.value.replace(/{file[-_]id}/i, capturedFileId);
-            }
-            // Also replace in body if there's file_id field
-            if (bodyInput.value.includes('"file_id"')) {
-                bodyInput.value = bodyInput.value.replace(/"file_id":\s*"[^"]*"/, `"file_id": "${capturedFileId}"`);
-            }
-            updateCurlPreview();
-        }
 
-        function clearStoreId() {
-            capturedStoreId = null;
-            const el = document.getElementById('captured-store-id');
-            el.textContent = 'none';
-            el.style.color = 'var(--text-orange)';
-        }
-
-        function clearFileId() {
-            capturedFileId = null;
-            const el = document.getElementById('captured-file-id');
-            el.textContent = 'none';
-            el.style.color = 'var(--text-orange)';
-        }
-
-        function captureModelId(id) {
-            capturedModelId = id;
-            const el = document.getElementById('captured-model-id');
-            el.textContent = id;
-            el.style.color = 'var(--success)';
-        }
-
-        function insertModelId() {
-            if (!capturedModelId || capturedModelId === 'none') {
-                alert('No Model ID captured. Click a model ID (e.g., openai/gpt-4) in the response first.');
-                return;
-            }
-            const bodyInput = document.getElementById('request-body');
-            // Replace model field in body
-            if (bodyInput.value.includes('"model"')) {
-                bodyInput.value = bodyInput.value.replace(/"model":\s*"[^"]*"/, `"model": "${capturedModelId}"`);
+            switch(type) {
+                case 'model':
+                    if (bodyInput.value.includes('"model"')) {
+                        bodyInput.value = bodyInput.value.replace(/"model":\s*"[^"]*"/, `"model": "${value}"`);
+                    }
+                    break;
+                case 'store':
+                    urlInput.value = urlInput.value.replace(/{vector_store_id}|{[^}]*store[^}]*}/i, value);
+                    break;
+                case 'file':
+                    if (urlInput.value.includes('{file_id}') || urlInput.value.includes('{file-id}')) {
+                        urlInput.value = urlInput.value.replace(/{file[-_]id}/i, value);
+                    }
+                    if (bodyInput.value.includes('"file_id"')) {
+                        bodyInput.value = bodyInput.value.replace(/"file_id":\s*"[^"]*"/, `"file_id": "${value}"`);
+                    }
+                    break;
+                case 'response':
+                    urlInput.value = urlInput.value.replace(/{response_id}|{[^}]*response[^}]*}/i, value);
+                    break;
             }
             updateCurlPreview();
         }
 
-        function clearModelId() {
-            capturedModelId = null;
-            const el = document.getElementById('captured-model-id');
-            el.textContent = 'none';
-            el.style.color = 'var(--text-orange)';
-        }
-
-        function captureResponseId(id) {
-            capturedResponseId = id;
-            const el = document.getElementById('captured-response-id');
-            el.textContent = id;
-            el.style.color = 'var(--success)';
-        }
-
-        function insertResponseId() {
-            if (!capturedResponseId || capturedResponseId === 'none') {
-                alert('No Response ID captured. Click a resp_xxx ID in the response first.');
-                return;
+        function extractIdsFromResponse(url, data) {
+            // Detect endpoint and populate appropriate dropdown
+            if (url.includes('/v1/models') && !url.includes('{') && data?.data) {
+                const ids = data.data.map(m => m.id).filter(Boolean);
+                if (ids.length) populateDropdown('model', ids);
             }
-            const urlInput = document.getElementById('url-input');
-            urlInput.value = urlInput.value.replace(/{response_id}|{[^}]*response[^}]*}/i, capturedResponseId);
-            updateCurlPreview();
-        }
-
-        function clearResponseId() {
-            capturedResponseId = null;
-            const el = document.getElementById('captured-response-id');
-            el.textContent = 'none';
-            el.style.color = 'var(--text-orange)';
+            if (url.includes('/v1/vector_stores') && !url.includes('{') && data?.data) {
+                const ids = data.data.map(s => s.id).filter(Boolean);
+                if (ids.length) populateDropdown('store', ids);
+            }
+            if (url.includes('/v1/files') && !url.includes('{') && data?.data) {
+                const ids = data.data.map(f => f.id).filter(Boolean);
+                if (ids.length) populateDropdown('file', ids);
+            }
+            if (url.includes('/v1/responses') && !url.includes('{') && data?.data) {
+                const ids = data.data.map(r => r.id).filter(Boolean);
+                if (ids.length) populateDropdown('response', ids);
+            }
         }
 
         function openUploadModal() {
@@ -1951,12 +1883,12 @@ ollama list
         }
 
         function makeIdsClickable(text) {
-            // Match IDs like vs_xxx, file-xxx, batch_xxx, resp_xxx
+            // Highlight IDs in green for easy identification
             let result = text.replace(/"(vs_[a-zA-Z0-9-]+|file-[a-zA-Z0-9-]+|batch_[a-zA-Z0-9-]+|resp_[a-zA-Z0-9-]+)"/g,
-                '"<span class="clickable-id" onclick="captureId(\'$1\')" style="color: var(--success); cursor: pointer; text-decoration: underline;">$1</span>"');
-            // Match model IDs like openai/gpt-4, ollama/llama3.2:3b-instruct-fp16, meta-llama/Llama-3.2-3B-Instruct
+                '"<span style="color: var(--success);">$1</span>"');
+            // Highlight model IDs
             result = result.replace(/"id":\s*"([a-zA-Z0-9_-]+\/[a-zA-Z0-9._:-]+)"/g,
-                '"id": "<span class="clickable-id" onclick="captureId(\'$1\')" style="color: var(--success); cursor: pointer; text-decoration: underline;">$1</span>"');
+                '"id": "<span style="color: var(--success);">$1</span>"');
             return result;
         }
 
@@ -2155,6 +2087,10 @@ ollama list
                         // Make IDs clickable
                         responseOutput.innerHTML = makeIdsClickable(formatted.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
                         responseOutput.className = 'response-output ' + (response.ok ? 'success' : 'error');
+                        // Auto-populate dropdowns from list responses
+                        if (response.ok) {
+                            extractIdsFromResponse(url, json);
+                        }
                     } catch (e) {
                         responseOutput.textContent = text;
                         responseOutput.className = 'response-output ' + (response.ok ? 'success' : 'error');
