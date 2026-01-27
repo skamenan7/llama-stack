@@ -378,7 +378,8 @@ proxy_start() {
         sleep 1
     done
     log_ok "Proxy started (PID: $pid, port $PROXY_PORT)"
-    log_info "Open: http://localhost:$PROXY_PORT/local-dev-guide.html"
+    log_info "Playground: http://localhost:$PROXY_PORT/playground.html"
+    log_info "Full Guide: http://localhost:$PROXY_PORT/local-dev-guide.html"
 }
 
 proxy_stop() {
@@ -412,7 +413,8 @@ serve_playground() {
     log_info "Starting API Playground server on port $PROXY_PORT (foreground)..."
     log_info "Proxying /api/* -> http://localhost:8321"
     echo ""
-    log_ok "Open: http://localhost:$PROXY_PORT/local-dev-guide.html"
+    log_ok "Playground: http://localhost:$PROXY_PORT/playground.html"
+    log_info "Full Guide: http://localhost:$PROXY_PORT/local-dev-guide.html"
     echo ""
 
     # Run the proxy server in foreground
@@ -454,7 +456,8 @@ COMMANDS:
 
     test [type]        Run tests (quick|unit|integration|inference)
     report             Generate HTML status report
-    playground         Start API Playground server (foreground/interactive)
+    playground, play   Start API Playground server (foreground/interactive)
+    open               Open playground in browser
 
     help               Show this help
 
@@ -464,7 +467,8 @@ EXAMPLES:
     ./llama-dev logs stack         # Tail Llama Stack logs
     ./llama-dev test quick         # Run quick health checks
     ./llama-dev report             # Generate HTML report
-    ./llama-dev playground         # Start interactive API playground
+    ./llama-dev play               # Start interactive API playground
+    ./llama-dev open               # Open playground in browser
 
 EOF
 }
@@ -499,7 +503,8 @@ main() {
         logs)           logs_tail "$@" ;;
         test)           run_tests "$@" ;;
         report)         generate_report ;;
-        playground)     serve_playground ;;
+        playground|play) serve_playground ;;
+        open)           xdg-open "http://localhost:$PROXY_PORT/playground.html" 2>/dev/null || open "http://localhost:$PROXY_PORT/playground.html" 2>/dev/null || log_info "http://localhost:$PROXY_PORT/playground.html" ;;
 
         help|--help|-h) show_help ;;
         *)
