@@ -469,15 +469,17 @@
 
         <div class="response-area">
             <div class="response-header">
-                <div class="response-tabs">
-                    <button class="response-tab active" onclick="setViewMode('tree')">Tree</button>
-                    <button class="response-tab" onclick="setViewMode('raw')">Raw</button>
-                </div>
-                <div class="search-box">
-                    <input type="text" id="search-input" class="search-input" placeholder="Search JSON..." oninput="searchJson()" onkeydown="handleSearchKey(event)">
-                    <button class="search-nav" onclick="prevMatch()">▲</button>
-                    <button class="search-nav" onclick="nextMatch()">▼</button>
-                    <span id="search-count" class="search-count"></span>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="response-tabs">
+                        <button class="response-tab active" onclick="setViewMode('tree')">Tree</button>
+                        <button class="response-tab" onclick="setViewMode('raw')">Raw</button>
+                    </div>
+                    <div class="search-box">
+                        <input type="text" id="search-input" class="search-input" placeholder="Search..." oninput="searchJson()" onkeydown="handleSearchKey(event)">
+                        <button class="search-nav" onclick="prevMatch()">▲</button>
+                        <button class="search-nav" onclick="nextMatch()">▼</button>
+                        <span id="search-count" class="search-count"></span>
+                    </div>
                 </div>
                 <div class="response-meta" id="response-meta" style="display: none;">
                     <span>Status: <span id="resp-status" class="status">-</span></span>
