@@ -138,11 +138,19 @@ def available_providers() -> list[ProviderSpec]:
             api=Api.inference,
             adapter_type="bedrock",
             provider_type="remote::bedrock",
-            pip_packages=[],
+            pip_packages=["boto3", "botocore"],
             module="llama_stack.providers.remote.inference.bedrock",
             config_class="llama_stack.providers.remote.inference.bedrock.BedrockConfig",
             provider_data_validator="llama_stack.providers.remote.inference.bedrock.config.BedrockProviderDataValidator",
-            description="AWS Bedrock inference provider using OpenAI compatible endpoint.",
+            description=(
+                "AWS Bedrock inference provider using OpenAI compatible endpoint. "
+                "Supports two auth modes: (1) AWS SigV4 authentication via the standard AWS credential chain "
+                "(recommended for enterprise) - leave api_key unset and configure AWS credentials via "
+                "environment variables (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY), IAM roles, "
+                "or Web Identity Federation (AWS_ROLE_ARN + AWS_WEB_IDENTITY_TOKEN_FILE for IRSA/OIDC). "
+                "(2) Bearer token authentication - set api_key to a pre-signed URL. "
+                "Credentials are automatically refreshed by boto3 when using SigV4."
+            ),
         ),
         RemoteProviderSpec(
             api=Api.inference,

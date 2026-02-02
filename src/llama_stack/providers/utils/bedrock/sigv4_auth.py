@@ -1,0 +1,253 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the terms described in the LICENSE file in
+# the root directory of this source tree.
+
+"""
+SigV4 authentication for AWS Bedrock OpenAI-compatible endpoint.
+
+This module provides httpx.Auth implementation that signs requests using
+AWS Signature Version 4, enabling IAM/STS authentication with the Bedrock
+OpenAI-compatible API endpoint.
+
+Supported credential sources (via boto3 credential chain):
+- Static credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+- Web Identity Federation (AWS_ROLE_ARN, AWS_WEB_IDENTITY_TOKEN_FILE)
+- IAM roles (IMDS for EC2, ECS task roles, Lambda execution roles)
+- AWS profiles (~/.aws/credentials)
+
+Web Identity Federation enables keyless authentication in:
+- Kubernetes/OpenShift with IRSA (IAM Roles for Service Accounts)
+- GitHub Actions with OIDC (aws-actions/configure-aws-credentials)
+- Any OIDC-compatible identity provider
+
+Environment variables for Web Identity:
+    AWS_ROLE_ARN: ARN of the IAM role to assume
+    AWS_WEB_IDENTITY_TOKEN_FILE: Path to the OIDC token file
+        Common paths:
+        - EKS: /var/run/secrets/eks.amazonaws.com/serviceaccount/token
+        - Generic Kubernetes: /var/run/secrets/kubernetes.io/serviceaccount/token
+        - GitHub Actions: Set automatically by aws-actions/configure-aws-credentials
+    AWS_DEFAULT_REGION: AWS region for the Bedrock endpoint
+
+Credentials are automatically refreshed by boto3 when they expire.
+
+References:
+- https://docs.aws.amazon.com/bedrock/latest/userguide/inference-chat-completions.html
+- https://github.com/meta-llama/llama-stack/issues/4730
+- https://github.com/opendatahub-io/llama-stack-distribution/issues/112
+"""
+
+from __future__ import annotations
+
+import asyncio
+import threading
+from collections.abc import AsyncGenerator, Generator
+from typing import Any
+
+import httpx
+
+from llama_stack.log import get_logger
+
+logger = get_logger(name=__name__, category="providers")
+
+
+class BedrockSigV4Auth(httpx.Auth):
+    """
+    httpx.Auth implementation for AWS SigV4 signing.
+
+    This auth handler signs HTTP requests using AWS Signature Version 4,
+    which is required for IAM-based authentication with AWS services.
+
+    The implementation:
+    - Uses boto3's credential chain for automatic credential resolution
+    - Supports credential refresh for temporary credentials (STS, IRSA)
+    - Only signs headers that won't be modified by httpx during transmission
+    - Replaces any existing Authorization header with SigV4 signature
+    """
+
+    def __init__(
+        self,
+        region: str,
+        service: str = "bedrock",
+    ):
+        """
+        Initialize SigV4 auth handler.
+
+        Args:
+            region: AWS region (e.g., "us-east-1")
+            service: AWS service name for SigV4 signing. Use "bedrock" (the signing
+                     name from botocore metadata), NOT "bedrock-runtime" (the endpoint
+                     prefix). The signing name is used in the SigV4 credential scope.
+        """
+        self._region = region
+        self._service = service
+        self._lock = threading.Lock()
+        self._session = None
+
+    def _get_credentials(self) -> Any:
+        """Get current AWS credentials from boto3 session."""
+        import boto3
+
+        with self._lock:
+            if self._session is None:
+                self._session = boto3.Session(region_name=self._region)
+
+            credentials = self._session.get_credentials()  # type: ignore[attr-defined]
+            if credentials is None:
+                raise RuntimeError(
+                    "Failed to load AWS credentials. Ensure AWS credentials are "
+                    "configured via environment variables (AWS_ACCESS_KEY_ID, "
+                    "AWS_SECRET_ACCESS_KEY), IAM role, or AWS profile."
+                )
+            return credentials.get_frozen_credentials()
+
+    def _sign_request(self, request: httpx.Request) -> None:
+        """
+        Sign the request using SigV4 (modifies request in place).
+
+        This is the core signing logic, extracted to be reusable by both
+        sync and async auth flows.
+
+        Note: Any existing Authorization header (e.g., from OpenAI SDK's
+        "Bearer <NOTUSED>" placeholder) is explicitly removed and replaced
+        with the SigV4 signature.
+        """
+        from botocore.auth import SigV4Auth
+        from botocore.awsrequest import AWSRequest
+
+        credentials = self._get_credentials()
+
+        # Remove any existing Authorization header (e.g., Bearer placeholder from OpenAI SDK)
+        # SigV4 will add the proper Authorization header after signing
+        if "authorization" in request.headers:
+            del request.headers["authorization"]
+
+        # Prepare headers to sign - only include stable headers
+        # that won't be modified by httpx during transmission.
+        #
+        # Use netloc (host:port) to handle non-default ports correctly.
+        # If an explicit Host header exists, prefer that for consistency.
+        host = request.headers.get("host") or str(request.url.netloc)
+        headers_to_sign = {"host": host}
+
+        # Only include content-type if present in the request.
+        # Don't force a default to avoid signature mismatch if actual differs.
+        if "content-type" in request.headers:
+            headers_to_sign["content-type"] = request.headers["content-type"]
+
+        # Add other headers that should be signed if present
+        for header_name in ["x-amz-content-sha256", "x-amz-security-token"]:
+            if header_name in request.headers:
+                headers_to_sign[header_name] = request.headers[header_name]
+
+        # Read request content, handling streaming requests
+        try:
+            content = request.content
+        except httpx.RequestNotRead:
+            # For streaming requests, read the content first
+            content = request.read()
+
+        # Create AWS request for signing
+        aws_request = AWSRequest(
+            method=request.method,
+            url=str(request.url),
+            data=content,
+            headers=headers_to_sign,
+        )
+
+        # Sign the request
+        signer = SigV4Auth(credentials, self._service, self._region)
+        signer.add_auth(aws_request)
+
+        # Copy signed headers back to the original request
+        # This includes Authorization, X-Amz-Date, and potentially X-Amz-Security-Token
+        for key, value in aws_request.headers.items():
+            request.headers[key] = value
+
+        logger.debug(
+            f"SigV4 signed request: method={request.method}, "
+            f"url={request.url}, service={self._service}, region={self._region}"
+        )
+
+    def auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response, None]:
+        """
+        Sign the request using SigV4 (sync version).
+
+        This method is called by httpx for sync clients.
+        """
+        self._sign_request(request)
+        yield request
+
+    async def async_auth_flow(self, request: httpx.Request) -> AsyncGenerator[httpx.Request, httpx.Response]:
+        """
+        Sign the request using SigV4 (async version).
+
+        This method is called by httpx for async clients. It offloads the
+        signing operation to a thread pool to avoid blocking the event loop
+        during credential resolution (which may involve IMDS calls or file I/O).
+        """
+        await asyncio.to_thread(self._sign_request, request)
+        yield request
+
+
+def create_sigv4_http_client(
+    region: str,
+    service: str = "bedrock",
+    **httpx_kwargs,
+) -> httpx.AsyncClient:
+    """
+    Create an httpx.AsyncClient with SigV4 authentication.
+
+    This is a convenience function for creating an async HTTP client
+    that automatically signs all requests using AWS SigV4.
+
+    Args:
+        region: AWS region
+        service: AWS service name for signing
+        **httpx_kwargs: Additional arguments passed to httpx.AsyncClient
+
+    Returns:
+        Configured httpx.AsyncClient with SigV4 auth
+    """
+    auth = BedrockSigV4Auth(region=region, service=service)
+    return httpx.AsyncClient(auth=auth, **httpx_kwargs)
+
+
+def has_aws_credentials() -> bool:
+    """
+    Check if AWS credentials are likely available.
+
+    This performs a lightweight heuristic check for credential availability
+    without actually loading or validating credentials. It checks for common
+    credential sources but cannot detect EC2/ECS instance roles (IMDS).
+
+    Returns:
+        True if credentials appear to be configured via environment or files.
+        False if no obvious credential source is detected (caller should still
+        try boto3 as IMDS may be available).
+    """
+    import os
+
+    # Check for explicit credentials
+    if os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY"):
+        return True
+
+    # Check for web identity (IRSA, GitHub Actions, etc.)
+    if os.getenv("AWS_ROLE_ARN") and os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE"):
+        return True
+
+    # Check for profile
+    if os.getenv("AWS_PROFILE"):
+        return True
+
+    # Check for default credentials file
+    credentials_file = os.path.expanduser("~/.aws/credentials")
+    if os.path.exists(credentials_file):
+        return True
+
+    # No obvious credential source detected.
+    # Note: IMDS (EC2/ECS instance roles) cannot be detected without a network call,
+    # so callers should still attempt to use boto3 even when this returns False.
+    return False

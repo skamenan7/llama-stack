@@ -377,6 +377,10 @@ module = [
     "nest_asyncio",
     "streamlit_option_menu",
     "lmformatenforcer.*",
+    "boto3",
+    "boto3.*",
+    "botocore",
+    "botocore.*",
 ]
 ignore_missing_imports = true
 

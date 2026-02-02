@@ -1,5 +1,5 @@
 ---
-description: "AWS Bedrock inference provider using OpenAI compatible endpoint."
+description: "AWS Bedrock inference provider using OpenAI compatible endpoint. Supports two auth modes: (1) AWS SigV4 authentication via the standard AWS credential chain (recommended for enterprise) - leave api_key unset and configure AWS credentials via environment variables (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY), IAM roles, or Web Identity Federation (AWS_ROLE_ARN + AWS_WEB_IDENTITY_TOKEN_FILE for IRSA/OIDC). (2) Bearer token authentication - set api_key to a pre-signed URL. Credentials are automatically refreshed by boto3 when using SigV4."
 sidebar_label: Remote - Bedrock
 title: remote::bedrock
 ---
@@ -8,7 +8,7 @@ title: remote::bedrock
 
 ## Description
 
-AWS Bedrock inference provider using OpenAI compatible endpoint.
+AWS Bedrock inference provider using OpenAI compatible endpoint. Supports two auth modes: (1) AWS SigV4 authentication via the standard AWS credential chain (recommended for enterprise) - leave api_key unset and configure AWS credentials via environment variables (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY), IAM roles, or Web Identity Federation (AWS_ROLE_ARN + AWS_WEB_IDENTITY_TOKEN_FILE for IRSA/OIDC). (2) Bearer token authentication - set api_key to a pre-signed URL. Credentials are automatically refreshed by boto3 when using SigV4.
 
 ## Configuration
 
