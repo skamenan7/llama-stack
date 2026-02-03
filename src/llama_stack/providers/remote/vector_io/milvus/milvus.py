@@ -17,7 +17,6 @@ from llama_stack.providers.inline.vector_io.milvus import MilvusVectorIOConfig a
 from llama_stack.providers.utils.memory.openai_vector_store_mixin import OpenAIVectorStoreMixin
 from llama_stack.providers.utils.memory.vector_store import (
     RERANKER_TYPE_WEIGHTED,
-    ChunkForDeletion,
     EmbeddingIndex,
     VectorStoreWithIndex,
 )
@@ -26,6 +25,8 @@ from llama_stack.providers.utils.vector_io.vector_utils import (
     sanitize_collection_name,
 )
 from llama_stack_api import (
+    ChunkForDeletion,
+    DeleteChunksRequest,
     EmbeddedChunk,
     Files,
     Inference,
@@ -372,10 +373,10 @@ class MilvusVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorStoresProtoc
             raise VectorStoreNotFoundError(request.vector_store_id)
         return await index.query_chunks(request)
 
-    async def delete_chunks(self, store_id: str, chunks_for_deletion: list[ChunkForDeletion]) -> None:
+    async def delete_chunks(self, request: DeleteChunksRequest) -> None:
         """Delete a chunk from a milvus vector store."""
-        index = await self._get_and_cache_vector_store_index(store_id)
+        index = await self._get_and_cache_vector_store_index(request.vector_store_id)
         if not index:
-            raise VectorStoreNotFoundError(store_id)
+            raise VectorStoreNotFoundError(request.vector_store_id)
 
-        await index.index.delete_chunks(chunks_for_deletion)
+        await index.index.delete_chunks(request.chunks)

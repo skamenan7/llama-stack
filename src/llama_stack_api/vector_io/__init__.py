@@ -17,8 +17,13 @@ from .api import VectorIO, VectorStoreTable
 
 # Re-export all Pydantic models from models.py
 from .models import (
+    DEFAULT_CHUNK_OVERLAP_TOKENS,
+    DEFAULT_CHUNK_SIZE_TOKENS,
+    MAX_PAGINATION_LIMIT,
     Chunk,
+    ChunkForDeletion,
     ChunkMetadata,
+    DeleteChunksRequest,
     EmbeddedChunk,
     InsertChunksRequest,
     OpenAIAttachFileRequest,
@@ -59,9 +64,15 @@ __all__ = [
     # Protocol classes
     "VectorIO",
     "VectorStoreTable",
+    # Constants
+    "DEFAULT_CHUNK_OVERLAP_TOKENS",
+    "DEFAULT_CHUNK_SIZE_TOKENS",
+    "MAX_PAGINATION_LIMIT",
     # Pydantic models
     "Chunk",
+    "ChunkForDeletion",
     "ChunkMetadata",
+    "DeleteChunksRequest",
     "EmbeddedChunk",
     "InsertChunksRequest",
     "OpenAIAttachFileRequest",

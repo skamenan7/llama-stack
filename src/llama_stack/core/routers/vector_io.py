@@ -13,6 +13,8 @@ from fastapi import Body
 from llama_stack.core.datatypes import VectorStoresConfig
 from llama_stack.log import get_logger
 from llama_stack_api import (
+    DEFAULT_CHUNK_OVERLAP_TOKENS,
+    DEFAULT_CHUNK_SIZE_TOKENS,
     HealthResponse,
     HealthStatus,
     Inference,
@@ -219,21 +221,30 @@ class VectorIORouter(VectorIO):
         )
         provider = await self.routing_table.get_provider_impl(registered_vector_store.identifier)
 
-        # Update model_extra with registered values so provider uses the already-registered vector_store
-        if params.model_extra is None:
-            params.model_extra = {}
-        params.model_extra["provider_vector_store_id"] = registered_vector_store.provider_resource_id
-        params.model_extra["provider_id"] = registered_vector_store.provider_id
+        # Build extra fields to pass to provider with registered values
+        extra_fields: dict[str, str | int | None] = {
+            "provider_vector_store_id": registered_vector_store.provider_resource_id,
+            "provider_id": registered_vector_store.provider_id,
+        }
         if embedding_model is not None:
-            params.model_extra["embedding_model"] = embedding_model
+            extra_fields["embedding_model"] = embedding_model
         if embedding_dimension is not None:
-            params.model_extra["embedding_dimension"] = embedding_dimension
+            extra_fields["embedding_dimension"] = embedding_dimension
+
+        # Rebuild params with merged extra fields (Pydantic v2: model_extra is read-only)
+        # We need to dump and revalidate to properly merge extra fields
+        existing_extra = params.model_extra or {}
+        merged_data = {**params.model_dump(exclude_unset=True), **existing_extra, **extra_fields}
+        params = OpenAICreateVectorStoreRequestWithExtraBody.model_validate(merged_data)
 
         # Set chunking strategy explicitly if not provided
         if params.chunking_strategy is None or params.chunking_strategy.type == "auto":
             # actualize the chunking strategy to static
             params.chunking_strategy = VectorStoreChunkingStrategyStatic(
-                static=VectorStoreChunkingStrategyStaticConfig(max_chunk_size_tokens=800, chunk_overlap_tokens=400)
+                static=VectorStoreChunkingStrategyStaticConfig(
+                    max_chunk_size_tokens=DEFAULT_CHUNK_SIZE_TOKENS,
+                    chunk_overlap_tokens=DEFAULT_CHUNK_OVERLAP_TOKENS,
+                )
             )
 
         return await provider.openai_create_vector_store(params)
@@ -360,7 +371,10 @@ class VectorIORouter(VectorIO):
 
         if params.chunking_strategy is None or params.chunking_strategy.type == "auto":
             params.chunking_strategy = VectorStoreChunkingStrategyStatic(
-                static=VectorStoreChunkingStrategyStaticConfig(max_chunk_size_tokens=800, chunk_overlap_tokens=400)
+                static=VectorStoreChunkingStrategyStaticConfig(
+                    max_chunk_size_tokens=DEFAULT_CHUNK_SIZE_TOKENS,
+                    chunk_overlap_tokens=DEFAULT_CHUNK_OVERLAP_TOKENS,
+                )
             )
 
         return await self.routing_table.openai_attach_file_to_vector_store(

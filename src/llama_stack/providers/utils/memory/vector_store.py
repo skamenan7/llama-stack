@@ -15,7 +15,6 @@ from urllib.parse import unquote
 import httpx
 import numpy as np
 from numpy.typing import NDArray
-from pydantic import BaseModel
 
 from llama_stack.core.datatypes import VectorStoresConfig
 from llama_stack.log import get_logger
@@ -28,6 +27,7 @@ from llama_stack_api import (
     URL,
     Api,
     Chunk,
+    ChunkForDeletion,
     ChunkMetadata,
     EmbeddedChunk,
     InsertChunksRequest,
@@ -39,17 +39,6 @@ from llama_stack_api import (
 )
 
 log = get_logger(name=__name__, category="providers::utils")
-
-
-class ChunkForDeletion(BaseModel):
-    """Information needed to delete a chunk from a vector store.
-
-    :param chunk_id: The ID of the chunk to delete
-    :param document_id: The ID of the document this chunk belongs to
-    """
-
-    chunk_id: str
-    document_id: str
 
 
 # Constants for reranker types

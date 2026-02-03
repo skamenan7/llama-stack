@@ -17,9 +17,11 @@ from numpy.typing import NDArray
 from llama_stack.core.storage.kvstore import kvstore_impl
 from llama_stack.log import get_logger
 from llama_stack.providers.utils.memory.openai_vector_store_mixin import OpenAIVectorStoreMixin
-from llama_stack.providers.utils.memory.vector_store import ChunkForDeletion, EmbeddingIndex, VectorStoreWithIndex
+from llama_stack.providers.utils.memory.vector_store import EmbeddingIndex, VectorStoreWithIndex
 from llama_stack.providers.utils.vector_io import load_embedded_chunk_with_backward_compat
 from llama_stack_api import (
+    ChunkForDeletion,
+    DeleteChunksRequest,
     EmbeddedChunk,
     Files,
     HealthResponse,
@@ -302,7 +304,7 @@ class FaissVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorStoresProtoco
 
         return await index.query_chunks(request)
 
-    async def delete_chunks(self, store_id: str, chunks_for_deletion: list[ChunkForDeletion]) -> None:
+    async def delete_chunks(self, request: DeleteChunksRequest) -> None:
         """Delete chunks from a faiss index"""
-        faiss_index = self.cache[store_id].index
-        await faiss_index.delete_chunks(chunks_for_deletion)
+        faiss_index = self.cache[request.vector_store_id].index
+        await faiss_index.delete_chunks(request.chunks)

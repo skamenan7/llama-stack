@@ -17,6 +17,14 @@ from pydantic import BaseModel, Field, field_validator
 from llama_stack_api.common.content_types import InterleavedContent
 from llama_stack_api.schema_utils import json_schema_type, register_schema
 
+# OpenAI-compatible chunking defaults
+# See: https://platform.openai.com/docs/api-reference/vector-stores-files/createFile
+DEFAULT_CHUNK_SIZE_TOKENS = 800
+DEFAULT_CHUNK_OVERLAP_TOKENS = 400
+
+# Pagination limits matching OpenAI API constraints
+MAX_PAGINATION_LIMIT = 100
+
 
 @json_schema_type
 class ChunkMetadata(BaseModel):
@@ -325,8 +333,8 @@ class VectorStoreChunkingStrategyStaticConfig(BaseModel):
     :param max_chunk_size_tokens: Maximum number of tokens per chunk, must be between 100 and 4096
     """
 
-    chunk_overlap_tokens: int = 400
-    max_chunk_size_tokens: int = Field(800, ge=100, le=4096)
+    chunk_overlap_tokens: int = DEFAULT_CHUNK_OVERLAP_TOKENS
+    max_chunk_size_tokens: int = Field(DEFAULT_CHUNK_SIZE_TOKENS, ge=100, le=4096)
 
 
 @json_schema_type
@@ -630,12 +638,32 @@ class OpenAICreateVectorStoreFileBatchRequestWithExtraBody(BaseModel, extra="all
 
 
 @json_schema_type
+class ChunkForDeletion(BaseModel):
+    """Information needed to delete a chunk from a vector store.
+
+    :param chunk_id: The ID of the chunk to delete
+    :param document_id: The ID of the document this chunk belongs to
+    """
+
+    chunk_id: str
+    document_id: str
+
+
+@json_schema_type
 class InsertChunksRequest(BaseModel):
     """Request body for inserting chunks into a vector store."""
 
     vector_store_id: str = Field(description="The ID of the vector store to insert chunks into.")
     chunks: list[EmbeddedChunk] = Field(description="The list of embedded chunks to insert.")
     ttl_seconds: int | None = Field(default=None, description="Time-to-live in seconds for the inserted chunks.")
+
+
+@json_schema_type
+class DeleteChunksRequest(BaseModel):
+    """Request body for deleting chunks from a vector store."""
+
+    vector_store_id: str = Field(description="The ID of the vector store to delete chunks from.")
+    chunks: list[ChunkForDeletion] = Field(description="The list of chunks to delete.")
 
 
 @json_schema_type
@@ -688,9 +716,14 @@ class OpenAIUpdateVectorStoreFileRequest(BaseModel):
 
 __all__ = [
     "Chunk",
+    "ChunkForDeletion",
     "ChunkMetadata",
+    "DEFAULT_CHUNK_OVERLAP_TOKENS",
+    "DEFAULT_CHUNK_SIZE_TOKENS",
+    "DeleteChunksRequest",
     "EmbeddedChunk",
     "InsertChunksRequest",
+    "MAX_PAGINATION_LIMIT",
     "OpenAIAttachFileRequest",
     "OpenAICreateVectorStoreFileBatchRequestWithExtraBody",
     "OpenAICreateVectorStoreRequestWithExtraBody",
