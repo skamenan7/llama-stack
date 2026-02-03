@@ -5,7 +5,7 @@
 # the root directory of this source tree.
 
 from collections.abc import AsyncIterator, Iterable
-from typing import Any, NoReturn
+from typing import Any, NoReturn, cast
 
 import httpx
 from openai import AuthenticationError
@@ -22,8 +22,6 @@ from llama_stack_api import (
     OpenAIEmbeddingsRequestWithExtraBody,
     OpenAIEmbeddingsResponse,
 )
-
-from .config import BedrockConfig
 
 logger = get_logger(name=__name__, category="inference::bedrock")
 
@@ -75,8 +73,7 @@ class BedrockInferenceAdapter(OpenAIMixin):
     for dynamic model discovery. Models must be pre-registered in the config.
     """
 
-    config: BedrockConfig
-    provider_data_api_key_field: str = "aws_bearer_token_bedrock"
+    provider_data_api_key_field: str | None = "aws_bearer_token_bedrock"
 
     # Cached SigV4 auth handler (reuses boto3 session across requests)
     _sigv4_auth: Any = PrivateAttr(default=None)
@@ -85,7 +82,9 @@ class BedrockInferenceAdapter(OpenAIMixin):
 
     def get_base_url(self) -> str:
         """Get base URL for OpenAI client."""
-        return f"https://bedrock-runtime.{self.config.region_name}.amazonaws.com/openai/v1"
+        cfg = cast(Any, self.config)
+        region = getattr(cfg, "region_name", None) or "us-east-2"
+        return f"https://bedrock-runtime.{region}.amazonaws.com/openai/v1"
 
     def _should_use_sigv4(self) -> bool:
         """
@@ -98,7 +97,8 @@ class BedrockInferenceAdapter(OpenAIMixin):
         Note: This check is performed per-request to support mixed auth modes.
         """
         # Check if bearer token is in config
-        if self.config.has_bearer_token():
+        cfg = cast(Any, self.config)
+        if getattr(cfg, "has_bearer_token", None) and cfg.has_bearer_token():
             return False
 
         # Check provider data at request time (strip whitespace for consistency with config)
@@ -115,12 +115,33 @@ class BedrockInferenceAdapter(OpenAIMixin):
         if self._sigv4_auth is None:
             from llama_stack.providers.utils.bedrock.sigv4_auth import BedrockSigV4Auth
 
+            cfg_any = cast(Any, self.config)
+
+            aws_access_key_id = getattr(cfg_any, "aws_access_key_id", None)
+            aws_secret_access_key = getattr(cfg_any, "aws_secret_access_key", None)
+            aws_session_token = getattr(cfg_any, "aws_session_token", None)
+            profile_name = getattr(cfg_any, "profile_name", None)
+            aws_role_arn = getattr(cfg_any, "aws_role_arn", None)
+            aws_web_identity_token_file = getattr(cfg_any, "aws_web_identity_token_file", None)
+            aws_role_session_name = getattr(cfg_any, "aws_role_session_name", None)
+            session_ttl = getattr(cfg_any, "session_ttl", None)
+
             # Use "bedrock" as signing name (NOT "bedrock-runtime")
             # This is the SigV4 signing name from botocore service metadata
-            self._sigv4_auth = BedrockSigV4Auth(
-                region=self.config.region_name,
-                service="bedrock",  # Signing name, not endpoint prefix
-            )
+            sigv4_args = {
+                "region": getattr(cfg_any, "region_name", None) or "us-east-2",
+                "service": "bedrock",  # Signing name, not endpoint prefix
+                "aws_access_key_id": aws_access_key_id.get_secret_value() if aws_access_key_id else None,
+                "aws_secret_access_key": aws_secret_access_key.get_secret_value() if aws_secret_access_key else None,
+                "aws_session_token": aws_session_token.get_secret_value() if aws_session_token else None,
+                "profile_name": profile_name,
+                "aws_role_arn": aws_role_arn,
+                "aws_web_identity_token_file": aws_web_identity_token_file,
+                "aws_role_session_name": aws_role_session_name,
+                "session_ttl": session_ttl,
+            }
+            sigv4_args = {k: v for k, v in sigv4_args.items() if v is not None}
+            self._sigv4_auth = BedrockSigV4Auth(**sigv4_args)
         return self._sigv4_auth
 
     def get_api_key(self) -> str | None:
@@ -141,7 +162,18 @@ class BedrockInferenceAdapter(OpenAIMixin):
     def _get_sigv4_http_client(self) -> httpx.AsyncClient:
         """Get or create the cached httpx client for SigV4 mode."""
         if self._sigv4_http_client is None:
-            self._sigv4_http_client = httpx.AsyncClient(auth=self._get_sigv4_auth())
+            from llama_stack.providers.utils.inference.http_client import (
+                _build_network_client_kwargs,
+                _network_config_fingerprint,
+                _set_client_network_fingerprint,
+            )
+
+            cfg_any = cast(Any, self.config)
+            network_config = getattr(cfg_any, "network", None)
+            network_kwargs = _build_network_client_kwargs(network_config)
+            self._sigv4_http_client = httpx.AsyncClient(auth=self._get_sigv4_auth(), **network_kwargs)
+            if network_config is not None:
+                _set_client_network_fingerprint(self._sigv4_http_client, _network_config_fingerprint(network_config))
         return self._sigv4_http_client
 
     def get_extra_client_params(self) -> dict[str, Any]:

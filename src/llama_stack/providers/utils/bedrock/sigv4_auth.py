@@ -71,6 +71,14 @@ class BedrockSigV4Auth(httpx.Auth):
         self,
         region: str,
         service: str = "bedrock",
+        aws_access_key_id: str | None = None,
+        aws_secret_access_key: str | None = None,
+        aws_session_token: str | None = None,
+        profile_name: str | None = None,
+        aws_role_arn: str | None = None,
+        aws_web_identity_token_file: str | None = None,
+        aws_role_session_name: str | None = None,
+        session_ttl: int | None = 3600,
     ):
         """
         Initialize SigV4 auth handler.
@@ -80,19 +88,56 @@ class BedrockSigV4Auth(httpx.Auth):
             service: AWS service name for SigV4 signing. Use "bedrock" (the signing
                      name from botocore metadata), NOT "bedrock-runtime" (the endpoint
                      prefix). The signing name is used in the SigV4 credential scope.
+            aws_role_arn: Optional IAM role ARN to assume.
+            aws_web_identity_token_file: Optional path to web identity token file.
+            aws_role_session_name: Optional session name for role assumption.
+            session_ttl: Optional session TTL in seconds.
         """
         self._region = region
         self._service = service
+        self._aws_access_key_id = aws_access_key_id
+        self._aws_secret_access_key = aws_secret_access_key
+        self._aws_session_token = aws_session_token
+        self._profile_name = profile_name
+        self._aws_role_arn = aws_role_arn
+        self._aws_web_identity_token_file = aws_web_identity_token_file
+        self._aws_role_session_name = aws_role_session_name
+        self._session_ttl = session_ttl or 3600
         self._lock = threading.Lock()
         self._session = None
 
     def _get_credentials(self) -> Any:
         """Get current AWS credentials from boto3 session."""
-        import boto3
+        from llama_stack.providers.utils.bedrock.refreshable_boto_session import (
+            RefreshableBotoSession,
+        )
 
         with self._lock:
             if self._session is None:
-                self._session = boto3.Session(region_name=self._region)
+                if self._aws_role_arn:
+                    self._session = RefreshableBotoSession(
+                        region_name=self._region,
+                        aws_access_key_id=self._aws_access_key_id,
+                        aws_secret_access_key=self._aws_secret_access_key,
+                        aws_session_token=self._aws_session_token,
+                        profile_name=self._profile_name,
+                        sts_arn=self._aws_role_arn,
+                        web_identity_token_file=self._aws_web_identity_token_file,
+                        session_name=self._aws_role_session_name,
+                        session_ttl=self._session_ttl,
+                    ).refreshable_session()
+                else:
+                    import boto3
+
+                    session_args = {
+                        "region_name": self._region,
+                        "aws_access_key_id": self._aws_access_key_id,
+                        "aws_secret_access_key": self._aws_secret_access_key,
+                        "aws_session_token": self._aws_session_token,
+                        "profile_name": self._profile_name,
+                    }
+                    session_args = {k: v for k, v in session_args.items() if v is not None}
+                    self._session = boto3.Session(**session_args)
 
             credentials = self._session.get_credentials()  # type: ignore[attr-defined]
             if credentials is None:

@@ -67,6 +67,50 @@ class TestBedrockSigV4Auth:
             assert "x-amz-date" in signed_request.headers
             assert "AWS4-HMAC-SHA256" in signed_request.headers["authorization"]
 
+    def test_auth_flow_with_explicit_role_assumption(self):
+        """SigV4 auth should use RefreshableBotoSession when role_arn is provided."""
+        from llama_stack.providers.utils.bedrock.sigv4_auth import BedrockSigV4Auth
+
+        mock_frozen_creds = MagicMock()
+        mock_frozen_creds.access_key = "ASIAEXP_ROLE_KEY"
+        mock_frozen_creds.secret_key = "exp_secret"
+        mock_frozen_creds.token = "exp_token"
+
+        with patch(
+            "llama_stack.providers.utils.bedrock.refreshable_boto_session.RefreshableBotoSession"
+        ) as mock_refreshable_cls:
+            mock_refreshable = MagicMock()
+            mock_refreshable_cls.return_value = mock_refreshable
+            mock_session = MagicMock()
+            mock_refreshable.refreshable_session.return_value = mock_session
+            mock_session.get_credentials.return_value.get_frozen_credentials.return_value = mock_frozen_creds
+
+            auth = BedrockSigV4Auth(
+                region="us-east-1",
+                aws_role_arn="arn:aws:iam::123456789012:role/test-role",
+                aws_web_identity_token_file="/path/to/token",
+                aws_role_session_name="test-session",
+            )
+
+            request = httpx.Request(
+                method="POST",
+                url="https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1/chat/completions",
+                content=b"{}",
+            )
+
+            gen = auth.auth_flow(request)
+            signed_request = next(gen)
+
+            # Verify RefreshableBotoSession was called with correct args
+            mock_refreshable_cls.assert_called_once_with(
+                region_name="us-east-1",
+                sts_arn="arn:aws:iam::123456789012:role/test-role",
+                web_identity_token_file="/path/to/token",
+                session_name="test-session",
+                session_ttl=3600,
+            )
+            assert signed_request.headers["x-amz-security-token"] == "exp_token"
+
     def test_auth_flow_with_session_token(self):
         """SigV4 auth should include X-Amz-Security-Token for STS credentials."""
         from llama_stack.providers.utils.bedrock.sigv4_auth import BedrockSigV4Auth
@@ -248,6 +292,10 @@ class TestBedrockInferenceAdapterAuthMode:
                 mock_auth_cls.assert_called_once_with(
                     region="us-west-2",
                     service="bedrock",  # Signing name, not endpoint prefix
+                    aws_role_arn=None,
+                    aws_web_identity_token_file=None,
+                    aws_role_session_name=None,
+                    session_ttl=3600,
                 )
 
                 # Verify client uses placeholder api_key (OCI pattern)

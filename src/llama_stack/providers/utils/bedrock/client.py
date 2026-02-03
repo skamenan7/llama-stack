@@ -67,6 +67,9 @@ def create_bedrock_client(config: BedrockBaseConfig, service_name: str = "bedroc
             RefreshableBotoSession(
                 region_name=config.region_name,
                 profile_name=config.profile_name,
+                sts_arn=config.aws_role_arn,
+                web_identity_token_file=config.aws_web_identity_token_file,
+                session_name=config.aws_role_session_name,
                 session_ttl=config.session_ttl,
             )
             .refreshable_session()

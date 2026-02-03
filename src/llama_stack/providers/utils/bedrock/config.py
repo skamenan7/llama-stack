@@ -12,7 +12,6 @@ from llama_stack.providers.utils.inference.model_registry import RemoteInference
 
 
 class BedrockBaseConfig(RemoteInferenceProviderConfig):
-    auth_credential: None = Field(default=None, exclude=True)
     aws_access_key_id: SecretStr | None = Field(
         default_factory=lambda: SecretStr(val) if (val := os.getenv("AWS_ACCESS_KEY_ID")) else None,
         description="The AWS access key to use. Default use environment variable: AWS_ACCESS_KEY_ID",
@@ -24,6 +23,18 @@ class BedrockBaseConfig(RemoteInferenceProviderConfig):
     aws_session_token: SecretStr | None = Field(
         default_factory=lambda: SecretStr(val) if (val := os.getenv("AWS_SESSION_TOKEN")) else None,
         description="The AWS session token to use. Default use environment variable: AWS_SESSION_TOKEN",
+    )
+    aws_role_arn: str | None = Field(
+        default_factory=lambda: os.getenv("AWS_ROLE_ARN"),
+        description="The AWS role ARN to assume. Default use environment variable: AWS_ROLE_ARN",
+    )
+    aws_web_identity_token_file: str | None = Field(
+        default_factory=lambda: os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE"),
+        description="The path to the web identity token file. Default use environment variable: AWS_WEB_IDENTITY_TOKEN_FILE",
+    )
+    aws_role_session_name: str | None = Field(
+        default_factory=lambda: os.getenv("AWS_ROLE_SESSION_NAME"),
+        description="The session name to use when assuming a role. Default use environment variable: AWS_ROLE_SESSION_NAME",
     )
     region_name: str | None = Field(
         default_factory=lambda: os.getenv("AWS_DEFAULT_REGION"),
