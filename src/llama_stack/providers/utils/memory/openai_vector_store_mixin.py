@@ -21,12 +21,16 @@ from llama_stack.providers.utils.inference.prompt_adapter import (
     interleaved_content_as_str,
 )
 from llama_stack.providers.utils.memory.vector_store import (
-    ChunkForDeletion,
     content_from_data_and_mime_type,
     make_overlapped_chunks,
 )
 from llama_stack_api import (
+    DEFAULT_CHUNK_OVERLAP_TOKENS,
+    DEFAULT_CHUNK_SIZE_TOKENS,
+    MAX_PAGINATION_LIMIT,
     Chunk,
+    ChunkForDeletion,
+    DeleteChunksRequest,
     EmbeddedChunk,
     Files,
     Inference,
@@ -41,6 +45,7 @@ from llama_stack_api import (
     OpenAIUpdateVectorStoreRequest,
     QueryChunksRequest,
     QueryChunksResponse,
+    SearchRankingOptions,
     VectorStore,
     VectorStoreChunkingStrategy,
     VectorStoreChunkingStrategyAuto,
@@ -376,7 +381,7 @@ class OpenAIVectorStoreMixin(ABC):
                     pass
 
     @abstractmethod
-    async def delete_chunks(self, store_id: str, chunks_for_deletion: list[ChunkForDeletion]) -> None:
+    async def delete_chunks(self, request: DeleteChunksRequest) -> None:
         """Delete chunks from a vector store."""
         pass
 
@@ -475,7 +480,10 @@ class OpenAIVectorStoreMixin(ABC):
         )
         if not params.chunking_strategy or params.chunking_strategy.type == "auto":
             chunking_strategy = VectorStoreChunkingStrategyStatic(
-                static=VectorStoreChunkingStrategyStaticConfig(max_chunk_size_tokens=800, chunk_overlap_tokens=400)
+                static=VectorStoreChunkingStrategyStaticConfig(
+                    max_chunk_size_tokens=DEFAULT_CHUNK_SIZE_TOKENS,
+                    chunk_overlap_tokens=DEFAULT_CHUNK_OVERLAP_TOKENS,
+                )
             )
         else:
             chunking_strategy = params.chunking_strategy
@@ -538,7 +546,7 @@ class OpenAIVectorStoreMixin(ABC):
         before: str | None = None,
     ) -> VectorStoreListResponse:
         """Returns a list of vector stores."""
-        limit = limit or 20
+        limit = min(limit or 20, MAX_PAGINATION_LIMIT)
         order = order or "desc"
 
         # Get all vector stores
@@ -671,14 +679,14 @@ class OpenAIVectorStoreMixin(ABC):
 
         try:
             # Validate neural ranker requires model parameter
-            if ranking_options is not None:
-                if getattr(ranking_options, "ranker", None) == "neural":
-                    model_value = getattr(ranking_options, "model", None)
+            if request.ranking_options is not None:
+                if getattr(request.ranking_options, "ranker", None) == "neural":
+                    model_value = getattr(request.ranking_options, "model", None)
                     if model_value is None or (isinstance(model_value, str) and model_value.strip() == ""):
                         # Return empty results when model is missing for neural ranker
                         logger.warning("model parameter is required when ranker='neural', returning empty results")
                         return VectorStoreSearchResponsePage(
-                            search_query=query if isinstance(query, list) else [query],
+                            search_query=request.query if isinstance(request.query, list) else [request.query],
                             data=[],
                             has_more=False,
                             next_page=None,
@@ -696,7 +704,7 @@ class OpenAIVectorStoreMixin(ABC):
 
             # Use VectorStoresConfig defaults when ranking_options values are not provided
             config = self.vector_stores_config or VectorStoresConfig()
-            params.update(self._build_reranker_params(ranking_options, config))
+            params.update(self._build_reranker_params(request.ranking_options, config))
 
             response = await self.query_chunks(
                 QueryChunksRequest(
@@ -941,8 +949,8 @@ class OpenAIVectorStoreMixin(ABC):
             chunk_overlap_tokens = chunking_strategy.static.chunk_overlap_tokens
         else:
             # Default values from OpenAI API spec
-            max_chunk_size_tokens = 800
-            chunk_overlap_tokens = 400
+            max_chunk_size_tokens = DEFAULT_CHUNK_SIZE_TOKENS
+            chunk_overlap_tokens = DEFAULT_CHUNK_OVERLAP_TOKENS
 
         try:
             file_response = await self.files_api.openai_retrieve_file(RetrieveFileRequest(file_id=file_id))
@@ -1058,7 +1066,7 @@ class OpenAIVectorStoreMixin(ABC):
         filter: VectorStoreFileStatus | None = None,
     ) -> VectorStoreListFilesResponse:
         """List files in a vector store."""
-        limit = limit or 20
+        limit = min(limit or 20, MAX_PAGINATION_LIMIT)
         order = order or "desc"
 
         if vector_store_id not in self.openai_vector_stores:
@@ -1193,7 +1201,12 @@ class OpenAIVectorStoreMixin(ABC):
                     logger.warning(f"Chunk {c.chunk_id} has no document_id, skipping deletion")
 
         if chunks_for_deletion:
-            await self.delete_chunks(vector_store_id, chunks_for_deletion)
+            await self.delete_chunks(
+                DeleteChunksRequest(
+                    vector_store_id=vector_store_id,
+                    chunks=chunks_for_deletion,
+                )
+            )
 
         store_info = self.openai_vector_stores[vector_store_id].copy()
 
@@ -1397,7 +1410,7 @@ class OpenAIVectorStoreMixin(ABC):
         order: str | None = "desc",
     ) -> VectorStoreFilesListInBatchResponse:
         """Returns a list of vector store files in a batch."""
-        limit = limit or 20
+        limit = min(limit or 20, MAX_PAGINATION_LIMIT)
         order = order or "desc"
 
         if vector_store_id not in self.openai_vector_stores:
