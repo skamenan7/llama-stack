@@ -16,7 +16,6 @@ import chardet
 import numpy as np
 import tiktoken
 from numpy.typing import NDArray
-from pydantic import BaseModel
 from pypdf import PdfReader
 
 from llama_stack.core.datatypes import VectorStoresConfig
@@ -27,6 +26,7 @@ from llama_stack.providers.utils.inference.prompt_adapter import (
 from llama_stack.providers.utils.vector_io.vector_utils import generate_chunk_id
 from llama_stack_api import (
     Chunk,
+    ChunkForDeletion,
     ChunkMetadata,
     EmbeddedChunk,
     Inference,
@@ -43,17 +43,6 @@ log = get_logger(name=__name__, category="providers::utils")
 @cache
 def _get_encoding(name: str) -> tiktoken.Encoding:
     return tiktoken.get_encoding(name)
-
-
-class ChunkForDeletion(BaseModel):
-    """Information needed to delete a chunk from a vector store.
-
-    :param chunk_id: The ID of the chunk to delete
-    :param document_id: The ID of the document this chunk belongs to
-    """
-
-    chunk_id: str
-    document_id: str
 
 
 # Constants for reranker types
