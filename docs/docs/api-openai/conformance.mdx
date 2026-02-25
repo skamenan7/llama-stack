@@ -21,9 +21,9 @@ This documentation is auto-generated from the OpenAI API specification compariso
 | **Overall Conformance Score** | 84.7% |
 | **Endpoints Implemented** | 28/114 |
 | **Total Properties Checked** | 2598 |
-| **Schema/Type Issues** | 273 |
-| **Missing Properties** | 125 |
-| **Total Issues to Fix** | 398 |
+| **Schema/Type Issues** | 274 |
+| **Missing Properties** | 123 |
+| **Total Issues to Fix** | 397 |
 
 ## Category Scores
 
@@ -38,7 +38,7 @@ Categories are sorted by conformance score (lowest first, needing most attention
 | Files | 54.8% | 42 | 11 | 8 |
 | Vector stores | 65.2% | 310 | 94 | 14 |
 | Embeddings | 71.4% | 14 | 4 | 0 |
-| Responses | 85.3% | 225 | 27 | 6 |
+| Responses | 85.8% | 225 | 28 | 4 |
 | Chat | 92.8% | 402 | 23 | 6 |
 | Conversations | 98.0% | 1323 | 22 | 4 |
 
@@ -936,26 +936,24 @@ Below is a detailed breakdown of conformance issues and missing properties for e
 
 ### Responses
 
-**Score:** 85.3% · **Issues:** 27 · **Missing:** 6
+**Score:** 85.8% · **Issues:** 28 · **Missing:** 4
 
 #### `/responses`
 
 **POST**
 
 <details>
-<summary>Missing Properties (6)</summary>
+<summary>Missing Properties (4)</summary>
 
-- `requestBody.content.application/json.properties.frequency_penalty`
 - `requestBody.content.application/json.properties.presence_penalty`
 - `requestBody.content.application/json.properties.stream_options`
 - `requestBody.content.application/x-www-form-urlencoded`
-- `responses.200.content.application/json.properties.frequency_penalty`
 - `responses.200.content.application/json.properties.presence_penalty`
 
 </details>
 
 <details>
-<summary>Schema Issues (27)</summary>
+<summary>Schema Issues (28)</summary>
 
 | Property | Issues |
 |----------|--------|
@@ -971,6 +969,7 @@ Below is a detailed breakdown of conformance issues and missing properties for e
 | `requestBody.content.application/json.properties.tool_choice` | Union variants added: 2; Union variants removed: 1 |
 | `requestBody.content.application/json.properties.truncation` | Union variants added: 2 |
 | `responses.200.content.application/json.properties.error` | Union variants added: 1; Union variants removed: 1 |
+| `responses.200.content.application/json.properties.frequency_penalty` | Type removed: ['number']; Nullable added (OpenAI non-nullable); Union variants added: 2 |
 | `responses.200.content.application/json.properties.incomplete_details` | Union variants added: 1; Union variants removed: 1 |
 | `responses.200.content.application/json.properties.metadata` | Union variants added: 2 |
 | `responses.200.content.application/json.properties.object` | Enum removed: ['response'] |

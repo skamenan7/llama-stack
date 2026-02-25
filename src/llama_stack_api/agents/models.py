@@ -111,6 +111,12 @@ class CreateResponseRequest(BaseModel):
         le=1.0,
         description="Nucleus sampling parameter that controls response diversity (lower values increase focus).",
     )
+    frequency_penalty: float | None = Field(
+        default=None,
+        ge=-2.0,
+        le=2.0,
+        description="Penalizes new tokens based on their frequency in the text so far.",
+    )
     text: OpenAIResponseText | None = Field(
         default=None,
         description="Configuration for text response generation.",

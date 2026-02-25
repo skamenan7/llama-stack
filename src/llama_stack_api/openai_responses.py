@@ -745,6 +745,7 @@ class OpenAIResponseObject(BaseModel):
     created_at: int
     completed_at: int | None = None
     error: OpenAIResponseError | None = None
+    frequency_penalty: float | None = None
     id: str
     incomplete_details: OpenAIResponseIncompleteDetails | None = None
     model: str

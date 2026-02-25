@@ -220,6 +220,7 @@ class StreamingResponseOrchestrator:
             background=False,
             id=self.response_id,
             created_at=self.created_at,
+            frequency_penalty=self.ctx.frequency_penalty,
             model=self.ctx.model,
             status="completed",
             output=[OpenAIResponseMessage(role="assistant", content=[refusal_content], type="message")],
@@ -260,6 +261,7 @@ class StreamingResponseOrchestrator:
             background=False,
             created_at=self.created_at,
             completed_at=completed_at,
+            frequency_penalty=self.ctx.frequency_penalty,
             id=self.response_id,
             model=self.ctx.model,
             object="response",
@@ -419,6 +421,7 @@ class StreamingResponseOrchestrator:
                     stream=True,
                     temperature=self.ctx.temperature,
                     top_p=self.ctx.top_p,
+                    frequency_penalty=self.ctx.frequency_penalty,
                     response_format=response_format,
                     stream_options={
                         "include_usage": True,

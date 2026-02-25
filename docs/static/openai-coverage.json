@@ -97,9 +97,9 @@
     },
     "conformance": {
       "score": 84.7,
-      "issues": 273,
-      "missing_properties": 125,
-      "total_problems": 398,
+      "issues": 274,
+      "missing_properties": 123,
+      "total_problems": 397,
       "total_properties": 2598
     }
   },
@@ -1692,9 +1692,9 @@
       ]
     },
     "Responses": {
-      "score": 85.3,
-      "issues": 27,
-      "missing_properties": 6,
+      "score": 85.8,
+      "issues": 28,
+      "missing_properties": 4,
       "total_properties": 225,
       "endpoints": [
         {
@@ -1703,11 +1703,9 @@
             {
               "method": "POST",
               "missing_properties": [
-                "POST.requestBody.content.application/json.properties.frequency_penalty",
                 "POST.requestBody.content.application/json.properties.presence_penalty",
                 "POST.requestBody.content.application/json.properties.stream_options",
                 "POST.requestBody.content.application/x-www-form-urlencoded",
-                "POST.responses.200.content.application/json.properties.frequency_penalty",
                 "POST.responses.200.content.application/json.properties.presence_penalty"
               ],
               "conformance_issues": [
@@ -1796,6 +1794,14 @@
                   "details": [
                     "Union variants added: 1",
                     "Union variants removed: 1"
+                  ]
+                },
+                {
+                  "property": "POST.responses.200.content.application/json.properties.frequency_penalty",
+                  "details": [
+                    "Type removed: ['number']",
+                    "Nullable added (OpenAI non-nullable)",
+                    "Union variants added: 2"
                   ]
                 },
                 {
@@ -1906,8 +1912,8 @@
                   ]
                 }
               ],
-              "missing_count": 6,
-              "issues_count": 27
+              "missing_count": 4,
+              "issues_count": 28
             }
           ]
         }
