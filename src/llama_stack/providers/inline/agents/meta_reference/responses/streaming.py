@@ -153,6 +153,7 @@ class StreamingResponseOrchestrator:
         include: list[ResponseItemInclude] | None = None,
         store: bool | None = True,
         truncation: ResponseTruncation | None = None,
+        top_logprobs: int | None = None,
     ):
         self.inference_api = inference_api
         self.ctx = ctx
@@ -181,6 +182,7 @@ class StreamingResponseOrchestrator:
         self.service_tier = service_tier.value if service_tier is not None else None
         self.metadata = metadata
         self.truncation = truncation
+        self.top_logprobs = top_logprobs
         self.store = store
         self.include = include
         self.store = bool(store) if store is not None else True
@@ -215,16 +217,21 @@ class StreamingResponseOrchestrator:
 
         # Create a completed refusal response
         refusal_response = OpenAIResponseObject(
+            background=False,
             id=self.response_id,
             created_at=self.created_at,
             model=self.ctx.model,
             status="completed",
             output=[OpenAIResponseMessage(role="assistant", content=[refusal_content], type="message")],
+            temperature=self.ctx.temperature if self.ctx.temperature is not None else 1.0,
+            top_p=self.ctx.top_p if self.ctx.top_p is not None else 1.0,
+            tools=self.ctx.available_tools(),
+            tool_choice=self.ctx.tool_choice or OpenAIResponseInputToolChoiceMode.auto,
+            truncation=self.truncation or "disabled",
             max_output_tokens=self.max_output_tokens,
             safety_identifier=self.safety_identifier,
-            service_tier=self.service_tier,
+            service_tier=self.service_tier or "default",
             metadata=self.metadata,
-            truncation=self.truncation,
             store=self.store,
             prompt_cache_key=self.prompt_cache_key,
         )
@@ -250,6 +257,7 @@ class StreamingResponseOrchestrator:
     ) -> OpenAIResponseObject:
         completed_at = int(time.time()) if status == "completed" else None
         return OpenAIResponseObject(
+            background=False,
             created_at=self.created_at,
             completed_at=completed_at,
             id=self.response_id,
@@ -258,9 +266,10 @@ class StreamingResponseOrchestrator:
             status=status,
             output=self._clone_outputs(outputs),
             text=self.text,
-            top_p=self.ctx.top_p,
+            temperature=self.ctx.temperature if self.ctx.temperature is not None else 1.0,
+            top_p=self.ctx.top_p if self.ctx.top_p is not None else 1.0,
             tools=self.ctx.available_tools(),
-            tool_choice=self.ctx.tool_choice,
+            tool_choice=self.ctx.tool_choice or OpenAIResponseInputToolChoiceMode.auto,
             error=error,
             incomplete_details=incomplete_details,
             usage=self.accumulated_usage,
@@ -271,9 +280,10 @@ class StreamingResponseOrchestrator:
             reasoning=self.reasoning,
             max_output_tokens=self.max_output_tokens,
             safety_identifier=self.safety_identifier,
-            service_tier=self.service_tier,
+            service_tier=self.service_tier or "default",
             metadata=self.metadata,
-            truncation=self.truncation,
+            truncation=self.truncation or "disabled",
+            top_logprobs=self.top_logprobs,
             store=self.store,
             prompt_cache_key=self.prompt_cache_key,
         )
@@ -389,7 +399,10 @@ class StreamingResponseOrchestrator:
                 logger.debug(f"calling openai_chat_completion with tools: {effective_tools}")
 
                 logprobs = (
-                    True if self.include and ResponseItemInclude.message_output_text_logprobs in self.include else None
+                    True
+                    if (self.include and ResponseItemInclude.message_output_text_logprobs in self.include)
+                    or self.top_logprobs
+                    else None
                 )
 
                 # In OpenAI, parallel_tool_calls is only allowed when 'tools' are specified.
@@ -417,6 +430,7 @@ class StreamingResponseOrchestrator:
                     service_tier=self.service_tier,
                     max_completion_tokens=remaining_output_tokens,
                     prompt_cache_key=self.prompt_cache_key,
+                    top_logprobs=self.top_logprobs,
                 )
                 completion_result = await self.inference_api.openai_chat_completion(params)
 
@@ -1050,7 +1064,7 @@ class StreamingResponseOrchestrator:
                     OpenAIResponseOutputMessageContentOutputText(
                         text=final_text,
                         annotations=[],
-                        logprobs=chat_response_logprobs if chat_response_logprobs else None,
+                        logprobs=chat_response_logprobs if chat_response_logprobs else [],
                     )
                 )
 
