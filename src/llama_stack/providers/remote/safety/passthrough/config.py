@@ -6,16 +6,31 @@
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, SecretStr, field_validator
 
 from llama_stack_api import json_schema_type
+
+_BLOCKED_HEADERS = frozenset(
+    {
+        "host",
+        "content-type",
+        "content-length",
+        "transfer-encoding",
+        "connection",
+        "upgrade",
+        "te",
+        "trailer",
+        "cookie",
+        "set-cookie",
+    }
+)
 
 
 class PassthroughProviderDataValidator(BaseModel):
     # allow arbitrary keys so forward_headers can access them
     model_config = ConfigDict(extra="allow")
 
-    passthrough_api_key: str | None = Field(
+    passthrough_api_key: SecretStr | None = Field(
         default=None,
         description="API key for the downstream safety service",
     )
@@ -39,6 +54,19 @@ class PassthroughSafetyConfig(BaseModel):
             'to the downstream service. Example: {"maas_api_token": "Authorization"}'
         ),
     )
+
+    @field_validator("forward_headers")
+    @classmethod
+    def validate_forward_headers(cls, v: dict[str, str]) -> dict[str, str]:
+        errors: list[str] = []
+        for provider_key, header_name in v.items():
+            if provider_key.startswith("__"):
+                errors.append(f"provider key '{provider_key}' uses reserved __ prefix")
+            if header_name.lower() in _BLOCKED_HEADERS:
+                errors.append(f"header '{header_name}' is blocked (security-sensitive)")
+        if errors:
+            raise ValueError(f"invalid forward_headers: {'; '.join(errors)}")
+        return v
 
     @classmethod
     def sample_run_config(

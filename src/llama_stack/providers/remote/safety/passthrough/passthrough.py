@@ -9,6 +9,7 @@ import uuid
 from typing import Any
 
 import httpx
+from pydantic import SecretStr
 
 from llama_stack.core.request_headers import NeedsRequestProviderData
 from llama_stack_api import (
@@ -26,21 +27,6 @@ from llama_stack_api import (
 )
 
 from .config import PassthroughSafetyConfig
-
-_BLOCKED_HEADERS = frozenset(
-    {
-        "host",
-        "content-type",
-        "content-length",
-        "transfer-encoding",
-        "connection",
-        "upgrade",
-        "te",
-        "trailer",
-        "cookie",
-        "set-cookie",
-    }
-)
 
 
 class PassthroughSafetyAdapter(
@@ -79,7 +65,7 @@ class PassthroughSafetyAdapter(
 
         provider_data = self.get_request_provider_data()
         if provider_data is not None and provider_data.passthrough_api_key:
-            return str(provider_data.passthrough_api_key)
+            return str(provider_data.passthrough_api_key.get_secret_value())
 
         return None
 
@@ -95,13 +81,11 @@ class PassthroughSafetyAdapter(
         headers: dict[str, str] = {}
         raw = provider_data.model_dump()
         for provider_key, header_name in self.config.forward_headers.items():
-            # never forward internal framework keys (e.g. __authenticated_user)
-            if provider_key.startswith("__"):
-                continue
-            if header_name.lower() in _BLOCKED_HEADERS:
-                continue
             value = raw.get(provider_key)
             if value is not None:
+                # unwrap SecretStr so we forward the real value, not '**********'
+                if isinstance(value, SecretStr):
+                    value = value.get_secret_value()
                 # strip control chars that could enable header injection
                 sanitized = str(value).replace("\r", "").replace("\n", "")
                 headers[header_name] = sanitized

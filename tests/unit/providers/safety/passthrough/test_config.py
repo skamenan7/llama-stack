@@ -43,4 +43,5 @@ def test_config_sample_run_config():
 
 def test_provider_data_validator_allows_extra_keys():
     v = PassthroughProviderDataValidator(passthrough_api_key="my-key", custom_field="val")
-    assert v.passthrough_api_key == "my-key"
+    assert v.passthrough_api_key is not None
+    assert v.passthrough_api_key.get_secret_value() == "my-key"

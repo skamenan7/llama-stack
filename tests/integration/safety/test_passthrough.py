@@ -175,24 +175,15 @@ async def test_forward_headers_sent_downstream(mock_server):
     assert _ModerationHandler.received_headers.get("X-Tenant-Id") == "t-integration-test"
 
 
-async def test_sensitive_headers_blocked(mock_server):
-    """Sensitive headers in _BLOCKED_HEADERS are not forwarded even if configured."""
-    from llama_stack.core.request_headers import request_provider_data_context
+async def test_sensitive_headers_rejected_at_config_time(mock_server):
+    """Blocked headers raise ValidationError at config parse time, not at request time."""
+    from pydantic import ValidationError
 
-    adapter = await _make_adapter(
-        mock_server,
-        forward_headers={"encoding": "Transfer-Encoding", "tenant_id": "X-Tenant-Id"},
-    )
-
-    provider_data = json.dumps({"encoding": "chunked", "tenant_id": "t-safe"})
-    with request_provider_data_context({"x-llamastack-provider-data": provider_data}):
-        request = RunModerationRequest(input="test", model="text-moderation-latest")
-        await adapter.run_moderation(request)
-
-    # Transfer-Encoding is in _BLOCKED_HEADERS but httpx doesn't suppress it,
-    # so this assertion proves our blocklist is doing the work
-    assert "Transfer-Encoding" not in _ModerationHandler.received_headers
-    assert _ModerationHandler.received_headers.get("X-Tenant-Id") == "t-safe"
+    with pytest.raises(ValidationError, match="blocked"):
+        await _make_adapter(
+            mock_server,
+            forward_headers={"encoding": "Transfer-Encoding", "tenant_id": "X-Tenant-Id"},
+        )
 
 
 async def test_multiple_messages_all_checked(mock_server):

@@ -7,6 +7,8 @@
 from unittest.mock import AsyncMock
 
 import httpx
+import pytest
+from pydantic import ValidationError
 
 from llama_stack.providers.remote.safety.passthrough.config import PassthroughSafetyConfig
 from llama_stack_api import (
@@ -158,17 +160,12 @@ async def test_forward_headers_crlf_stripped(shield_store: AsyncMock) -> None:
     assert headers["Authorization"] == "Bearer tokX-Injected: evil"
 
 
-async def test_forward_headers_blocks_dunder_keys(shield_store: AsyncMock) -> None:
-    adapter = _make_adapter_with_headers(
-        {"__authenticated_user": "X-Auth-User", "tenant_id": "X-Tenant-Id"},
-        shield_store,
-    )
-
-    with provider_data_ctx({"__authenticated_user": "admin", "tenant_id": "t-123"}):
-        headers = adapter._build_forward_headers()
-
-    assert "X-Auth-User" not in headers
-    assert headers == {"X-Tenant-Id": "t-123"}
+async def test_forward_headers_rejects_dunder_keys() -> None:
+    with pytest.raises(ValidationError, match="reserved __ prefix"):
+        PassthroughSafetyConfig(
+            base_url="https://safety.example.com/v1",
+            forward_headers={"__authenticated_user": "X-Auth-User"},
+        )
 
 
 async def test_config_api_key_cannot_be_overridden_by_forward_headers(shield_store: AsyncMock) -> None:
@@ -187,34 +184,22 @@ async def test_config_api_key_cannot_be_overridden_by_forward_headers(shield_sto
     assert headers["Authorization"] == "Bearer config-secret"
 
 
-async def test_forward_headers_blocks_sensitive_headers(shield_store: AsyncMock) -> None:
-    adapter = _make_adapter_with_headers(
-        {
-            "target_host": "Host",
-            "content_type": "Content-Type",
-            "body_len": "Content-Length",
-            "encoding": "Transfer-Encoding",
-            "jar": "Cookie",
-            "tenant_id": "X-Tenant-Id",
-        },
-        shield_store,
-    )
+@pytest.mark.parametrize(
+    "header_name",
+    ["Host", "Content-Type", "Content-Length", "Transfer-Encoding", "Cookie", "Set-Cookie", "Connection"],
+)
+async def test_forward_headers_rejects_blocked_headers(header_name: str) -> None:
+    with pytest.raises(ValidationError, match="blocked"):
+        PassthroughSafetyConfig(
+            base_url="https://safety.example.com/v1",
+            forward_headers={"some_key": header_name},
+        )
 
-    with provider_data_ctx(
-        {
-            "target_host": "evil.com",
-            "content_type": "text/plain",
-            "body_len": "999999",
-            "encoding": "chunked",
-            "jar": "session=stolen",
-            "tenant_id": "t-safe",
-        }
-    ):
-        headers = adapter._build_forward_headers()
 
-    assert "Host" not in headers
-    assert "Content-Type" not in headers
-    assert "Content-Length" not in headers
-    assert "Transfer-Encoding" not in headers
-    assert "Cookie" not in headers
-    assert headers == {"X-Tenant-Id": "t-safe"}
+async def test_forward_headers_rejects_multiple_violations() -> None:
+    """Both dunder keys and blocked headers are reported in a single error."""
+    with pytest.raises(ValidationError, match="reserved __ prefix.*blocked|blocked.*reserved __ prefix"):
+        PassthroughSafetyConfig(
+            base_url="https://safety.example.com/v1",
+            forward_headers={"__internal": "X-Internal", "host_key": "Host"},
+        )
