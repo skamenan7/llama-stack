@@ -40,16 +40,14 @@ class PassthroughSafetyAdapter(
 
     def __init__(self, config: PassthroughSafetyConfig) -> None:
         self.config = config
-        self._client: httpx.AsyncClient | None = None
-
-    async def initialize(self) -> None:
         self._client = httpx.AsyncClient(timeout=httpx.Timeout(30.0))
 
+    async def initialize(self) -> None:
+        pass
+
     async def shutdown(self) -> None:
-        if self._client:
-            # shield so cancellation doesn't leak the connection
-            await asyncio.shield(self._client.aclose())
-            self._client = None
+        # shield so cancellation doesn't leak the connection
+        await asyncio.shield(self._client.aclose())
 
     async def register_shield(self, shield: Shield) -> None:
         pass
@@ -190,8 +188,6 @@ class PassthroughSafetyAdapter(
         )
 
     async def _post_moderation(self, url: str, payload: dict[str, Any], headers: dict[str, str]) -> dict[str, Any]:
-        if not self._client:
-            raise RuntimeError("Provider not initialized — call initialize() first")
         try:
             response = await self._client.post(url, json=payload, headers=headers)
             response.raise_for_status()
