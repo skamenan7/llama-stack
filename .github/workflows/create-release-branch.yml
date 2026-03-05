@@ -1,0 +1,107 @@
+name: Create Release Branch
+
+run-name: Create release branch release-${{ inputs.product_version }} from tag ${{ inputs.tag }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to base the release on (e.g., v0.5.0)"
+        required: true
+        type: string
+      product_version:
+        description: "RHOAI product version (e.g., 3.4 or 3.4-EA1)"
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  create-release-branch:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag }}
+      PRODUCT_VERSION: ${{ inputs.product_version }}
+      BRANCH: release-${{ inputs.product_version }}
+    steps:
+      - name: Validate tag format
+        run: |
+          if [[ ! "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid tag format '${TAG}'. Expected format: v<major>.<minor>.<patch> (e.g., v0.5.0)"
+            exit 1
+          fi
+          echo "Tag format '${TAG}' is valid"
+
+      - name: Validate product_version format
+        run: |
+          if [[ ! "${PRODUCT_VERSION}" =~ ^[0-9]+\.[0-9]+(-EA[0-9]+)?$ ]]; then
+            echo "::error::Invalid product_version format '${PRODUCT_VERSION}'. Expected format: <major>.<minor> or <major>.<minor>-EA<N> (e.g., 3.4 or 3.4-EA1)"
+            exit 1
+          fi
+          echo "product_version format '${PRODUCT_VERSION}' is valid"
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          fetch-depth: 0
+
+      - name: Validate tag exists
+        run: |
+          if ! git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "::error::Tag '${TAG}' does not exist in this repository"
+            exit 1
+          fi
+          echo "Tag '${TAG}' exists"
+
+      - name: Validate release branch does not already exist
+        run: |
+          if git rev-parse --verify "refs/remotes/origin/${BRANCH}" >/dev/null 2>&1; then
+            echo "::error::Branch '${BRANCH}' already exists"
+            exit 1
+          fi
+          echo "Branch '${BRANCH}' does not exist yet"
+
+      - name: Create release branch from tag
+        run: |
+          git checkout "tags/${TAG}"
+          git checkout -b "${BRANCH}"
+          echo "Created branch '${BRANCH}' from tag '${TAG}'"
+
+      - name: Calculate project version
+        id: project-version
+        run: |
+          BASE_VERSION="${TAG#v}"
+          PROJECT_VERSION="${BASE_VERSION}+rhai0"
+          echo "project_version=${PROJECT_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "Calculated project version: ${PROJECT_VERSION}"
+
+      - name: Update pyproject.toml with pinned version
+        env:
+          PROJECT_VERSION: ${{ steps.project-version.outputs.project_version }}
+        run: |
+          sed -i 's/^dynamic = \["version"\]/version = "'"${PROJECT_VERSION}"'"/' pyproject.toml
+
+      - name: Verify pyproject.toml was updated
+        env:
+          PROJECT_VERSION: ${{ steps.project-version.outputs.project_version }}
+        run: |
+          if ! grep -q "^version = \"${PROJECT_VERSION}\"" pyproject.toml; then
+            echo "::error::Failed to update pyproject.toml. Expected line 'version = \"${PROJECT_VERSION}\"' was not found"
+            exit 1
+          fi
+          echo "pyproject.toml updated: version = \"${PROJECT_VERSION}\""
+
+      - name: Commit version change
+        env:
+          PROJECT_VERSION: ${{ steps.project-version.outputs.project_version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml
+          git commit -m "chore: set version to ${PROJECT_VERSION} for ${BRANCH}"
+
+      - name: Push release branch
+        run: |
+          git push origin "${BRANCH}"
+          echo "Successfully pushed branch '${BRANCH}'"
