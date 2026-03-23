@@ -140,7 +140,7 @@ class PassthroughInferenceAdapter(NeedsRequestProviderData, Inference):
             raise ValueError(
                 'Pass url of the passthrough endpoint in the header X-LlamaStack-Provider-Data as { "passthrough_url": <your passthrough url>}'
             )
-        return provider_data.passthrough_url
+        return str(provider_data.passthrough_url)
 
     async def openai_completion(
         self,

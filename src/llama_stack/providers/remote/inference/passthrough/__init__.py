@@ -4,7 +4,7 @@
 # This source code is licensed under the terms described in the LICENSE file in
 # the root directory of this source tree.
 
-from pydantic import BaseModel, ConfigDict, SecretStr
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, SecretStr
 
 from .config import PassthroughImplConfig
 
@@ -18,7 +18,7 @@ class PassthroughProviderDataValidator(BaseModel):
     # Without it, Pydantic drops them before build_forwarded_headers() can read them.
     model_config = ConfigDict(extra="allow")
 
-    passthrough_url: str | None = None
+    passthrough_url: AnyHttpUrl | None = None
     passthrough_api_key: SecretStr | None = None
 
 

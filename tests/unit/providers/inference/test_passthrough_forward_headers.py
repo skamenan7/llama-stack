@@ -362,7 +362,7 @@ class TestPassthroughProviderDataValidator:
 
     def test_accepts_only_passthrough_url(self):
         v = PassthroughProviderDataValidator(passthrough_url="http://x.example.com")
-        assert v.passthrough_url == "http://x.example.com"
+        assert str(v.passthrough_url) == "http://x.example.com/"
         assert v.passthrough_api_key is None
 
     def test_accepts_both_fields(self):
@@ -370,7 +370,7 @@ class TestPassthroughProviderDataValidator:
             passthrough_url="http://x.example.com",
             passthrough_api_key="sk-test",
         )
-        assert v.passthrough_url == "http://x.example.com"
+        assert str(v.passthrough_url) == "http://x.example.com/"
         assert v.passthrough_api_key is not None
         assert v.passthrough_api_key.get_secret_value() == "sk-test"
 
