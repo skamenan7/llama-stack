@@ -10,6 +10,13 @@ title: remote::model-context-protocol
 
 Model Context Protocol (MCP) tool for standardized tool calling and context management.
 
+## Configuration
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `forward_headers` | `dict[str, str] \| None` | No |  | Mapping of X-LlamaStack-Provider-Data keys to outbound HTTP header names. Only listed keys are forwarded — all others are ignored (default-deny). When targeting 'Authorization', the provider-data value must be a bare Bearer token (e.g. 'my-jwt-token', not 'Bearer my-jwt-token') — the 'Bearer ' prefix is added automatically by the MCP client. Header name values should use canonical HTTP casing (e.g. 'Authorization', 'X-Tenant-ID'). Keys with a __ prefix and core security-sensitive headers (for example Host, Content-Type, Transfer-Encoding, Cookie) are rejected at config parse time. Example: &#123;"maas_api_token": "Authorization", "tenant_id": "X-Tenant-ID"&#125; |
+| `extra_blocked_headers` | `list[str]` | No | [] | Additional outbound header names to block in forward_headers. Names are matched case-insensitively and added to the core blocked list. This can tighten policy but cannot unblock core security-sensitive headers. |
+
 ## Sample Configuration
 
 ```yaml
