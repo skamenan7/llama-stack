@@ -6,11 +6,17 @@
 
 from functools import lru_cache
 
+from . import sku_list_download as _sku_list_download
 from .sku_types import (
     CheckpointQuantizationFormat,
     CoreModelId,
     Model,
 )
+
+# Re-export download helpers so existing imports from `sku_list` keep working.
+LlamaDownloadInfo = _sku_list_download.LlamaDownloadInfo
+llama_meta_net_info = _sku_list_download.llama_meta_net_info
+llama_meta_pth_size = _sku_list_download.llama_meta_pth_size
 
 LLAMA2_VOCAB_SIZE = 32000
 LLAMA3_VOCAB_SIZE = 128256
