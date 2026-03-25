@@ -38,7 +38,6 @@ GRANDFATHERED_FILES = {
     "tests/integration/responses/test_openai_responses.py",
     "tests/integration/responses/test_tool_responses.py",
     "tests/unit/providers/responses/builtin/test_openai_responses.py",
-    "tests/unit/providers/utils/inference/test_openai_mixin.py",
 }
 
 
