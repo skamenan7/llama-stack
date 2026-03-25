@@ -24,6 +24,7 @@ from llama_stack_api import (
     OpenAICompletion,
     OpenAICompletionChoice,
     OpenAICompletionRequestWithExtraBody,
+    OpenAIEmbeddingsRequestWithExtraBody,
 )
 
 # These are unit test for the remote vllm provider
@@ -311,3 +312,62 @@ async def test_vllm_chat_completion_extra_body():
         assert "extra_body" in call_kwargs
         assert "chat_template_kwargs" in call_kwargs["extra_body"]
         assert call_kwargs["extra_body"]["chat_template_kwargs"] == {"thinking": True}
+
+
+async def test_embeddings_without_embedding_url_raises_clear_error():
+    """
+    Verify that calling openai_embeddings without embedding_url set raises a clear error.
+
+    This covers the inference-only deployment case where no embedding endpoint exists.
+    """
+    config = VLLMInferenceAdapterConfig(base_url="http://mocked.localhost:12345")
+    adapter = VLLMInferenceAdapter(config=config)
+    adapter.model_store = AsyncMock()  # type: ignore[attr-defined]
+    await adapter.initialize()
+
+    params = OpenAIEmbeddingsRequestWithExtraBody(
+        model="some-embed-model",
+        input=["hello world"],
+    )
+
+    with pytest.raises(ValueError, match="no embedding_url configured"):
+        await adapter.openai_embeddings(params)
+
+
+async def test_embeddings_with_embedding_url_uses_separate_client():
+    """
+    Verify that when embedding_url is configured, openai_embeddings routes to that URL.
+    """
+    config = VLLMInferenceAdapterConfig(
+        base_url="http://mocked.localhost:12345",
+        embedding_url="http://mocked-embeddings.localhost:12346",  # type: ignore[arg-type]
+    )
+    adapter = VLLMInferenceAdapter(config=config)
+    adapter.model_store = AsyncMock()  # type: ignore[attr-defined]
+    adapter.model_store.has_model = AsyncMock(return_value=False)
+    await adapter.initialize()
+
+    params = OpenAIEmbeddingsRequestWithExtraBody(
+        model="some-embed-model",
+        input=["hello world"],
+    )
+
+    mock_response = MagicMock()
+    mock_response.data = [MagicMock(embedding=[0.1, 0.2, 0.3])]
+    mock_response.usage = MagicMock(prompt_tokens=2, total_tokens=2)
+    mock_response.model = "some-embed-model"
+
+    with (
+        patch("llama_stack.providers.remote.inference.vllm.vllm.AsyncOpenAI") as mock_openai_cls,
+        patch.object(adapter, "get_request_provider_data", return_value=None),
+    ):
+        mock_client = MagicMock()
+        mock_client.embeddings.create = AsyncMock(return_value=mock_response)
+        mock_openai_cls.return_value = mock_client
+
+        result = await adapter.openai_embeddings(params)
+
+    # the AsyncOpenAI client was constructed with the embedding URL
+    call_kwargs = mock_openai_cls.call_args.kwargs
+    assert "12346" in call_kwargs["base_url"]
+    assert result.data[0].embedding == [0.1, 0.2, 0.3]

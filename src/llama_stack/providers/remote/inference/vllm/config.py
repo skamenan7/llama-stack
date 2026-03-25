@@ -32,6 +32,12 @@ class VLLMInferenceAdapterConfig(RemoteInferenceProviderConfig):
         alias="api_token",
         description="The API token",
     )
+    embedding_url: HttpUrl | None = Field(
+        default=None,
+        description="The URL for a separate vLLM embedding endpoint, if different from base_url. "
+        "When set, embedding requests are routed here instead of base_url. "
+        "If not set, embedding requests will fail with a clear error, enabling inference-only deployments.",
+    )
     tls_verify: bool | str | None = Field(
         default=None,
         deprecated=True,
@@ -68,6 +74,7 @@ class VLLMInferenceAdapterConfig(RemoteInferenceProviderConfig):
     ):
         return {
             "base_url": base_url,
+            "embedding_url": "${env.VLLM_EMBEDDING_URL:=}",
             "max_tokens": "${env.VLLM_MAX_TOKENS:=4096}",
             "api_token": "${env.VLLM_API_TOKEN:=fake}",
             "network": {

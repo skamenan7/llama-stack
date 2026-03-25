@@ -6,10 +6,12 @@
 import os
 import ssl
 from collections.abc import AsyncIterator
+from typing import Any
 from urllib.parse import urljoin
 
 import aiohttp
 import httpx
+from openai import AsyncOpenAI, DefaultAsyncHttpxClient
 from pydantic import ConfigDict
 
 from llama_stack.log import get_logger
@@ -24,8 +26,13 @@ from llama_stack_api import (
     OpenAIChatCompletionContentPartImageParam,
     OpenAIChatCompletionContentPartTextParam,
     OpenAIChatCompletionRequestWithExtraBody,
+    OpenAIEmbeddingData,
+    OpenAIEmbeddingsRequestWithExtraBody,
+    OpenAIEmbeddingsResponse,
+    OpenAIEmbeddingUsage,
     RerankData,
     RerankResponse,
+    validate_embeddings_input_is_text,
 )
 from llama_stack_api.inference import RerankRequest
 
@@ -132,6 +139,50 @@ class VLLMInferenceAdapter(OpenAIMixin):
                 model_type=ModelType.rerank,
             )
         return super().construct_model_from_identifier(identifier)
+
+    async def openai_embeddings(
+        self,
+        params: OpenAIEmbeddingsRequestWithExtraBody,
+    ) -> OpenAIEmbeddingsResponse:
+        if not self.config.embedding_url:
+            raise ValueError(
+                "Failed to process embedding request: no embedding_url configured. "
+                "Set embedding_url in the vLLM provider config (or via VLLM_EMBEDDING_URL) "
+                "to enable embedding support."
+            )
+        validate_embeddings_input_is_text(params)
+
+        provider_model_id = await self._get_provider_model_id(params.model)
+        self._validate_model_allowed(provider_model_id)
+
+        api_key = self._get_api_key_from_config_or_provider_data() or "NO KEY REQUIRED"
+        embedding_client = AsyncOpenAI(
+            api_key=api_key,
+            base_url=str(self.config.embedding_url),
+            http_client=DefaultAsyncHttpxClient(verify=self.shared_ssl_context),
+        )
+
+        request_params: dict[str, Any] = {
+            "model": provider_model_id,
+            "input": params.input,
+        }
+        if params.encoding_format is not None:
+            request_params["encoding_format"] = params.encoding_format
+        if params.dimensions is not None:
+            request_params["dimensions"] = params.dimensions
+        if params.user is not None:
+            request_params["user"] = params.user
+        if params.model_extra:
+            request_params["extra_body"] = params.model_extra
+
+        response = await embedding_client.embeddings.create(**request_params)
+
+        data = [OpenAIEmbeddingData(embedding=d.embedding, index=i) for i, d in enumerate(response.data)]
+        usage = OpenAIEmbeddingUsage(
+            prompt_tokens=response.usage.prompt_tokens,
+            total_tokens=response.usage.total_tokens,
+        )
+        return OpenAIEmbeddingsResponse(data=data, model=params.model, usage=usage)
 
     async def rerank(
         self,
