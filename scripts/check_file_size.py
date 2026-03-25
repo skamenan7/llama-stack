@@ -22,6 +22,25 @@ EXCLUDE_PATTERNS = [
     "tests/integration/recordings/",
 ]
 
+# Pre-existing large files that haven't been split yet.
+# Remove entries from this list as files get refactored.
+GRANDFATHERED_FILES = {
+    "src/llama_stack/providers/inline/responses/builtin/responses/openai_responses.py",
+    "src/llama_stack/providers/inline/responses/builtin/responses/streaming.py",
+    "src/llama_stack/providers/inline/scoring/basic/utils/ifeval_utils.py",
+    "src/llama_stack/providers/utils/memory/openai_vector_store_mixin.py",
+    "src/llama_stack/providers/registry/vector_io.py",
+    "src/llama_stack/testing/api_recorder.py",
+    "src/llama_stack_api/__init__.py",
+    "src/llama_stack_api/openai_responses.py",
+    "src/llama_stack_api/inference/models.py",
+    "tests/integration/vector_io/test_openai_vector_stores.py",
+    "tests/integration/responses/test_openai_responses.py",
+    "tests/integration/responses/test_tool_responses.py",
+    "tests/unit/providers/responses/builtin/test_openai_responses.py",
+    "tests/unit/providers/utils/inference/test_openai_mixin.py",
+}
+
 
 def main() -> int:
     failures: list[tuple[str, int]] = []
@@ -31,6 +50,8 @@ def main() -> int:
         if not path.suffix == ".py":
             continue
         if any(pattern in path_str for pattern in EXCLUDE_PATTERNS):
+            continue
+        if path_str in GRANDFATHERED_FILES:
             continue
         try:
             line_count = sum(1 for _ in path.open())
