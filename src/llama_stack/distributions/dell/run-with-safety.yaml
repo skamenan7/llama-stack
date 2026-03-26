@@ -1,10 +1,10 @@
 version: 2
 distro_name: dell
 apis:
-- agents
 - datasetio
 - eval
 - inference
+- responses
 - safety
 - scoring
 - tool_runtime
@@ -21,6 +21,8 @@ providers:
       url: ${env.DEH_SAFETY_URL}
   - provider_id: sentence-transformers
     provider_type: inline::sentence-transformers
+    config:
+      trust_remote_code: false
   - provider_id: transformers
     provider_type: inline::transformers
   vector_io:
@@ -36,7 +38,7 @@ providers:
     provider_type: inline::llama-guard
     config:
       excluded_categories: []
-  agents:
+  responses:
   - provider_id: builtin
     provider_type: inline::builtin
     config:
@@ -142,10 +144,5 @@ registered_resources:
   datasets: []
   scoring_fns: []
   benchmarks: []
-  tool_groups:
-  - toolgroup_id: builtin::websearch
-    provider_id: brave-search
-  - toolgroup_id: builtin::file_search
-    provider_id: file-search
 server:
   port: 8321
