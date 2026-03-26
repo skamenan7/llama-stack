@@ -389,6 +389,15 @@ if [[ "$STACK_CONFIG" == *"server:"* && "$COLLECT_ONLY" == false ]]; then
         fi
         sleep 1
     done
+    # Verify IPv6 loopback connectivity
+    if curl -s http://[::1]:$LLAMA_STACK_PORT/v1/health 2>/dev/null | grep -q "OK"; then
+        echo "✅ Llama Stack Server is accessible on IPv6 loopback"
+    else
+        echo "❌ Llama Stack Server is not accessible on IPv6 loopback"
+        echo "Server logs:"
+        cat server.log
+        exit 1
+    fi
     echo ""
 
     trap stop_server EXIT ERR INT TERM
@@ -495,6 +504,8 @@ if [[ "$STACK_CONFIG" == *"docker:"* && "$COLLECT_ONLY" == false ]]; then
     [ -n "${GEMINI_API_KEY:-}" ] && DOCKER_ENV_VARS="$DOCKER_ENV_VARS -e GEMINI_API_KEY=$GEMINI_API_KEY"
     [ -n "${OLLAMA_URL:-}" ] && DOCKER_ENV_VARS="$DOCKER_ENV_VARS -e OLLAMA_URL=$OLLAMA_URL"
     [ -n "${SAFETY_MODEL:-}" ] && DOCKER_ENV_VARS="$DOCKER_ENV_VARS -e SAFETY_MODEL=$SAFETY_MODEL"
+    [ -n "${AWS_BEARER_TOKEN_BEDROCK:-}" ] && DOCKER_ENV_VARS="$DOCKER_ENV_VARS -e AWS_BEARER_TOKEN_BEDROCK=$AWS_BEARER_TOKEN_BEDROCK"
+    [ -n "${AWS_DEFAULT_REGION:-}" ] && DOCKER_ENV_VARS="$DOCKER_ENV_VARS -e AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION"
 
     if [[ "$TEST_SETUP" == "vllm" ]]; then
         DOCKER_ENV_VARS="$DOCKER_ENV_VARS -e VLLM_URL=http://localhost:8000/v1"

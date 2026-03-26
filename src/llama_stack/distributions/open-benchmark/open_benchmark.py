@@ -12,7 +12,6 @@ from llama_stack.core.datatypes import (
     ModelInput,
     Provider,
     ShieldInput,
-    ToolGroupInput,
 )
 from llama_stack.distributions.template import (
     DistributionTemplate,
@@ -103,7 +102,7 @@ def get_distribution_template() -> DistributionTemplate:
             BuildProvider(provider_type="remote::pgvector"),
         ],
         "safety": [BuildProvider(provider_type="inline::llama-guard")],
-        "agents": [BuildProvider(provider_type="inline::builtin")],
+        "responses": [BuildProvider(provider_type="inline::builtin")],
         "eval": [BuildProvider(provider_type="inline::builtin")],
         "datasetio": [
             BuildProvider(provider_type="remote::huggingface"),
@@ -145,17 +144,6 @@ def get_distribution_template() -> DistributionTemplate:
                 user="${env.PGVECTOR_USER:=}",
                 password="${env.PGVECTOR_PASSWORD:=}",
             ),
-        ),
-    ]
-
-    default_tool_groups = [
-        ToolGroupInput(
-            toolgroup_id="builtin::websearch",
-            provider_id="tavily-search",
-        ),
-        ToolGroupInput(
-            toolgroup_id="builtin::file_search",
-            provider_id="file-search",
         ),
     ]
 
@@ -267,7 +255,6 @@ def get_distribution_template() -> DistributionTemplate:
                     "vector_io": vector_io_providers,
                 },
                 default_models=default_models,
-                default_tool_groups=default_tool_groups,
                 default_shields=[ShieldInput(shield_id="meta-llama/Llama-Guard-3-8B")],
                 default_datasets=default_datasets,
                 default_benchmarks=default_benchmarks,
