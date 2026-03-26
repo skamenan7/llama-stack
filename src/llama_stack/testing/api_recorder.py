@@ -102,13 +102,6 @@ def _normalize_body_for_hash(value: Any, exclude_stream_options: bool = False, *
     if isinstance(value, float):
         return round(value, 5)
     if isinstance(value, str):
-        # Strip base64 image data from hash computation. Image downloads can
-        # produce non-deterministic bytes (CDN compression, caching) which
-        # changes the hash and breaks recording replay. Replace with a stable
-        # placeholder so the hash depends on the image format, not content.
-        if value.startswith("data:image/") and ";base64," in value:
-            prefix = value[: value.index(";base64,") + len(";base64,")]
-            return prefix + "__IMAGE_DATA__"
         return _normalize_numeric_literal_strings(value)
     return value
 
