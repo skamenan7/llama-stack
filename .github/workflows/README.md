@@ -8,6 +8,9 @@ Llama Stack uses GitHub Actions for Continuous Integration (CI). Below is a tabl
 | Build Distribution Images | [build-distributions.yml](build-distributions.yml) | Build Distribution Images |
 | CI Status | [ci-status.yml](ci-status.yml) | Aggregate CI check status |
 | CodeQL Workflow Security Scan | [codeql.yml](codeql.yml) | CodeQL Workflow Security Scan |
+| Create Release Branch | [create-release-branch.yml](create-release-branch.yml) | Create release branch release-${{ inputs.product_version }} from tag ${{ inputs.tag }} |
+| Create release tag | [create-tag.yml](create-tag.yml) | Create tag from version in pyproject.toml |
+| Dispatch Version Update to ODH Distribution | [dispatch-version-update-to-odh-distribution.yml](dispatch-version-update-to-odh-distribution.yml) | Dispatch version update to llama-stack-distribution (${{ github.ref_name }}) |
 | Documentation Build | [docs-build.yml](docs-build.yml) | Build and validate documentation |
 | Installer CI | [install-script-ci.yml](install-script-ci.yml) | Test the installation script |
 | Integration Auth Tests | [integration-auth-tests.yml](integration-auth-tests.yml) | Run the integration test suite with Kubernetes authentication |
@@ -17,7 +20,9 @@ Llama Stack uses GitHub Actions for Continuous Integration (CI). Below is a tabl
 | Vector IO Integration Tests | [integration-vector-io-tests.yml](integration-vector-io-tests.yml) | Run the integration test suite with various VectorIO providers |
 | OpenAPI Generator SDK Validation | [openapi-generator-validation.yml](openapi-generator-validation.yml) | Validate OpenAPI Generator SDK generation |
 | OpenResponses Conformance Tests | [openresponses-conformance.yml](openresponses-conformance.yml) | Run OpenResponses conformance tests against llama-stack Responses API |
+| Post-release automation | [post-release.yml](post-release.yml) | Post-release automation |
 | Pre-commit | [pre-commit.yml](pre-commit.yml) | Run pre-commit checks |
+| Prepare release | [prepare-release.yml](prepare-release.yml) | Prepare release |
 | Test Llama Stack Build | [providers-build.yml](providers-build.yml) | Test llama stack build |
 | Test llama stack list-deps | [providers-list-deps.yml](providers-list-deps.yml) | Test llama stack list-deps |
 | Build, test, and publish packages | [pypi.yml](pypi.yml) | Build, test, and publish packages |
@@ -29,5 +34,6 @@ Llama Stack uses GitHub Actions for Continuous Integration (CI). Below is a tabl
 | Test External Providers Installed via Module | [test-external-provider-module.yml](test-external-provider-module.yml) | Test External Provider installation via Python module |
 | Test External API and Providers | [test-external.yml](test-external.yml) | Test the External API and Provider mechanisms |
 | Trigger GitLab Release Branch Pipeline | [trigger-gitlab-release-branch.yml](trigger-gitlab-release-branch.yml) | Trigger GitLab release branch creation for ${{ github.ref_name }} |
+| Trigger GitLab Update Release Branch Dependencies | [trigger-gitlab-update-deps.yml](trigger-gitlab-update-deps.yml) | Trigger GitLab dependency update for ${{ github.ref_name }} |
 | UI Tests | [ui-unit-tests.yml](ui-unit-tests.yml) | Run the UI test suite |
 | Unit Tests | [unit-tests.yml](unit-tests.yml) | Run the unit test suite |

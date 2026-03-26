@@ -10,6 +10,7 @@ from typing import Any
 
 from pydantic import BaseModel, TypeAdapter
 
+from llama_stack.core.conversations.validation import CONVERSATION_ID_PATTERN
 from llama_stack.core.datatypes import AccessRule, StackConfig
 from llama_stack.core.storage.sqlstore.authorized_sqlstore import AuthorizedSqlStore
 from llama_stack.core.storage.sqlstore.sqlstore import sqlstore_impl
@@ -143,6 +144,7 @@ class ConversationServiceImpl(Conversations):
 
     async def get_conversation(self, request: GetConversationRequest) -> Conversation:
         """Get a conversation with the given ID."""
+        self._validate_conversation_id(request.conversation_id)
         record = await self.sql_store.fetch_one(table="openai_conversations", where={"id": request.conversation_id})
 
         if record is None:
@@ -154,6 +156,7 @@ class ConversationServiceImpl(Conversations):
 
     async def update_conversation(self, conversation_id: str, request: UpdateConversationRequest) -> Conversation:
         """Update a conversation's metadata with the given ID"""
+        self._validate_conversation_id(conversation_id)
 
         # verify conversation exists and trigger ABAC check before updating
         record = await self.sql_store.fetch_one(table="openai_conversations", where={"id": conversation_id})
@@ -168,6 +171,7 @@ class ConversationServiceImpl(Conversations):
 
     async def openai_delete_conversation(self, request: DeleteConversationRequest) -> ConversationDeletedResource:
         """Delete a conversation with the given ID."""
+        self._validate_conversation_id(request.conversation_id)
 
         record = await self.sql_store.fetch_one(table="openai_conversations", where={"id": request.conversation_id})
         if record is None:
@@ -179,9 +183,13 @@ class ConversationServiceImpl(Conversations):
         return ConversationDeletedResource(id=request.conversation_id)
 
     def _validate_conversation_id(self, conversation_id: str) -> None:
-        """Validate conversation ID format."""
-        if not conversation_id.startswith("conv_"):
-            raise InvalidParameterError("conversation_id", conversation_id, "Conversation ID must begin with 'conv_'.")
+        """Validate conversation ID format matches ``conv_`` + 48 hex chars."""
+        if not CONVERSATION_ID_PATTERN.fullmatch(conversation_id):
+            raise InvalidParameterError(
+                "conversation_id",
+                conversation_id,
+                "Conversation ID must match format 'conv_' followed by 48 lowercase hex characters.",
+            )
 
     def _get_or_generate_item_id(self, item: ConversationItem, item_dict: dict) -> str:
         """Get existing item ID or generate one if missing."""
@@ -196,8 +204,7 @@ class ConversationServiceImpl(Conversations):
         return item.id
 
     async def _get_validated_conversation(self, conversation_id: str) -> Conversation:
-        """Validate conversation ID and return the conversation if it exists."""
-        self._validate_conversation_id(conversation_id)
+        """Validate conversation ID format and return the conversation if it exists."""
         return await self.get_conversation(GetConversationRequest(conversation_id=conversation_id))
 
     async def add_items(self, conversation_id: str, request: AddItemsRequest) -> ConversationItemList:
@@ -244,8 +251,7 @@ class ConversationServiceImpl(Conversations):
 
     async def retrieve(self, request: RetrieveItemRequest) -> ConversationItem:
         """Retrieve a conversation item."""
-        if not request.conversation_id:
-            raise InvalidParameterError("conversation_id", request.conversation_id, "Must be a non-empty string.")
+        self._validate_conversation_id(request.conversation_id)
         if not request.item_id:
             raise InvalidParameterError("item_id", request.item_id, "Must be a non-empty string.")
 
@@ -262,10 +268,7 @@ class ConversationServiceImpl(Conversations):
 
     async def list_items(self, request: ListItemsRequest) -> ConversationItemList:
         """List items in the conversation."""
-        if not request.conversation_id:
-            raise InvalidParameterError("conversation_id", request.conversation_id, "Must be a non-empty string.")
-
-        # check if conversation exists
+        # get_conversation validates the ID format and checks existence
         await self.get_conversation(GetConversationRequest(conversation_id=request.conversation_id))
 
         result = await self.sql_store.fetch_all(
@@ -298,11 +301,10 @@ class ConversationServiceImpl(Conversations):
 
     async def openai_delete_conversation_item(self, request: DeleteItemRequest) -> ConversationItemDeletedResource:
         """Delete a conversation item."""
-        if not request.conversation_id:
-            raise InvalidParameterError("conversation_id", request.conversation_id, "Must be a non-empty string.")
         if not request.item_id:
             raise InvalidParameterError("item_id", request.item_id, "Must be a non-empty string.")
 
+        # _get_validated_conversation validates ID format and checks existence
         _ = await self._get_validated_conversation(request.conversation_id)
 
         record = await self.sql_store.fetch_one(

@@ -29,6 +29,16 @@ from .helpers import new_vector_store, setup_mcp_tools, upload_file, wait_for_fi
 from .streaming_assertions import StreamingValidator
 
 
+@pytest.fixture(autouse=True)
+def _skip_tool_tests_for_watsonx(request):
+    """Skip all tool tests for WatsonX — tool calling via LiteLLM is unreliable."""
+    # Get text_model_id from the test's fixturenames if available
+    if "text_model_id" in request.fixturenames:
+        text_model_id = request.getfixturevalue("text_model_id")
+        if text_model_id and text_model_id.startswith("watsonx/"):
+            pytest.skip("WatsonX via LiteLLM does not reliably support tool calling")
+
+
 @pytest.mark.parametrize("case", web_search_test_cases)
 def test_response_non_streaming_web_search(responses_client, text_model_id, case):
     response = responses_client.responses.create(
@@ -237,7 +247,7 @@ def test_response_non_streaming_mcp_tool(responses_client, text_model_id, case, 
         )
         # Suppress expected auth error logs only for the failing auth attempt
         with caplog.at_level(
-            logging.CRITICAL, logger="llama_stack.providers.inline.agents.meta_reference.responses.streaming"
+            logging.CRITICAL, logger="llama_stack.providers.inline.agents.builtin.responses.streaming"
         ):
             with pytest.raises(exc_type):
                 responses_client.responses.create(
@@ -1150,3 +1160,86 @@ def test_parallel_tool_calls_with_mcp_tools(responses_client, text_model_id):
 
         # Verify we have a valid parallel_tool_calls field
         assert not response2.parallel_tool_calls
+
+
+@pytest.mark.parametrize("case", web_search_test_cases)
+def test_response_streaming_web_search(responses_client, text_model_id, case):
+    """Test streaming behavior with web_search tool."""
+
+    response = responses_client.responses.create(
+        model=text_model_id,
+        input=case.input,
+        tools=case.tools,
+        stream=True,
+    )
+
+    chunks = list(response)
+    validator = StreamingValidator(chunks)
+    validator.assert_basic_event_sequence()
+    validator.assert_response_consistency()
+    validator.assert_has_tool_calls()
+    validator.assert_content_quality(case.expected)
+    validator.assert_has_incremental_content()
+
+    final_chunk = chunks[-1]
+    assert hasattr(final_chunk, "response")
+
+    assert hasattr(final_chunk.response, "output")
+    assert len(final_chunk.response.output) > 0
+
+    web_search_calls = [item for item in final_chunk.response.output if item.type == "web_search_call"]
+    assert len(web_search_calls) > 0, "Response should contain web_search_call"
+    assert web_search_calls[0].status == "completed"
+
+    messages = [item for item in final_chunk.response.output if item.type == "message"]
+    assert len(messages) > 0
+    assert messages[0].status == "completed"
+    assert messages[0].role == "assistant"
+
+
+def test_response_multi_turn_streaming_web_search(responses_client, text_model_id):
+    """Test streaming web_search across multiple turns."""
+
+    # First turn with web search
+    response = responses_client.responses.create(
+        model=text_model_id,
+        input="What is the latest Python version?",
+        tools=[{"type": "web_search", "search_context_size": "low"}],
+        stream=True,
+    )
+
+    chunks = list(response)
+    validator = StreamingValidator(chunks)
+
+    validator.assert_basic_event_sequence()
+    validator.assert_response_consistency()
+    validator.assert_has_tool_calls()
+    validator.assert_content_quality("python")
+    validator.assert_has_incremental_content()
+
+    final_chunk = chunks[-1]
+    assert hasattr(final_chunk, "response")
+    assert len(final_chunk.response.output) > 0
+
+    web_search_calls = [item for item in final_chunk.response.output if item.type == "web_search_call"]
+    assert len(web_search_calls) > 0, "First turn should contain web_search_call"
+    assert web_search_calls[0].status == "completed"
+
+    # Second turn.  No tools needed, should use context from first turn.
+    response = responses_client.responses.create(
+        model=text_model_id,
+        input="What are the key features of this version?",
+        previous_response_id=final_chunk.response.id,
+        stream=True,
+    )
+
+    chunks = list(response)
+    validator = StreamingValidator(chunks)
+
+    validator.assert_basic_event_sequence()
+    validator.assert_response_consistency()
+    validator.assert_has_incremental_content()
+
+    final_chunk = chunks[-1]
+    assert hasattr(final_chunk, "response")
+    assert len(final_chunk.response.output_text) > 0

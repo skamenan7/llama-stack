@@ -108,19 +108,32 @@ async def test_conversation_items(service):
 
 
 async def test_invalid_conversation_id(service):
-    with pytest.raises(InvalidParameterError, match="Conversation ID must begin with 'conv_'"):
-        await service._get_validated_conversation("invalid_id")
+    with pytest.raises(InvalidParameterError, match="Conversation ID must match format"):
+        await service.get_conversation(GetConversationRequest(conversation_id="invalid_id"))
 
 
-async def test_empty_parameter_validation(service):
-    with pytest.raises(InvalidParameterError, match="Must be a non-empty string"):
-        await service.retrieve(RetrieveItemRequest(conversation_id="", item_id="item_123"))
+async def test_invalid_conversation_id_on_retrieve(service):
+    with pytest.raises(InvalidParameterError, match="Conversation ID must match format"):
+        await service.retrieve(RetrieveItemRequest(conversation_id="bad_id", item_id="item_123"))
+
+
+async def test_invalid_conversation_id_on_update(service):
+    from llama_stack_api.conversations import UpdateConversationRequest
+
+    with pytest.raises(InvalidParameterError, match="Conversation ID must match format"):
+        await service.update_conversation("bad_id", UpdateConversationRequest(metadata={}))
+
+
+async def test_invalid_conversation_id_on_delete(service):
+    with pytest.raises(InvalidParameterError, match="Conversation ID must match format"):
+        await service.openai_delete_conversation(DeleteConversationRequest(conversation_id="bad_id"))
 
 
 async def test_nonexistent_conversation_raises_conversation_not_found(service):
     """Test that get_conversation raises ConversationNotFoundError for nonexistent ID."""
-    with pytest.raises(ConversationNotFoundError, match="Conversation 'conv_nonexistent' not found"):
-        await service.get_conversation(GetConversationRequest(conversation_id="conv_nonexistent"))
+    nonexistent_id = "conv_" + "0" * 48
+    with pytest.raises(ConversationNotFoundError, match=f"Conversation '{nonexistent_id}' not found"):
+        await service.get_conversation(GetConversationRequest(conversation_id=nonexistent_id))
 
 
 async def test_retrieve_nonexistent_item_raises_conversation_item_not_found(service):
