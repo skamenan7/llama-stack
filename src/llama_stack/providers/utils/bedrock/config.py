@@ -27,6 +27,18 @@ class BedrockBaseConfig(RemoteInferenceProviderConfig):
         default_factory=lambda: SecretStr(val) if (val := os.getenv("AWS_SESSION_TOKEN")) else None,
         description="The AWS session token to use. Default use environment variable: AWS_SESSION_TOKEN",
     )
+    aws_role_arn: str | None = Field(
+        default_factory=lambda: os.getenv("AWS_ROLE_ARN"),
+        description="The AWS role ARN to assume. Default use environment variable: AWS_ROLE_ARN",
+    )
+    aws_web_identity_token_file: str | None = Field(
+        default_factory=lambda: os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE"),
+        description="The path to the web identity token file. Default use environment variable: AWS_WEB_IDENTITY_TOKEN_FILE",
+    )
+    aws_role_session_name: str | None = Field(
+        default_factory=lambda: os.getenv("AWS_ROLE_SESSION_NAME"),
+        description="The session name to use when assuming a role. Default use environment variable: AWS_ROLE_SESSION_NAME",
+    )
     region_name: str | None = Field(
         default_factory=lambda: os.getenv("AWS_DEFAULT_REGION"),
         description="The default AWS Region to use, for example, us-west-1 or us-west-2."

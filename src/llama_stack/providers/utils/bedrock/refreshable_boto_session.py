@@ -26,11 +26,15 @@ class RefreshableBotoSession:
 
     def __init__(
         self,
-        region_name: str = None,
-        profile_name: str = None,
-        sts_arn: str = None,
-        session_name: str = None,
-        session_ttl: int = 30000,
+        region_name: str | None = None,
+        aws_access_key_id: str | None = None,
+        aws_secret_access_key: str | None = None,
+        aws_session_token: str | None = None,
+        profile_name: str | None = None,
+        sts_arn: str | None = None,
+        web_identity_token_file: str | None = None,
+        session_name: str | None = None,
+        session_ttl: int = 3600,
     ):
         """
         Initialize `RefreshableBotoSession`
@@ -46,17 +50,24 @@ class RefreshableBotoSession:
         sts_arn : str (optional)
             The role arn to sts before creating a session.
 
+        web_identity_token_file : str (optional)
+            The path to the web identity token file (for OIDC/IRSA).
+
         session_name : str (optional)
             An identifier for the assumed role session. (required when `sts_arn` is given)
 
         session_ttl : int (optional)
             An integer number to set the TTL for each session. Beyond this session, it will renew the token.
-            50 minutes by default which is before the default role expiration of 1 hour
+            3600 seconds (1 hour) by default, matching the default role expiration.
         """
 
         self.region_name = region_name
+        self.aws_access_key_id = aws_access_key_id
+        self.aws_secret_access_key = aws_secret_access_key
+        self.aws_session_token = aws_session_token
         self.profile_name = profile_name
         self.sts_arn = sts_arn
+        self.web_identity_token_file = web_identity_token_file
         self.session_name = session_name or uuid4().hex
         self.session_ttl = session_ttl
 
@@ -64,16 +75,36 @@ class RefreshableBotoSession:
         """
         Get session credentials
         """
-        session = Session(region_name=self.region_name, profile_name=self.profile_name)
+        session_args = {
+            "region_name": self.region_name,
+            "profile_name": self.profile_name,
+            "aws_access_key_id": self.aws_access_key_id,
+            "aws_secret_access_key": self.aws_secret_access_key,
+            "aws_session_token": self.aws_session_token,
+        }
+        session_args = {k: v for k, v in session_args.items() if v is not None}
+        session = Session(**session_args)
 
         # if sts_arn is given, get credential by assuming the given role
         if self.sts_arn:
             sts_client = session.client(service_name="sts", region_name=self.region_name)
-            response = sts_client.assume_role(
-                RoleArn=self.sts_arn,
-                RoleSessionName=self.session_name,
-                DurationSeconds=self.session_ttl,
-            ).get("Credentials")
+
+            if self.web_identity_token_file:
+                with open(self.web_identity_token_file) as f:
+                    web_identity_token = f.read().strip()
+
+                response = sts_client.assume_role_with_web_identity(
+                    RoleArn=self.sts_arn,
+                    RoleSessionName=self.session_name,
+                    WebIdentityToken=web_identity_token,
+                    DurationSeconds=self.session_ttl,
+                ).get("Credentials")
+            else:
+                response = sts_client.assume_role(
+                    RoleArn=self.sts_arn,
+                    RoleSessionName=self.session_name,
+                    DurationSeconds=self.session_ttl,
+                ).get("Credentials")
 
             credentials = {
                 "access_key": response.get("AccessKeyId"),
