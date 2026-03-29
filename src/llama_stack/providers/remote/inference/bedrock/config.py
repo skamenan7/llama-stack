@@ -9,7 +9,6 @@ import os
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from llama_stack.providers.utils.bedrock.config import BedrockBaseConfig
-from llama_stack.providers.utils.inference.model_registry import NetworkConfig
 
 
 class BedrockProviderDataValidator(BaseModel):
@@ -30,10 +29,6 @@ class BedrockConfig(BedrockBaseConfig):
         default=None,
         description="Authentication credential for the provider",
         alias="api_key",
-    )
-    network: NetworkConfig | None = Field(
-        default=None,
-        description="Network configuration including TLS, proxy, and timeout settings.",
     )
     # Override region_name to default to us-east-2 when unset
     region_name: str | None = Field(

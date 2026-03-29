@@ -139,7 +139,7 @@ class BedrockSigV4Auth(httpx.Auth):
                     session_args = {k: v for k, v in session_args.items() if v is not None}
                     self._session = boto3.Session(**session_args)
 
-            credentials = self._session.get_credentials()  # type: ignore[attr-defined]
+            credentials = self._session.get_credentials()
             if credentials is None:
                 raise RuntimeError(
                     "Failed to load AWS credentials. Ensure AWS credentials are "
