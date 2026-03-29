@@ -47,6 +47,8 @@ from collections.abc import AsyncGenerator, Generator
 from typing import Any
 
 import httpx
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
 
 from llama_stack.log import get_logger
 
@@ -132,9 +134,6 @@ class BedrockSigV4Auth(httpx.Auth):
             return credentials.get_frozen_credentials()
 
     def _sign_request(self, request: httpx.Request) -> None:
-        from botocore.auth import SigV4Auth
-        from botocore.awsrequest import AWSRequest
-
         credentials = self._get_credentials()
 
         # drop the openai sdk's "Bearer <NOTUSED>" placeholder before signing
