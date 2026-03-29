@@ -55,16 +55,11 @@ logger = get_logger(name=__name__, category="providers")
 
 class BedrockSigV4Auth(httpx.Auth):
     """
-    httpx.Auth implementation for AWS SigV4 signing.
+    httpx.Auth that signs requests with AWS SigV4.
 
-    This auth handler signs HTTP requests using AWS Signature Version 4,
-    which is required for IAM-based authentication with AWS services.
-
-    The implementation:
-    - Uses boto3's credential chain for automatic credential resolution
-    - Supports credential refresh for temporary credentials (STS, IRSA)
-    - Only signs headers that won't be modified by httpx during transmission
-    - Replaces any existing Authorization header with SigV4 signature
+    Only signs headers that httpx won't touch after signing, to avoid
+    signature mismatches. Credential refresh is handled automatically
+    by boto3 for temporary credentials (STS, IRSA).
     """
 
     def __init__(
@@ -80,19 +75,8 @@ class BedrockSigV4Auth(httpx.Auth):
         aws_role_session_name: str | None = None,
         session_ttl: int | None = 3600,
     ):
-        """
-        Initialize SigV4 auth handler.
-
-        Args:
-            region: AWS region (e.g., "us-east-1")
-            service: AWS service name for SigV4 signing. Use "bedrock" (the signing
-                     name from botocore metadata), NOT "bedrock-runtime" (the endpoint
-                     prefix). The signing name is used in the SigV4 credential scope.
-            aws_role_arn: Optional IAM role ARN to assume.
-            aws_web_identity_token_file: Optional path to web identity token file.
-            aws_role_session_name: Optional session name for role assumption.
-            session_ttl: Optional session TTL in seconds.
-        """
+        # service must be "bedrock" (the botocore signing name), not "bedrock-runtime"
+        # (the endpoint prefix) — using the wrong one causes SignatureDoesNotMatch
         self._region = region
         self._service = service
         self._aws_access_key_id = aws_access_key_id
@@ -107,7 +91,6 @@ class BedrockSigV4Auth(httpx.Auth):
         self._session: Any = None  # boto3.Session | None — Any because boto3 is an optional dep
 
     def _get_credentials(self) -> Any:
-        """Get current AWS credentials from boto3 session."""
         from llama_stack.providers.utils.bedrock.refreshable_boto_session import (
             RefreshableBotoSession,
         )
@@ -149,52 +132,34 @@ class BedrockSigV4Auth(httpx.Auth):
             return credentials.get_frozen_credentials()
 
     def _sign_request(self, request: httpx.Request) -> None:
-        """
-        Sign the request using SigV4 (modifies request in place).
-
-        This is the core signing logic, extracted to be reusable by both
-        sync and async auth flows.
-
-        Note: Any existing Authorization header (e.g., from OpenAI SDK's
-        "Bearer <NOTUSED>" placeholder) is explicitly removed and replaced
-        with the SigV4 signature.
-        """
         from botocore.auth import SigV4Auth
         from botocore.awsrequest import AWSRequest
 
         credentials = self._get_credentials()
 
-        # Remove any existing Authorization header (e.g., Bearer placeholder from OpenAI SDK)
-        # SigV4 will add the proper Authorization header after signing
+        # drop the openai sdk's "Bearer <NOTUSED>" placeholder before signing
         if "authorization" in request.headers:
             del request.headers["authorization"]
 
-        # Prepare headers to sign - only include stable headers
-        # that won't be modified by httpx during transmission.
-        #
-        # Use netloc (host:port) to handle non-default ports correctly.
-        # If an explicit Host header exists, prefer that for consistency.
+        # sign only stable headers — anything httpx might rewrite after this point
+        # would invalidate the signature, so we leave those out
         host = request.headers.get("host") or str(request.url.netloc)
         headers_to_sign = {"host": host}
 
-        # Only include content-type if present in the request.
-        # Don't force a default to avoid signature mismatch if actual differs.
+        # only include content-type if the request already has one; injecting a
+        # default here would cause a mismatch if httpx sends a different value
         if "content-type" in request.headers:
             headers_to_sign["content-type"] = request.headers["content-type"]
 
-        # Add other headers that should be signed if present
         for header_name in ["x-amz-content-sha256", "x-amz-security-token"]:
             if header_name in request.headers:
                 headers_to_sign[header_name] = request.headers[header_name]
 
-        # Read request content, handling streaming requests
         try:
             content = request.content
         except httpx.RequestNotRead:
-            # For streaming requests, read the content first
             content = request.read()
 
-        # Create AWS request for signing
         aws_request = AWSRequest(
             method=request.method,
             url=str(request.url),
@@ -202,12 +167,10 @@ class BedrockSigV4Auth(httpx.Auth):
             headers=headers_to_sign,
         )
 
-        # Sign the request
         signer = SigV4Auth(credentials, self._service, self._region)
         signer.add_auth(aws_request)
 
-        # Copy signed headers back to the original request
-        # This includes Authorization, X-Amz-Date, and potentially X-Amz-Security-Token
+        # copy Authorization, X-Amz-Date, and X-Amz-Security-Token back onto the live request
         for key, value in aws_request.headers.items():
             request.headers[key] = value
 
@@ -217,21 +180,10 @@ class BedrockSigV4Auth(httpx.Auth):
         )
 
     def auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response, None]:
-        """
-        Sign the request using SigV4 (sync version).
-
-        This method is called by httpx for sync clients.
-        """
         self._sign_request(request)
         yield request
 
     async def async_auth_flow(self, request: httpx.Request) -> AsyncGenerator[httpx.Request, httpx.Response]:
-        """
-        Sign the request using SigV4 (async version).
-
-        This method is called by httpx for async clients. It offloads the
-        signing operation to a thread pool to avoid blocking the event loop
-        during credential resolution (which may involve IMDS calls or file I/O).
-        """
+        # offload to a thread because credential resolution can do IMDS calls or file I/O
         await asyncio.to_thread(self._sign_request, request)
         yield request

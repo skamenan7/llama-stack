@@ -85,8 +85,8 @@ class BedrockInferenceAdapter(OpenAIMixin):
 
     provider_data_api_key_field: str | None = "aws_bearer_token_bedrock"
 
-    # Cached httpx client for SigV4 mode (prevents socket leaks under load).
-    # Created eagerly in initialize() so get_extra_client_params() stays sync.
+    # built once in initialize() so get_extra_client_params() can stay sync;
+    # reusing one client also avoids opening a new socket per request
     _sigv4_http_client: httpx.AsyncClient | None = PrivateAttr(default=None)
 
     @property
@@ -98,20 +98,11 @@ class BedrockInferenceAdapter(OpenAIMixin):
         return self.config
 
     def get_base_url(self) -> str:
-        """Get base URL for OpenAI client."""
         region = self._bedrock_config.region_name or "us-east-2"
         return f"https://bedrock-runtime.{region}.amazonaws.com/openai/v1"
 
     def _should_use_sigv4(self) -> bool:
-        """
-        Determine if SigV4 authentication should be used.
-
-        Returns True if:
-        - No bearer token is configured in config
-        - No bearer token in provider data (checked at request time)
-
-        Note: This check is performed per-request to support mixed auth modes.
-        """
+        # checked per-request so a bearer token in provider data can override SigV4 at runtime
         if self._bedrock_config.has_bearer_token():
             return False
 
@@ -124,15 +115,13 @@ class BedrockInferenceAdapter(OpenAIMixin):
         return True
 
     def _build_sigv4_http_client(self) -> httpx.AsyncClient:
-        """Build the httpx client with SigV4 auth. Called once from initialize()."""
-        # boto3/botocore are optional deps — import lazily so the module loads
-        # even when they're not installed (bearer-token mode doesn't need them)
+        # lazy import so bearer-token installs don't need boto3/botocore
         from llama_stack.providers.utils.bedrock.sigv4_auth import BedrockSigV4Auth
 
         cfg = self._bedrock_config
         sigv4_args: dict[str, Any] = {
             "region": cfg.region_name or "us-east-2",
-            "service": "bedrock",  # signing name from botocore, not endpoint prefix
+            "service": "bedrock",  # botocore signing name, not the endpoint prefix "bedrock-runtime"
             "aws_access_key_id": cfg.aws_access_key_id.get_secret_value() if cfg.aws_access_key_id else None,
             "aws_secret_access_key": cfg.aws_secret_access_key.get_secret_value()
             if cfg.aws_secret_access_key
@@ -154,57 +143,35 @@ class BedrockInferenceAdapter(OpenAIMixin):
 
     async def initialize(self) -> None:
         await super().initialize()
-        # At init time there is no request context, so only check the config.
-        # Per-request bearer token overrides are handled in get_extra_client_params().
+        # no request context at init time, so only the static config is available;
+        # per-request bearer token overrides are handled in get_extra_client_params()
         if not self._bedrock_config.has_bearer_token():
             self._sigv4_http_client = self._build_sigv4_http_client()
 
     def get_api_key(self) -> str | None:
-        """
-        Get API key for authentication.
-
-        In SigV4 mode, returns a non-empty placeholder to satisfy OpenAIMixin
-        validation while the actual auth is handled by the SigV4 http_client.
-        This follows the same pattern as the OCI provider.
-        """
         if self._should_use_sigv4():
-            # Return placeholder - SigV4 auth handles Authorization header via http_client
-            # The OpenAI SDK will add "Authorization: Bearer <NOTUSED>" but our SigV4
-            # auth handler replaces it with the proper SigV4 signature.
+            # openai sdk requires a non-empty api_key; sigv4_auth will overwrite
+            # the resulting "Bearer <NOTUSED>" header with the real SigV4 signature
             return "<NOTUSED>"
         return super().get_api_key()
 
     def get_extra_client_params(self) -> dict[str, Any]:
-        """
-        Get extra parameters for the AsyncOpenAI client.
-
-        In SigV4 mode, provides the http_client pre-built in initialize().
-        Re-checks _should_use_sigv4() per request so a per-request bearer token
-        override in provider data correctly bypasses the SigV4 client.
-        """
+        # re-check per request so a runtime bearer token in provider data can bypass sigv4
         if self._sigv4_http_client is not None and self._should_use_sigv4():
             return {"http_client": self._sigv4_http_client}
         return {}
 
     async def list_provider_model_ids(self) -> Iterable[str]:
-        """
-        Bedrock's OpenAI-compatible endpoint does not support the /v1/models endpoint.
-        Returns empty list since models must be pre-registered in the config.
-        """
+        # bedrock's openai-compatible endpoint doesn't expose /v1/models
         return []
 
     async def check_model_availability(self, model: str) -> bool:
-        """
-        Bedrock doesn't support dynamic model listing via /v1/models.
-        Always return True to accept all models registered in the config.
-        """
+        # no /v1/models to query — accept whatever is registered in config
         return True
 
     async def shutdown(self) -> None:
-        """Clean up resources on shutdown."""
         if self._sigv4_http_client is not None:
-            # shield so a framework-level timeout (stack.py uses asyncio.wait_for with 5s)
-            # doesn't interrupt the close mid-execution and leak TCP connections
+            # shield so stack.py's 5s asyncio.wait_for doesn't abort mid-close and leak a socket
             await asyncio.shield(self._sigv4_http_client.aclose())
             self._sigv4_http_client = None
 
@@ -233,7 +200,6 @@ class BedrockInferenceAdapter(OpenAIMixin):
         self,
         params: OpenAIChatCompletionRequestWithExtraBody,
     ) -> OpenAIChatCompletion | AsyncIterator[OpenAIChatCompletionChunk]:
-        """Override to handle authentication errors and null responses."""
         use_sigv4 = self._should_use_sigv4()
 
         try:
@@ -259,7 +225,6 @@ class BedrockInferenceAdapter(OpenAIMixin):
             raise
 
     def _handle_auth_error(self, error_msg: str, original_error: Exception, *, use_sigv4: bool) -> NoReturn:
-        """Handle authentication errors with appropriate messages."""
         if use_sigv4:
             logger.error("AWS Bedrock SigV4 authentication failed")
             raise InternalServerError(
