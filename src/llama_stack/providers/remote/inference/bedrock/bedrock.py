@@ -238,9 +238,8 @@ class BedrockInferenceAdapter(OpenAIMixin):
                 "Authentication failed because the provided request credential has expired. "
                 "Please refresh the credential and try again, or remove it so the server can use its configured cloud credentials."
             ) from original_error
-        else:
-            logger.error("AWS Bedrock authentication failed")
-            raise InternalServerError(
-                "Authentication failed because the provided request credential was rejected. "
-                "Please verify that the credential is valid, unexpired, and authorized for this request."
-            ) from original_error
+        logger.error("AWS Bedrock authentication failed")
+        raise InternalServerError(
+            "Authentication failed because the provided request credential was rejected. "
+            "Please verify that the credential is valid, unexpired, and authorized for this request."
+        ) from original_error

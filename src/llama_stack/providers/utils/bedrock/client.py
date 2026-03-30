@@ -25,7 +25,27 @@ def create_bedrock_client(config: BedrockBaseConfig, service_name: str = "bedroc
     Returns:
         A configured boto3 client
     """
-    if config.aws_access_key_id and config.aws_secret_access_key:
+    if config.aws_role_arn:
+        # role assumption takes priority — source credentials (if any) are passed in
+        # so the refreshable session can use them as the base for assume-role calls
+        return (
+            RefreshableBotoSession(
+                region_name=config.region_name,
+                aws_access_key_id=config.aws_access_key_id.get_secret_value() if config.aws_access_key_id else None,
+                aws_secret_access_key=config.aws_secret_access_key.get_secret_value()
+                if config.aws_secret_access_key
+                else None,
+                aws_session_token=config.aws_session_token.get_secret_value() if config.aws_session_token else None,
+                profile_name=config.profile_name,
+                sts_arn=config.aws_role_arn,
+                web_identity_token_file=config.aws_web_identity_token_file,
+                session_name=config.aws_role_session_name,
+                session_ttl=config.session_ttl or DEFAULT_SESSION_TTL,
+            )
+            .refreshable_session()
+            .client(service_name)
+        )
+    elif config.aws_access_key_id and config.aws_secret_access_key:
         retries_config = {
             k: v
             for k, v in dict(
@@ -66,9 +86,6 @@ def create_bedrock_client(config: BedrockBaseConfig, service_name: str = "bedroc
             RefreshableBotoSession(
                 region_name=config.region_name,
                 profile_name=config.profile_name,
-                sts_arn=config.aws_role_arn,
-                web_identity_token_file=config.aws_web_identity_token_file,
-                session_name=config.aws_role_session_name,
                 session_ttl=config.session_ttl or DEFAULT_SESSION_TTL,
             )
             .refreshable_session()

@@ -4,11 +4,6 @@
 # This source code is licensed under the terms described in the LICENSE file in
 # the root directory of this source tree.
 
-# All rights reserved.
-#
-# This source code is licensed under the terms described in the LICENSE file in
-# the root directory of this source tree.
-
 from unittest.mock import MagicMock, call, patch
 
 from llama_stack.providers.remote.safety.bedrock.bedrock import BedrockSafetyAdapter
