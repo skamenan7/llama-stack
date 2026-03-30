@@ -51,6 +51,7 @@ from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 
 from llama_stack.log import get_logger
+from llama_stack.providers.utils.bedrock.config import DEFAULT_SESSION_TTL
 
 logger = get_logger(name=__name__, category="providers")
 
@@ -75,7 +76,7 @@ class BedrockSigV4Auth(httpx.Auth):
         aws_role_arn: str | None = None,
         aws_web_identity_token_file: str | None = None,
         aws_role_session_name: str | None = None,
-        session_ttl: int | None = 3600,
+        session_ttl: int | None = DEFAULT_SESSION_TTL,
     ):
         # service must be "bedrock" (the botocore signing name), not "bedrock-runtime"
         # (the endpoint prefix) — using the wrong one causes SignatureDoesNotMatch
@@ -88,7 +89,7 @@ class BedrockSigV4Auth(httpx.Auth):
         self._aws_role_arn = aws_role_arn
         self._aws_web_identity_token_file = aws_web_identity_token_file
         self._aws_role_session_name = aws_role_session_name
-        self._session_ttl = session_ttl or 3600
+        self._session_ttl = session_ttl or DEFAULT_SESSION_TTL
         self._lock = threading.Lock()
         self._session: Any = None  # boto3.Session | None — Any because boto3 is an optional dep
 
@@ -183,6 +184,8 @@ class BedrockSigV4Auth(httpx.Auth):
         yield request
 
     async def async_auth_flow(self, request: httpx.Request) -> AsyncGenerator[httpx.Request, httpx.Response]:
-        # offload to a thread because credential resolution can do IMDS calls or file I/O
-        await asyncio.to_thread(self._sign_request, request)
+        # offload to a thread because credential resolution can do IMDS calls or file I/O;
+        # shield so a rolling-restart cancellation doesn't abort mid-sign and leave the
+        # connection in an inconsistent auth state
+        await asyncio.shield(asyncio.to_thread(self._sign_request, request))
         yield request

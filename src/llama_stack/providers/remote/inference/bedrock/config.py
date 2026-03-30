@@ -6,15 +6,13 @@
 
 import os
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, Field, SecretStr
 
 from llama_stack.providers.utils.bedrock.config import BedrockBaseConfig
 
 
 class BedrockProviderDataValidator(BaseModel):
     """Validates provider-specific request data for AWS Bedrock inference."""
-
-    model_config = ConfigDict(extra="forbid")
 
     aws_bearer_token_bedrock: SecretStr | None = Field(
         default=None,

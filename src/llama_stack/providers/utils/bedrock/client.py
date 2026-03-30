@@ -9,7 +9,7 @@ import boto3
 from botocore.client import BaseClient
 from botocore.config import Config
 
-from llama_stack.providers.utils.bedrock.config import BedrockBaseConfig
+from llama_stack.providers.utils.bedrock.config import DEFAULT_SESSION_TTL, BedrockBaseConfig
 from llama_stack.providers.utils.bedrock.refreshable_boto_session import (
     RefreshableBotoSession,
 )
@@ -69,7 +69,7 @@ def create_bedrock_client(config: BedrockBaseConfig, service_name: str = "bedroc
                 sts_arn=config.aws_role_arn,
                 web_identity_token_file=config.aws_web_identity_token_file,
                 session_name=config.aws_role_session_name,
-                session_ttl=config.session_ttl or 3600,
+                session_ttl=config.session_ttl or DEFAULT_SESSION_TTL,
             )
             .refreshable_session()
             .client(service_name)

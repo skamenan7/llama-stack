@@ -12,6 +12,8 @@ from boto3 import Session
 from botocore.credentials import RefreshableCredentials
 from botocore.session import get_session
 
+from llama_stack.providers.utils.bedrock.config import DEFAULT_SESSION_TTL
+
 
 class RefreshableBotoSession:
     """
@@ -31,7 +33,7 @@ class RefreshableBotoSession:
         sts_arn: str | None = None,
         web_identity_token_file: str | None = None,
         session_name: str | None = None,
-        session_ttl: int = 3600,
+        session_ttl: int = DEFAULT_SESSION_TTL,
     ):
         self.region_name = region_name
         self.aws_access_key_id = aws_access_key_id

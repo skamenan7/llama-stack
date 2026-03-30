@@ -8,6 +8,9 @@ import os
 
 from pydantic import Field, SecretStr
 
+# 1 hour — matches AWS's default role expiration and minimum recommended TTL
+DEFAULT_SESSION_TTL = 3600
+
 from llama_stack.providers.utils.inference.model_registry import RemoteInferenceProviderConfig
 
 
@@ -69,7 +72,7 @@ class BedrockBaseConfig(RemoteInferenceProviderConfig):
         "The default is 60 seconds.",
     )
     session_ttl: int | None = Field(
-        default_factory=lambda: int(os.getenv("AWS_SESSION_TTL", "3600")),
+        default_factory=lambda: int(os.getenv("AWS_SESSION_TTL", str(DEFAULT_SESSION_TTL))),
         description="The time in seconds till a session expires. The default is 3600 seconds (1 hour).",
     )
 
