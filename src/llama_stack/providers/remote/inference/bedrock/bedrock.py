@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from llama_stack.providers.remote.inference.bedrock.config import BedrockConfig
 
 import httpx
-from openai import AuthenticationError
+from openai import AuthenticationError, PermissionDeniedError
 from pydantic import PrivateAttr
 
 from llama_stack.log import get_logger
@@ -215,7 +215,9 @@ class BedrockInferenceAdapter(OpenAIMixin):
                 )
 
             return result
-        except AuthenticationError as e:
+        except (AuthenticationError, PermissionDeniedError) as e:
+            # PermissionDeniedError (403) covers SigV4 failures like SignatureDoesNotMatch
+            # and AccessDenied — same sanitized path as AuthenticationError (401)
             error_msg = str(e)
             self._handle_auth_error(error_msg, e, use_sigv4=use_sigv4)
         except Exception as e:
