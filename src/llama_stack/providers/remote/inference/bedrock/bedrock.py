@@ -220,6 +220,17 @@ class BedrockInferenceAdapter(OpenAIMixin):
             # and AccessDenied — same sanitized path as AuthenticationError (401)
             error_msg = str(e)
             self._handle_auth_error(error_msg, e, use_sigv4=use_sigv4)
+        except (RuntimeError, OSError) as e:
+            # credential resolution failures (missing AWS creds, unreadable web identity
+            # token file, STS errors) should surface as sanitized auth errors, not raw
+            # exception messages that may leak internal paths or AWS account details
+            if use_sigv4:
+                logger.error("AWS Bedrock SigV4 credential resolution failed", error_type=type(e).__name__)
+                raise InternalServerError(
+                    "Authentication failed because the server could not resolve AWS credentials. "
+                    "Please verify that the server has valid AWS credentials configured."
+                ) from e
+            raise
         except Exception as e:
             logger.error(
                 "Unexpected error calling Bedrock API", error_type=type(e).__name__, error=str(e), exc_info=True
