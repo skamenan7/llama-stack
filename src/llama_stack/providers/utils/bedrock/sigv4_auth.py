@@ -115,15 +115,13 @@ class BedrockSigV4Auth(httpx.Auth):
                 else:
                     import boto3
 
-                    session_args = {
-                        "region_name": self._region,
-                        "aws_access_key_id": self._aws_access_key_id,
-                        "aws_secret_access_key": self._aws_secret_access_key,
-                        "aws_session_token": self._aws_session_token,
-                        "profile_name": self._profile_name,
-                    }
-                    session_args = {k: v for k, v in session_args.items() if v is not None}
-                    self._session = boto3.Session(**session_args)
+                    self._session = boto3.Session(
+                        region_name=self._region,
+                        aws_access_key_id=self._aws_access_key_id,
+                        aws_secret_access_key=self._aws_secret_access_key,
+                        aws_session_token=self._aws_session_token,
+                        profile_name=self._profile_name,
+                    )
 
             credentials = self._session.get_credentials()
             if credentials is None:
