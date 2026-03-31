@@ -10,7 +10,9 @@ import httpx
 from pydantic import ConfigDict
 
 from llama_stack.log import get_logger
-from llama_stack.providers.utils.inference.http_client import _build_network_client_kwargs
+from llama_stack.providers.utils.inference.http_client import (
+    build_network_client_kwargs as _build_network_client_kwargs,
+)
 from llama_stack.providers.utils.inference.openai_mixin import OpenAIMixin
 from llama_stack_api import (
     HealthResponse,
