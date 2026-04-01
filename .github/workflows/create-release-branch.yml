@@ -96,7 +96,7 @@ jobs:
         id: project-version
         run: |
           BASE_VERSION="${TAG#v}"
-          PROJECT_VERSION="${BASE_VERSION}+rhai0"
+          PROJECT_VERSION="${BASE_VERSION}+rhaiv.0"
           echo "project_version=${PROJECT_VERSION}" >> "${GITHUB_OUTPUT}"
           echo "Calculated project version: ${PROJECT_VERSION}"
 
