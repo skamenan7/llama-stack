@@ -5,7 +5,7 @@ run-name: "Dispatch version update to llama-stack-distribution (${{ github.ref_n
 on:
   push:
     tags:
-      - 'v*\+rhai*'
+      - 'v*\+rhaiv.*'
 
 permissions:
   contents: read
