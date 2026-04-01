@@ -23,7 +23,7 @@ jobs:
             echo "::error::Empty product version extracted from branch: $BRANCH_NAME"
             exit 1
           fi
-          echo "product_version=$PRODUCT_VERSION" >> $GITHUB_OUTPUT
+          echo "product_version=$PRODUCT_VERSION" >> "$GITHUB_OUTPUT"
           echo "Extracted PRODUCT_VERSION: $PRODUCT_VERSION from branch: $BRANCH_NAME"
 
       - name: Trigger GitLab pipeline
