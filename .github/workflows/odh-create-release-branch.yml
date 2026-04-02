@@ -23,7 +23,6 @@ jobs:
       TAG: ${{ inputs.tag }}
       PRODUCT_VERSION: ${{ inputs.product_version }}
       BRANCH: release-${{ inputs.product_version }}
-      CREATE_TAG_WORKFLOW: .github/workflows/create-tag.yml
     steps:
       - name: Validate tag format
         run: |
@@ -74,22 +73,31 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Copy create-tag workflow from main
+      - name: Copy ODH workflows from main
         run: |
-          if ! git show "origin/main:${CREATE_TAG_WORKFLOW}" >/dev/null 2>&1; then
-            echo "::error::${CREATE_TAG_WORKFLOW} not found on main branch"
-            exit 1
-          fi
-          git checkout origin/main -- "${CREATE_TAG_WORKFLOW}"
-          echo "Copied ${CREATE_TAG_WORKFLOW} from main to release branch"
+          workflows=(
+            ".github/workflows/odh-create-tag.yml"
+            ".github/workflows/odh-dispatch-version-update-to-odh-distribution.yml"
+            ".github/workflows/odh-trigger-gitlab-release-branch.yml"
+            ".github/workflows/odh-trigger-gitlab-update-deps.yml"
+          )
 
-      - name: Commit create-tag workflow
+          for workflow in "${workflows[@]}"; do
+            if ! git show "origin/main:${workflow}" >/dev/null 2>&1; then
+              echo "::error::${workflow} not found on main branch"
+              exit 1
+            fi
+            git checkout origin/main -- "${workflow}"
+            echo "Copied ${workflow} from main to release branch"
+          done
+
+      - name: Commit ODH workflows
         run: |
-          git add "${CREATE_TAG_WORKFLOW}"
-          if git diff --cached --quiet -- "${CREATE_TAG_WORKFLOW}"; then
-            echo "${CREATE_TAG_WORKFLOW} already up to date, skipping commit"
+          git add .github/workflows/
+          if git diff --cached --quiet; then
+            echo "All workflows already up to date, skipping commit"
           else
-            git commit -m "ci: add create-tag workflow to ${BRANCH}"
+            git commit -m "ci: add ODH workflows to ${BRANCH}"
           fi
 
       - name: Calculate project version
