@@ -9,9 +9,6 @@ Llama Stack uses GitHub Actions for Continuous Integration (CI). Below is a tabl
 | CI Status | [ci-status.yml](ci-status.yml) | Aggregate CI check status |
 | CodeQL Workflow Security Scan | [codeql.yml](codeql.yml) | CodeQL Workflow Security Scan |
 | Commit Recordings | [commit-recordings.yml](commit-recordings.yml) | Commit Recordings |
-| Create Release Branch | [create-release-branch.yml](create-release-branch.yml) | Create release branch release-${{ inputs.product_version }} from tag ${{ inputs.tag }} |
-| Create release tag | [create-tag.yml](create-tag.yml) | Create tag from version in pyproject.toml |
-| Dispatch Version Update to ODH Distribution | [dispatch-version-update-to-odh-distribution.yml](dispatch-version-update-to-odh-distribution.yml) | Dispatch version update to llama-stack-distribution (${{ github.ref_name }}) |
 | Documentation Build | [docs-build.yml](docs-build.yml) | Build and validate documentation |
 | File Processors Tests | [file-processors-tests.yml](file-processors-tests.yml) | Run file processors integration tests |
 | Installer CI | [install-script-ci.yml](install-script-ci.yml) | Test the installation script |
@@ -20,6 +17,11 @@ Llama Stack uses GitHub Actions for Continuous Integration (CI). Below is a tabl
 | SqlStore Integration Tests | [integration-sql-store-tests.yml](integration-sql-store-tests.yml) | Run the integration test suite with SqlStore |
 | Integration Tests (Replay) | [integration-tests.yml](integration-tests.yml) | Run the integration test suites from tests/integration in replay mode |
 | Vector IO Integration Tests | [integration-vector-io-tests.yml](integration-vector-io-tests.yml) | Run the integration test suite with various VectorIO providers |
+| Create Release Branch | [odh-create-release-branch.yml](odh-create-release-branch.yml) | Create release branch release-${{ inputs.product_version }} from tag ${{ inputs.tag }} |
+| Create release tag | [odh-create-tag.yml](odh-create-tag.yml) | Create tag from version in pyproject.toml |
+| Dispatch Version Update to ODH Distribution | [odh-dispatch-version-update-to-odh-distribution.yml](odh-dispatch-version-update-to-odh-distribution.yml) | Dispatch version update to llama-stack-distribution (${{ github.ref_name }}) |
+| Trigger GitLab Release Branch Pipeline | [odh-trigger-gitlab-release-branch.yml](odh-trigger-gitlab-release-branch.yml) | Trigger GitLab release branch creation for ${{ github.ref_name }} |
+| Trigger GitLab Update Release Branch Dependencies | [odh-trigger-gitlab-update-deps.yml](odh-trigger-gitlab-update-deps.yml) | Trigger GitLab dependency update for ${{ github.ref_name }} |
 | OpenAPI Generator SDK Validation | [openapi-generator-validation.yml](openapi-generator-validation.yml) | Validate OpenAPI Generator SDK generation |
 | OpenResponses Conformance Tests | [openresponses-conformance.yml](openresponses-conformance.yml) | Run OpenResponses conformance tests against llama-stack Responses API |
 | Post-release automation | [post-release.yml](post-release.yml) | Post-release automation |
@@ -35,7 +37,5 @@ Llama Stack uses GitHub Actions for Continuous Integration (CI). Below is a tabl
 | Close stale issues and PRs | [stale_bot.yml](stale_bot.yml) | Run the Stale Bot action |
 | Test External Providers Installed via Module | [test-external-provider-module.yml](test-external-provider-module.yml) | Test External Provider installation via Python module |
 | Test External API and Providers | [test-external.yml](test-external.yml) | Test the External API and Provider mechanisms |
-| Trigger GitLab Release Branch Pipeline | [trigger-gitlab-release-branch.yml](trigger-gitlab-release-branch.yml) | Trigger GitLab release branch creation for ${{ github.ref_name }} |
-| Trigger GitLab Update Release Branch Dependencies | [trigger-gitlab-update-deps.yml](trigger-gitlab-update-deps.yml) | Trigger GitLab dependency update for ${{ github.ref_name }} |
 | UI Tests | [ui-unit-tests.yml](ui-unit-tests.yml) | Run the UI test suite |
 | Unit Tests | [unit-tests.yml](unit-tests.yml) | Run the unit test suite |
