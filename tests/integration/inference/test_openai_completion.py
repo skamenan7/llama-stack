@@ -372,34 +372,10 @@ def test_inference_store(compat_client, client_with_models, text_model_id, strea
         or retrieved_response.input_messages[0]["content"]
     )
     assert input_content == message, retrieved_response
+    if not hasattr(client.chat.completions, "messages"):
+        return
 
-
-def test_inference_store_messages_list(openai_client, require_server, client_with_models, text_model_id):
-    skip_if_model_doesnt_support_openai_chat_completion(client_with_models, text_model_id)
-
-    message = "Hello, world!"
-    response = openai_client.chat.completions.create(
-        model=text_model_id,
-        messages=[
-            {
-                "role": "user",
-                "content": message,
-            }
-        ],
-        stream=False,
-    )
-    response_id = response.id
-
-    tries = 0
-    while tries < 10:
-        responses = openai_client.chat.completions.list(limit=1000)
-        if response_id in [r.id for r in responses.data]:
-            break
-        tries += 1
-        time.sleep(0.1)
-    assert tries < 10, f"Response {response_id} not found after 1 second"
-
-    first_page = openai_client.chat.completions.messages.list(completion_id=response_id, limit=1)
+    first_page = client.chat.completions.messages.list(completion_id=response_id, limit=1)
     assert first_page.object == "list"
     assert len(first_page.data) == 1
     assert first_page.data[0].id == f"{response_id}-0"
@@ -409,7 +385,7 @@ def test_inference_store_messages_list(openai_client, require_server, client_wit
     assert first_page.last_id == f"{response_id}-0"
     assert first_page.has_more is True
 
-    second_page = openai_client.chat.completions.messages.list(
+    second_page = client.chat.completions.messages.list(
         completion_id=response_id,
         after=first_page.last_id,
         limit=10,
