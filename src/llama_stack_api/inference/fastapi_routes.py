@@ -18,17 +18,20 @@ import logging  # allow-direct-logging
 from collections.abc import AsyncIterator
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Path
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from llama_stack_api.common.errors import OpenAIErrorResponse
+from llama_stack_api.common.responses import Order
 from llama_stack_api.router_utils import create_path_dependency, create_query_dependency, standard_responses
 from llama_stack_api.version import LLAMA_STACK_API_V1, LLAMA_STACK_API_V1ALPHA
 
 from .api import Inference
 from .models import (
+    ChatCompletionMessageList,
     GetChatCompletionRequest,
+    ListChatCompletionMessagesRequest,
     ListChatCompletionsRequest,
     ListOpenAIChatCompletionResponse,
     OpenAIChatCompletion,
@@ -118,6 +121,23 @@ get_list_chat_completions_request = create_query_dependency(ListChatCompletionsR
 get_chat_completion_request = create_path_dependency(GetChatCompletionRequest)
 
 
+class _ListMessagesQueryParams(BaseModel):
+    """Query parameters for listing stored chat completion messages."""
+
+    after: str | None = Field(
+        default=None,
+        description="Identifier for the last message from the previous pagination request.",
+    )
+    limit: int | None = Field(default=20, ge=1, description="Number of messages to retrieve.")
+    order: Order | None = Field(
+        default=Order.asc,
+        description='Sort order for messages by timestamp. Use "asc" or "desc". Defaults to "asc".',
+    )
+
+
+get_list_messages_query_params = create_query_dependency(_ListMessagesQueryParams)
+
+
 def create_router(impl: Inference) -> APIRouter:
     """Create a FastAPI router for the Inference API.
 
@@ -186,6 +206,30 @@ def create_router(impl: Inference) -> APIRouter:
         request: Annotated[GetChatCompletionRequest, Depends(get_chat_completion_request)],
     ) -> OpenAICompletionWithInputMessages:
         return await impl.get_chat_completion(request)
+
+    @router.get(
+        f"/{LLAMA_STACK_API_V1}/chat/completions/{{completion_id}}/messages",
+        response_model=ChatCompletionMessageList,
+        summary="List chat completion messages.",
+        description="Get the messages in a stored chat completion.",
+        responses={
+            200: {"description": "A ChatCompletionMessageList."},
+        },
+    )
+    async def list_chat_completion_messages(
+        completion_id: Annotated[
+            str,
+            Path(description="The ID of the chat completion to retrieve messages from."),
+        ],
+        query_params: Annotated[_ListMessagesQueryParams, Depends(get_list_messages_query_params)],
+    ) -> ChatCompletionMessageList:
+        request = ListChatCompletionMessagesRequest(
+            completion_id=completion_id,
+            after=query_params.after,
+            limit=query_params.limit,
+            order=query_params.order,
+        )
+        return await impl.list_chat_completion_messages(request)
 
     @router.post(
         f"/{LLAMA_STACK_API_V1}/completions",
