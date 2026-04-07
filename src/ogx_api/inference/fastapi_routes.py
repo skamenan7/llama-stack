@@ -231,6 +231,7 @@ def create_router(impl: Inference) -> APIRouter:
         )
         return await impl.list_chat_completion_messages(request)
 
+
     @router.post(
         f"/{OGX_API_V1}/completions",
         response_model=None,  # Dynamic response: non-streaming (JSON) or streaming (SSE)
