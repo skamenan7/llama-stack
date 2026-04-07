@@ -27,11 +27,11 @@ This documentation is auto-generated from the OpenAI API specification compariso
 
 ## Integration Test Coverage
 
-Overall Test Coverage Score: 44.1%
+Overall Test Coverage Score: 43.8%
 
 | Category | Covered | Total | Score |
 |----------|---------|-------|-------|
-| CRUD Operations | 5 | 6 | 83.3% |
+| CRUD Operations | 5 | 7 | 71.4% |
 | Conversations | 5 | 9 | 55.6% |
 | Request Parameters | 21 | 25 | 84.0% |
 | Streaming Events | 16 | 53 | 30.2% |
@@ -72,6 +72,10 @@ The following OpenAI API endpoints are not yet implemented in OGX:
 - `/audio/voice_consents`
 - `/audio/voice_consents/{consent_id}`
 - `/audio/voices`
+
+### /chat
+
+- `/chat/completions/{completion_id}/messages`
 
 ### /evals
 
@@ -171,7 +175,6 @@ The following OpenAI API endpoints are not yet implemented in OGX:
 
 ### /responses
 
-- `/responses/compact`
 - `/responses/input_tokens`
 
 ### /skills
