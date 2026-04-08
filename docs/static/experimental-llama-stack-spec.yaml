@@ -3392,9 +3392,11 @@ components:
         title: OpenAIResponseInputFunctionToolCallOutput
       - $ref: '#/components/schemas/OpenAIResponseMCPApprovalResponse'
         title: OpenAIResponseMCPApprovalResponse
+      - $ref: '#/components/schemas/OpenAIResponseCompaction'
+        title: OpenAIResponseCompaction
       - $ref: '#/components/schemas/OpenAIResponseMessage'
         title: OpenAIResponseMessage
-      title: OpenAIResponseInputFunctionToolCallOutput | OpenAIResponseMCPApprovalResponse | OpenAIResponseMessage
+      title: OpenAIResponseInputFunctionToolCallOutput | ... (4 variants)
     OpenAIResponseInputToolFileSearch:
       properties:
         type:
@@ -3524,35 +3526,7 @@ components:
           - response
         output:
           items:
-            oneOf:
-            - $ref: '#/components/schemas/OpenAIResponseMessage-Output'
-              title: OpenAIResponseMessage-Output
-            - $ref: '#/components/schemas/OpenAIResponseOutputMessageWebSearchToolCall'
-              title: OpenAIResponseOutputMessageWebSearchToolCall
-            - $ref: '#/components/schemas/OpenAIResponseOutputMessageFileSearchToolCall'
-              title: OpenAIResponseOutputMessageFileSearchToolCall
-            - $ref: '#/components/schemas/OpenAIResponseOutputMessageFunctionToolCall'
-              title: OpenAIResponseOutputMessageFunctionToolCall
-            - $ref: '#/components/schemas/OpenAIResponseOutputMessageMCPCall'
-              title: OpenAIResponseOutputMessageMCPCall
-            - $ref: '#/components/schemas/OpenAIResponseOutputMessageMCPListTools'
-              title: OpenAIResponseOutputMessageMCPListTools
-            - $ref: '#/components/schemas/OpenAIResponseMCPApprovalRequest'
-              title: OpenAIResponseMCPApprovalRequest
-            - $ref: '#/components/schemas/OpenAIResponseOutputMessageReasoningItem'
-              title: OpenAIResponseOutputMessageReasoningItem
-            discriminator:
-              propertyName: type
-              mapping:
-                file_search_call: '#/components/schemas/OpenAIResponseOutputMessageFileSearchToolCall'
-                function_call: '#/components/schemas/OpenAIResponseOutputMessageFunctionToolCall'
-                mcp_approval_request: '#/components/schemas/OpenAIResponseMCPApprovalRequest'
-                mcp_call: '#/components/schemas/OpenAIResponseOutputMessageMCPCall'
-                mcp_list_tools: '#/components/schemas/OpenAIResponseOutputMessageMCPListTools'
-                message: '#/components/schemas/OpenAIResponseMessage-Output'
-                reasoning: '#/components/schemas/OpenAIResponseOutputMessageReasoningItem'
-                web_search_call: '#/components/schemas/OpenAIResponseOutputMessageWebSearchToolCall'
-            title: OpenAIResponseMessage-Output | ... (8 variants)
+            $ref: '#/components/schemas/OpenAIResponseOutputItem'
           type: array
           title: Output
         parallel_tool_calls:
@@ -3702,43 +3676,7 @@ components:
           title: Store
         input:
           items:
-            anyOf:
-            - oneOf:
-              - $ref: '#/components/schemas/OpenAIResponseMessage-Output'
-                title: OpenAIResponseMessage-Output
-              - $ref: '#/components/schemas/OpenAIResponseOutputMessageWebSearchToolCall'
-                title: OpenAIResponseOutputMessageWebSearchToolCall
-              - $ref: '#/components/schemas/OpenAIResponseOutputMessageFileSearchToolCall'
-                title: OpenAIResponseOutputMessageFileSearchToolCall
-              - $ref: '#/components/schemas/OpenAIResponseOutputMessageFunctionToolCall'
-                title: OpenAIResponseOutputMessageFunctionToolCall
-              - $ref: '#/components/schemas/OpenAIResponseOutputMessageMCPCall'
-                title: OpenAIResponseOutputMessageMCPCall
-              - $ref: '#/components/schemas/OpenAIResponseOutputMessageMCPListTools'
-                title: OpenAIResponseOutputMessageMCPListTools
-              - $ref: '#/components/schemas/OpenAIResponseMCPApprovalRequest'
-                title: OpenAIResponseMCPApprovalRequest
-              - $ref: '#/components/schemas/OpenAIResponseOutputMessageReasoningItem'
-                title: OpenAIResponseOutputMessageReasoningItem
-              discriminator:
-                propertyName: type
-                mapping:
-                  file_search_call: '#/components/schemas/OpenAIResponseOutputMessageFileSearchToolCall'
-                  function_call: '#/components/schemas/OpenAIResponseOutputMessageFunctionToolCall'
-                  mcp_approval_request: '#/components/schemas/OpenAIResponseMCPApprovalRequest'
-                  mcp_call: '#/components/schemas/OpenAIResponseOutputMessageMCPCall'
-                  mcp_list_tools: '#/components/schemas/OpenAIResponseOutputMessageMCPListTools'
-                  message: '#/components/schemas/OpenAIResponseMessage-Output'
-                  reasoning: '#/components/schemas/OpenAIResponseOutputMessageReasoningItem'
-                  web_search_call: '#/components/schemas/OpenAIResponseOutputMessageWebSearchToolCall'
-              title: OpenAIResponseMessage-Output | ... (8 variants)
-            - $ref: '#/components/schemas/OpenAIResponseInputFunctionToolCallOutput'
-              title: OpenAIResponseInputFunctionToolCallOutput
-            - $ref: '#/components/schemas/OpenAIResponseMCPApprovalResponse'
-              title: OpenAIResponseMCPApprovalResponse
-            - $ref: '#/components/schemas/OpenAIResponseMessage-Output'
-              title: OpenAIResponseMessage-Output
-            title: OpenAIResponseInputFunctionToolCallOutput | OpenAIResponseMCPApprovalResponse | OpenAIResponseMessage-Output
+            $ref: '#/components/schemas/OpenAIResponseMessageOutputUnion'
           type: array
           title: Input
       required:
@@ -3821,6 +3759,14 @@ components:
             title: OpenAIResponseTextFormat
           - type: 'null'
           title: OpenAIResponseTextFormat
+        verbosity:
+          anyOf:
+          - type: string
+            enum:
+            - low
+            - medium
+            - high
+          - type: 'null'
       title: OpenAIResponseText
       description: Text response configuration for OpenAI responses.
     OpenAIResponseTool:
@@ -4006,35 +3952,7 @@ components:
           - response
         output:
           items:
-            oneOf:
-            - $ref: '#/components/schemas/OpenAIResponseMessage-Output'
-              title: OpenAIResponseMessage-Output
-            - $ref: '#/components/schemas/OpenAIResponseOutputMessageWebSearchToolCall'
-              title: OpenAIResponseOutputMessageWebSearchToolCall
-            - $ref: '#/components/schemas/OpenAIResponseOutputMessageFileSearchToolCall'
-              title: OpenAIResponseOutputMessageFileSearchToolCall
-            - $ref: '#/components/schemas/OpenAIResponseOutputMessageFunctionToolCall'
-              title: OpenAIResponseOutputMessageFunctionToolCall
-            - $ref: '#/components/schemas/OpenAIResponseOutputMessageMCPCall'
-              title: OpenAIResponseOutputMessageMCPCall
-            - $ref: '#/components/schemas/OpenAIResponseOutputMessageMCPListTools'
-              title: OpenAIResponseOutputMessageMCPListTools
-            - $ref: '#/components/schemas/OpenAIResponseMCPApprovalRequest'
-              title: OpenAIResponseMCPApprovalRequest
-            - $ref: '#/components/schemas/OpenAIResponseOutputMessageReasoningItem'
-              title: OpenAIResponseOutputMessageReasoningItem
-            discriminator:
-              propertyName: type
-              mapping:
-                file_search_call: '#/components/schemas/OpenAIResponseOutputMessageFileSearchToolCall'
-                function_call: '#/components/schemas/OpenAIResponseOutputMessageFunctionToolCall'
-                mcp_approval_request: '#/components/schemas/OpenAIResponseMCPApprovalRequest'
-                mcp_call: '#/components/schemas/OpenAIResponseOutputMessageMCPCall'
-                mcp_list_tools: '#/components/schemas/OpenAIResponseOutputMessageMCPListTools'
-                message: '#/components/schemas/OpenAIResponseMessage-Output'
-                reasoning: '#/components/schemas/OpenAIResponseOutputMessageReasoningItem'
-                web_search_call: '#/components/schemas/OpenAIResponseOutputMessageWebSearchToolCall'
-            title: OpenAIResponseMessage-Output | ... (8 variants)
+            $ref: '#/components/schemas/OpenAIResponseOutputItem'
           type: array
           title: Output
         parallel_tool_calls:
@@ -5362,43 +5280,7 @@ components:
       properties:
         data:
           items:
-            anyOf:
-            - oneOf:
-              - $ref: '#/components/schemas/OpenAIResponseMessage-Output'
-                title: OpenAIResponseMessage-Output
-              - $ref: '#/components/schemas/OpenAIResponseOutputMessageWebSearchToolCall'
-                title: OpenAIResponseOutputMessageWebSearchToolCall
-              - $ref: '#/components/schemas/OpenAIResponseOutputMessageFileSearchToolCall'
-                title: OpenAIResponseOutputMessageFileSearchToolCall
-              - $ref: '#/components/schemas/OpenAIResponseOutputMessageFunctionToolCall'
-                title: OpenAIResponseOutputMessageFunctionToolCall
-              - $ref: '#/components/schemas/OpenAIResponseOutputMessageMCPCall'
-                title: OpenAIResponseOutputMessageMCPCall
-              - $ref: '#/components/schemas/OpenAIResponseOutputMessageMCPListTools'
-                title: OpenAIResponseOutputMessageMCPListTools
-              - $ref: '#/components/schemas/OpenAIResponseMCPApprovalRequest'
-                title: OpenAIResponseMCPApprovalRequest
-              - $ref: '#/components/schemas/OpenAIResponseOutputMessageReasoningItem'
-                title: OpenAIResponseOutputMessageReasoningItem
-              discriminator:
-                propertyName: type
-                mapping:
-                  file_search_call: '#/components/schemas/OpenAIResponseOutputMessageFileSearchToolCall'
-                  function_call: '#/components/schemas/OpenAIResponseOutputMessageFunctionToolCall'
-                  mcp_approval_request: '#/components/schemas/OpenAIResponseMCPApprovalRequest'
-                  mcp_call: '#/components/schemas/OpenAIResponseOutputMessageMCPCall'
-                  mcp_list_tools: '#/components/schemas/OpenAIResponseOutputMessageMCPListTools'
-                  message: '#/components/schemas/OpenAIResponseMessage-Output'
-                  reasoning: '#/components/schemas/OpenAIResponseOutputMessageReasoningItem'
-                  web_search_call: '#/components/schemas/OpenAIResponseOutputMessageWebSearchToolCall'
-              title: OpenAIResponseMessage-Output | ... (8 variants)
-            - $ref: '#/components/schemas/OpenAIResponseInputFunctionToolCallOutput'
-              title: OpenAIResponseInputFunctionToolCallOutput
-            - $ref: '#/components/schemas/OpenAIResponseMCPApprovalResponse'
-              title: OpenAIResponseMCPApprovalResponse
-            - $ref: '#/components/schemas/OpenAIResponseMessage-Output'
-              title: OpenAIResponseMessage-Output
-            title: OpenAIResponseInputFunctionToolCallOutput | OpenAIResponseMCPApprovalResponse | OpenAIResponseMessage-Output
+            $ref: '#/components/schemas/OpenAIResponseMessageOutputUnion'
           type: array
           title: Data
         object:
@@ -6864,6 +6746,7 @@ components:
       - failed
       - total
       title: BatchRequestCounts
+      description: The request counts for different statuses within the batch.
     BatchUsage:
       properties:
         input_tokens:
@@ -6887,6 +6770,10 @@ components:
       - output_tokens_details
       - total_tokens
       title: BatchUsage
+      description: |-
+        Represents token usage details including input tokens, output tokens, a
+        breakdown of output tokens, and the total tokens used. Only populated on
+        batches created after September 7, 2025.
     Body_process_file_v1alpha_file_processors_process_post:
       properties:
         file:
@@ -7149,6 +7036,7 @@ components:
       required:
       - cached_tokens
       title: InputTokensDetails
+      description: A detailed breakdown of the input tokens.
     ListConnectorsResponse:
       properties:
         data:
@@ -7397,6 +7285,51 @@ components:
           default: 0
       title: OpenAIChatCompletionUsagePromptTokensDetails
       description: Token details for prompt tokens in OpenAI chat completion usage.
+    OpenAICompactedResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        created_at:
+          type: integer
+          title: Created At
+        object:
+          type: string
+          title: Object
+          enum:
+          - response.compaction
+        output:
+          items:
+            $ref: '#/components/schemas/OpenAIResponseMessageOutputUnion'
+          type: array
+          title: Output
+        usage:
+          $ref: '#/components/schemas/OpenAIResponseUsage'
+      required:
+      - id
+      - created_at
+      - output
+      - usage
+      title: OpenAICompactedResponse
+      description: Response from compacting a conversation.
+    OpenAIResponseCompaction:
+      properties:
+        type:
+          type: string
+          title: Type
+          enum:
+          - compaction
+        encrypted_content:
+          type: string
+          title: Encrypted Content
+        id:
+          anyOf:
+          - type: string
+          - type: 'null'
+      required:
+      - encrypted_content
+      title: OpenAIResponseCompaction
+      description: A compaction item that summarizes prior conversation context.
     OpenAIResponseIncompleteDetails:
       properties:
         reason:
@@ -8085,6 +8018,7 @@ components:
       required:
       - reasoning_tokens
       title: OutputTokensDetails
+      description: A detailed breakdown of the output tokens.
     ProcessFileResponse:
       properties:
         chunks:
@@ -10130,6 +10064,77 @@ components:
       required:
       - prompt_id
       title: DeletePromptRequest
+    OpenAIResponseMessageOutputUnion:
+      anyOf:
+      - oneOf:
+        - $ref: '#/components/schemas/OpenAIResponseMessage-Output'
+          title: OpenAIResponseMessage-Output
+        - $ref: '#/components/schemas/OpenAIResponseOutputMessageWebSearchToolCall'
+          title: OpenAIResponseOutputMessageWebSearchToolCall
+        - $ref: '#/components/schemas/OpenAIResponseOutputMessageFileSearchToolCall'
+          title: OpenAIResponseOutputMessageFileSearchToolCall
+        - $ref: '#/components/schemas/OpenAIResponseOutputMessageFunctionToolCall'
+          title: OpenAIResponseOutputMessageFunctionToolCall
+        - $ref: '#/components/schemas/OpenAIResponseOutputMessageMCPCall'
+          title: OpenAIResponseOutputMessageMCPCall
+        - $ref: '#/components/schemas/OpenAIResponseOutputMessageMCPListTools'
+          title: OpenAIResponseOutputMessageMCPListTools
+        - $ref: '#/components/schemas/OpenAIResponseMCPApprovalRequest'
+          title: OpenAIResponseMCPApprovalRequest
+        - $ref: '#/components/schemas/OpenAIResponseOutputMessageReasoningItem'
+          title: OpenAIResponseOutputMessageReasoningItem
+        discriminator:
+          propertyName: type
+          mapping:
+            file_search_call: '#/components/schemas/OpenAIResponseOutputMessageFileSearchToolCall'
+            function_call: '#/components/schemas/OpenAIResponseOutputMessageFunctionToolCall'
+            mcp_approval_request: '#/components/schemas/OpenAIResponseMCPApprovalRequest'
+            mcp_call: '#/components/schemas/OpenAIResponseOutputMessageMCPCall'
+            mcp_list_tools: '#/components/schemas/OpenAIResponseOutputMessageMCPListTools'
+            message: '#/components/schemas/OpenAIResponseMessage-Output'
+            reasoning: '#/components/schemas/OpenAIResponseOutputMessageReasoningItem'
+            web_search_call: '#/components/schemas/OpenAIResponseOutputMessageWebSearchToolCall'
+        x-stainless-naming: OpenAIResponseMessageOutputOneOf
+        title: OpenAIResponseMessage-Output | ... (8 variants)
+      - $ref: '#/components/schemas/OpenAIResponseInputFunctionToolCallOutput'
+        title: OpenAIResponseInputFunctionToolCallOutput
+      - $ref: '#/components/schemas/OpenAIResponseMCPApprovalResponse'
+        title: OpenAIResponseMCPApprovalResponse
+      - $ref: '#/components/schemas/OpenAIResponseCompaction'
+        title: OpenAIResponseCompaction
+      title: OpenAIResponseInputFunctionToolCallOutput | OpenAIResponseMCPApprovalResponse | OpenAIResponseCompaction
+      x-stainless-naming: OpenAIResponseMessageOutputUnion
+    OpenAIResponseOutputItem:
+      oneOf:
+      - $ref: '#/components/schemas/OpenAIResponseMessage-Output'
+        title: OpenAIResponseMessage-Output
+      - $ref: '#/components/schemas/OpenAIResponseOutputMessageWebSearchToolCall'
+        title: OpenAIResponseOutputMessageWebSearchToolCall
+      - $ref: '#/components/schemas/OpenAIResponseOutputMessageFileSearchToolCall'
+        title: OpenAIResponseOutputMessageFileSearchToolCall
+      - $ref: '#/components/schemas/OpenAIResponseOutputMessageFunctionToolCall'
+        title: OpenAIResponseOutputMessageFunctionToolCall
+      - $ref: '#/components/schemas/OpenAIResponseOutputMessageMCPCall'
+        title: OpenAIResponseOutputMessageMCPCall
+      - $ref: '#/components/schemas/OpenAIResponseOutputMessageMCPListTools'
+        title: OpenAIResponseOutputMessageMCPListTools
+      - $ref: '#/components/schemas/OpenAIResponseMCPApprovalRequest'
+        title: OpenAIResponseMCPApprovalRequest
+      - $ref: '#/components/schemas/OpenAIResponseOutputMessageReasoningItem'
+        title: OpenAIResponseOutputMessageReasoningItem
+      discriminator:
+        propertyName: type
+        mapping:
+          file_search_call: '#/components/schemas/OpenAIResponseOutputMessageFileSearchToolCall'
+          function_call: '#/components/schemas/OpenAIResponseOutputMessageFunctionToolCall'
+          mcp_approval_request: '#/components/schemas/OpenAIResponseMCPApprovalRequest'
+          mcp_call: '#/components/schemas/OpenAIResponseOutputMessageMCPCall'
+          mcp_list_tools: '#/components/schemas/OpenAIResponseOutputMessageMCPListTools'
+          message: '#/components/schemas/OpenAIResponseMessage-Output'
+          reasoning: '#/components/schemas/OpenAIResponseOutputMessageReasoningItem'
+          web_search_call: '#/components/schemas/OpenAIResponseOutputMessageWebSearchToolCall'
+      x-stainless-naming: OpenAIResponseOutputItem
+      title: OpenAIResponseMessage-Output | ... (8 variants)
     ChatCompletionMessageToolCall:
       properties:
         id:
