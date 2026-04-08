@@ -4,7 +4,7 @@
   "llama_spec": "docs/static/llama-stack-spec.yaml",
   "summary": {
     "endpoints": {
-      "implemented": 28,
+      "implemented": 29,
       "total": 146,
       "missing": [
         "/assistants",
@@ -94,7 +94,6 @@
         "/realtime/client_secrets",
         "/realtime/sessions",
         "/realtime/transcription_sessions",
-        "/responses/compact",
         "/responses/input_tokens",
         "/skills",
         "/skills/{skill_id}",
@@ -128,10 +127,10 @@
       ]
     },
     "conformance": {
-      "score": 89.3,
-      "issues": 239,
+      "score": 89.1,
+      "issues": 246,
       "missing_properties": 128,
-      "total_problems": 367,
+      "total_problems": 374,
       "total_properties": 3441
     }
   },
@@ -1709,8 +1708,8 @@
       ]
     },
     "Responses": {
-      "score": 87.1,
-      "issues": 29,
+      "score": 84.0,
+      "issues": 36,
       "missing_properties": 0,
       "total_properties": 225,
       "endpoints": [
@@ -1935,6 +1934,63 @@
               ],
               "missing_count": 0,
               "issues_count": 29
+            }
+          ]
+        },
+        {
+          "path": "/responses/compact",
+          "operations": [
+            {
+              "method": "POST",
+              "missing_properties": [],
+              "conformance_issues": [
+                {
+                  "property": "POST.requestBody.content.application/json.properties.input",
+                  "details": [
+                    "Union variants added: 2",
+                    "Union variants removed: 1"
+                  ]
+                },
+                {
+                  "property": "POST.requestBody.content.application/json.properties.model",
+                  "details": [
+                    "Type added: ['string']",
+                    "Union variants removed: 3"
+                  ]
+                },
+                {
+                  "property": "POST.responses.200.content.application/json.properties.object",
+                  "details": [
+                    "Default changed: response.compaction -> None"
+                  ]
+                },
+                {
+                  "property": "POST.responses.200.content.application/json.properties.output.items",
+                  "details": [
+                    "Union variants added: 4"
+                  ]
+                },
+                {
+                  "property": "POST.responses.200.content.application/json.properties.usage",
+                  "details": [
+                    "Type removed: ['object']"
+                  ]
+                },
+                {
+                  "property": "POST.responses.200.content.application/json.properties.usage.properties.input_tokens_details",
+                  "details": [
+                    "Type removed: ['object']"
+                  ]
+                },
+                {
+                  "property": "POST.responses.200.content.application/json.properties.usage.properties.output_tokens_details",
+                  "details": [
+                    "Type removed: ['object']"
+                  ]
+                }
+              ],
+              "missing_count": 0,
+              "issues_count": 7
             }
           ]
         }
