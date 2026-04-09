@@ -127,10 +127,10 @@
       ]
     },
     "conformance": {
-      "score": 91.4,
-      "issues": 186,
+      "score": 91.5,
+      "issues": 183,
       "missing_properties": 110,
-      "total_problems": 296,
+      "total_problems": 293,
       "total_properties": 3441
     }
   },
@@ -1671,8 +1671,8 @@
       ]
     },
     "Vector stores": {
-      "score": 81.9,
-      "issues": 44,
+      "score": 82.9,
+      "issues": 41,
       "missing_properties": 12,
       "total_properties": 310,
       "endpoints": [
@@ -1888,16 +1888,10 @@
                     "Nullable added (OpenAI non-nullable)",
                     "Union variants added: 2"
                   ]
-                },
-                {
-                  "property": "POST.responses.200.content.application/json.properties.object",
-                  "details": [
-                    "Enum values removed: ['vector_store.files_batch']"
-                  ]
                 }
               ],
               "missing_count": 0,
-              "issues_count": 3
+              "issues_count": 2
             }
           ]
         },
@@ -1907,16 +1901,9 @@
             {
               "method": "GET",
               "missing_properties": [],
-              "conformance_issues": [
-                {
-                  "property": "GET.responses.200.content.application/json.properties.object",
-                  "details": [
-                    "Enum values removed: ['vector_store.files_batch']"
-                  ]
-                }
-              ],
+              "conformance_issues": [],
               "missing_count": 0,
-              "issues_count": 1
+              "issues_count": 0
             }
           ]
         },
@@ -1926,16 +1913,9 @@
             {
               "method": "POST",
               "missing_properties": [],
-              "conformance_issues": [
-                {
-                  "property": "POST.responses.200.content.application/json.properties.object",
-                  "details": [
-                    "Enum values removed: ['vector_store.files_batch']"
-                  ]
-                }
-              ],
+              "conformance_issues": [],
               "missing_count": 0,
-              "issues_count": 1
+              "issues_count": 0
             }
           ]
         },

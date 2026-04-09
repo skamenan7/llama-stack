@@ -18,12 +18,12 @@ This documentation is auto-generated from the OpenAI API specification compariso
 
 | Metric | Value |
 |--------|-------|
-| **Overall Conformance Score** | 91.4% |
+| **Overall Conformance Score** | 91.5% |
 | **Endpoints Implemented** | 29/146 |
 | **Total Properties Checked** | 3441 |
-| **Schema/Type Issues** | 186 |
+| **Schema/Type Issues** | 183 |
 | **Missing Properties** | 110 |
-| **Total Issues to Fix** | 296 |
+| **Total Issues to Fix** | 293 |
 
 ## Integration Test Coverage
 
@@ -50,7 +50,7 @@ Categories are sorted by conformance score (lowest first, needing most attention
 | Files | 66.7% | 42 | 8 | 6 |
 | Models | 66.7% | 15 | 0 | 5 |
 | Embeddings | 78.6% | 14 | 3 | 0 |
-| Vector stores | 81.9% | 310 | 44 | 12 |
+| Vector stores | 82.9% | 310 | 41 | 12 |
 | Responses | 88.9% | 225 | 25 | 0 |
 | Chat | 98.5% | 403 | 5 | 1 |
 | Conversations | 98.9% | 2165 | 19 | 4 |
@@ -618,7 +618,7 @@ Below is a detailed breakdown of conformance issues and missing properties for e
 
 ### Vector stores
 
-**Score:** 81.9% · **Issues:** 44 · **Missing:** 12
+**Score:** 82.9% · **Issues:** 41 · **Missing:** 12
 
 #### `/vector_stores`
 
@@ -722,39 +722,12 @@ Below is a detailed breakdown of conformance issues and missing properties for e
 **POST**
 
 <details>
-<summary>Schema Issues (3)</summary>
+<summary>Schema Issues (2)</summary>
 
 | Property | Issues |
 |----------|--------|
 | `requestBody.content.application/json.properties.chunking_strategy` | Type removed: ['object']; Union variants added: 2 |
 | `requestBody.content.application/json.properties.files` | Type removed: ['array']; Nullable added (OpenAI non-nullable); Union variants added: 2 |
-| `responses.200.content.application/json.properties.object` | Enum values removed: ['vector_store.files_batch'] |
-
-</details>
-
-#### `/vector_stores/{vector_store_id}/file_batches/{batch_id}`
-
-**GET**
-
-<details>
-<summary>Schema Issues (1)</summary>
-
-| Property | Issues |
-|----------|--------|
-| `responses.200.content.application/json.properties.object` | Enum values removed: ['vector_store.files_batch'] |
-
-</details>
-
-#### `/vector_stores/{vector_store_id}/file_batches/{batch_id}/cancel`
-
-**POST**
-
-<details>
-<summary>Schema Issues (1)</summary>
-
-| Property | Issues |
-|----------|--------|
-| `responses.200.content.application/json.properties.object` | Enum values removed: ['vector_store.files_batch'] |
 
 </details>
 
