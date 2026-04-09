@@ -127,10 +127,10 @@
       ]
     },
     "conformance": {
-      "score": 91.2,
-      "issues": 193,
-      "missing_properties": 110,
-      "total_problems": 303,
+      "score": 91.7,
+      "issues": 184,
+      "missing_properties": 101,
+      "total_problems": 285,
       "total_properties": 3441
     }
   },
@@ -1214,9 +1214,9 @@
       ]
     },
     "Files": {
-      "score": 66.7,
+      "score": 76.2,
       "issues": 8,
-      "missing_properties": 6,
+      "missing_properties": 2,
       "total_properties": 42,
       "endpoints": [
         {
@@ -1248,9 +1248,7 @@
               "method": "POST",
               "missing_properties": [
                 "POST.requestBody.content.multipart/form-data.properties.expires_after.properties.anchor",
-                "POST.requestBody.content.multipart/form-data.properties.expires_after.properties.seconds",
-                "POST.responses.200.content.application/json.properties.status",
-                "POST.responses.200.content.application/json.properties.status_details"
+                "POST.requestBody.content.multipart/form-data.properties.expires_after.properties.seconds"
               ],
               "conformance_issues": [
                 {
@@ -1281,7 +1279,7 @@
                   ]
                 }
               ],
-              "missing_count": 4,
+              "missing_count": 2,
               "issues_count": 4
             }
           ]
@@ -1298,10 +1296,7 @@
             },
             {
               "method": "GET",
-              "missing_properties": [
-                "GET.responses.200.content.application/json.properties.status",
-                "GET.responses.200.content.application/json.properties.status_details"
-              ],
+              "missing_properties": [],
               "conformance_issues": [
                 {
                   "property": "GET.responses.200.content.application/json.properties.expires_at",
@@ -1318,7 +1313,7 @@
                   ]
                 }
               ],
-              "missing_count": 2,
+              "missing_count": 0,
               "issues_count": 2
             }
           ]
@@ -1338,9 +1333,9 @@
       ]
     },
     "Models": {
-      "score": 66.7,
-      "issues": 0,
-      "missing_properties": 5,
+      "score": 93.3,
+      "issues": 1,
+      "missing_properties": 0,
       "total_properties": 15,
       "endpoints": [
         {
@@ -1348,11 +1343,9 @@
           "operations": [
             {
               "method": "GET",
-              "missing_properties": [
-                "GET.responses.200.content.application/json.properties.object"
-              ],
+              "missing_properties": [],
               "conformance_issues": [],
-              "missing_count": 1,
+              "missing_count": 0,
               "issues_count": 0
             }
           ]
@@ -1362,15 +1355,17 @@
           "operations": [
             {
               "method": "GET",
-              "missing_properties": [
-                "GET.responses.200.content.application/json.properties.created",
-                "GET.responses.200.content.application/json.properties.id",
-                "GET.responses.200.content.application/json.properties.object",
-                "GET.responses.200.content.application/json.properties.owned_by"
+              "missing_properties": [],
+              "conformance_issues": [
+                {
+                  "property": "GET.responses.200.content.application/json.properties.owned_by",
+                  "details": [
+                    "Default changed: None -> llama_stack"
+                  ]
+                }
               ],
-              "conformance_issues": [],
-              "missing_count": 4,
-              "issues_count": 0
+              "missing_count": 0,
+              "issues_count": 1
             }
           ]
         }
@@ -1472,8 +1467,8 @@
       ]
     },
     "Responses": {
-      "score": 85.8,
-      "issues": 32,
+      "score": 88.9,
+      "issues": 25,
       "missing_properties": 0,
       "total_properties": 225,
       "endpoints": [
@@ -1484,14 +1479,6 @@
               "method": "POST",
               "missing_properties": [],
               "conformance_issues": [
-                {
-                  "property": "POST.requestBody.content.application/json.properties.include",
-                  "details": [
-                    "Type removed: ['array']",
-                    "Nullable added (OpenAI non-nullable)",
-                    "Union variants added: 2"
-                  ]
-                },
                 {
                   "property": "POST.requestBody.content.application/json.properties.input",
                   "details": [
@@ -1529,18 +1516,12 @@
                 {
                   "property": "POST.requestBody.content.application/json.properties.store",
                   "details": [
-                    "Type removed: ['boolean']",
-                    "Nullable added (OpenAI non-nullable)",
-                    "Union variants added: 2",
                     "Default changed: None -> True"
                   ]
                 },
                 {
                   "property": "POST.requestBody.content.application/json.properties.stream",
                   "details": [
-                    "Type removed: ['boolean']",
-                    "Nullable added (OpenAI non-nullable)",
-                    "Union variants added: 2",
                     "Default changed: None -> False"
                   ]
                 },
@@ -1579,14 +1560,6 @@
                   ]
                 },
                 {
-                  "property": "POST.responses.200.content.application/json.properties.frequency_penalty",
-                  "details": [
-                    "Type removed: ['number']",
-                    "Nullable added (OpenAI non-nullable)",
-                    "Union variants added: 2"
-                  ]
-                },
-                {
                   "property": "POST.responses.200.content.application/json.properties.incomplete_details",
                   "details": [
                     "Union variants added: 1",
@@ -1609,18 +1582,7 @@
                 {
                   "property": "POST.responses.200.content.application/json.properties.parallel_tool_calls",
                   "details": [
-                    "Type removed: ['boolean']",
-                    "Nullable added (OpenAI non-nullable)",
-                    "Union variants added: 2",
                     "Default changed: None -> True"
-                  ]
-                },
-                {
-                  "property": "POST.responses.200.content.application/json.properties.presence_penalty",
-                  "details": [
-                    "Type removed: ['number']",
-                    "Nullable added (OpenAI non-nullable)",
-                    "Union variants added: 2"
                   ]
                 },
                 {
@@ -1628,22 +1590,6 @@
                   "details": [
                     "Union variants added: 1",
                     "Union variants removed: 1"
-                  ]
-                },
-                {
-                  "property": "POST.responses.200.content.application/json.properties.service_tier",
-                  "details": [
-                    "Type removed: ['string']",
-                    "Nullable added (OpenAI non-nullable)",
-                    "Union variants added: 2"
-                  ]
-                },
-                {
-                  "property": "POST.responses.200.content.application/json.properties.temperature",
-                  "details": [
-                    "Type removed: ['number']",
-                    "Nullable added (OpenAI non-nullable)",
-                    "Union variants added: 2"
                   ]
                 },
                 {
@@ -1659,27 +1605,10 @@
                   ]
                 },
                 {
-                  "property": "POST.responses.200.content.application/json.properties.tools",
+                  "property": "POST.responses.200.content.application/json.properties.tools.items",
                   "details": [
-                    "Type removed: ['array']",
-                    "Nullable added (OpenAI non-nullable)",
-                    "Union variants added: 2"
-                  ]
-                },
-                {
-                  "property": "POST.responses.200.content.application/json.properties.top_logprobs",
-                  "details": [
-                    "Type removed: ['integer']",
-                    "Nullable added (OpenAI non-nullable)",
-                    "Union variants added: 2"
-                  ]
-                },
-                {
-                  "property": "POST.responses.200.content.application/json.properties.top_p",
-                  "details": [
-                    "Type removed: ['number']",
-                    "Nullable added (OpenAI non-nullable)",
-                    "Union variants added: 2"
+                    "Union variants added: 4",
+                    "Union variants removed: 1"
                   ]
                 },
                 {
@@ -1697,7 +1626,7 @@
                 }
               ],
               "missing_count": 0,
-              "issues_count": 29
+              "issues_count": 22
             }
           ]
         },
@@ -1737,8 +1666,8 @@
       ]
     },
     "Vector stores": {
-      "score": 81.9,
-      "issues": 44,
+      "score": 82.9,
+      "issues": 41,
       "missing_properties": 12,
       "total_properties": 310,
       "endpoints": [
@@ -1954,16 +1883,10 @@
                     "Nullable added (OpenAI non-nullable)",
                     "Union variants added: 2"
                   ]
-                },
-                {
-                  "property": "POST.responses.200.content.application/json.properties.object",
-                  "details": [
-                    "Enum values removed: ['vector_store.files_batch']"
-                  ]
                 }
               ],
               "missing_count": 0,
-              "issues_count": 3
+              "issues_count": 2
             }
           ]
         },
@@ -1973,16 +1896,9 @@
             {
               "method": "GET",
               "missing_properties": [],
-              "conformance_issues": [
-                {
-                  "property": "GET.responses.200.content.application/json.properties.object",
-                  "details": [
-                    "Enum values removed: ['vector_store.files_batch']"
-                  ]
-                }
-              ],
+              "conformance_issues": [],
               "missing_count": 0,
-              "issues_count": 1
+              "issues_count": 0
             }
           ]
         },
@@ -1992,16 +1908,9 @@
             {
               "method": "POST",
               "missing_properties": [],
-              "conformance_issues": [
-                {
-                  "property": "POST.responses.200.content.application/json.properties.object",
-                  "details": [
-                    "Enum values removed: ['vector_store.files_batch']"
-                  ]
-                }
-              ],
+              "conformance_issues": [],
               "missing_count": 0,
-              "issues_count": 1
+              "issues_count": 0
             }
           ]
         },
