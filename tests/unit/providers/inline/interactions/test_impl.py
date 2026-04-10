@@ -4,10 +4,11 @@
 # This source code is licensed under the terms described in the LICENSE file in
 # the root directory of this source tree.
 
-"""Unit tests for the BuiltinInteractionsImpl translation logic."""
+"""Unit tests for the BuiltinInteractionsImpl translation and passthrough logic."""
 
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 
 from llama_stack.providers.inline.interactions.config import InteractionsConfig
@@ -310,3 +311,350 @@ class TestStreamingTranslation:
         assert events[0].event_type == "interaction.start"
         # No content.start/delta/stop since no content
         assert events[1].event_type == "interaction.complete"
+
+
+class TestPassthroughDetection:
+    """Tests for the native passthrough detection logic."""
+
+    def _make_impl_with_router(
+        self,
+        provider_module: str,
+        base_url: str,
+        api_key: str | None = "test-key",
+        network_config=None,
+    ):
+        """Create an impl with a mocked routing table and provider."""
+        mock_inference = AsyncMock()
+        mock_inference.routing_table = AsyncMock()
+
+        mock_obj = MagicMock()
+        mock_obj.identifier = "gemini/gemini-2.5-flash"
+        mock_obj.provider_resource_id = "gemini-2.5-flash"
+        mock_inference.routing_table.get_object_by_identifier = AsyncMock(return_value=mock_obj)
+
+        mock_provider = MagicMock()
+        mock_provider.__class__.__module__ = provider_module
+        mock_provider.get_base_url = MagicMock(return_value=base_url)
+        mock_provider._get_api_key_from_config_or_provider_data = MagicMock(return_value=api_key)
+        mock_provider.config = MagicMock()
+        mock_provider.config.network = network_config
+        mock_inference.routing_table.get_provider_impl = AsyncMock(return_value=mock_provider)
+
+        return BuiltinInteractionsImpl(config=InteractionsConfig(), inference_api=mock_inference)
+
+    async def test_gemini_provider_detected(self):
+        impl = self._make_impl_with_router(
+            provider_module="llama_stack.providers.remote.inference.gemini.gemini",
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        )
+        result = await impl._get_passthrough_info("gemini/gemini-2.5-flash")
+
+        assert result is not None
+        assert result["base_url"] == "https://generativelanguage.googleapis.com/v1beta"
+        assert result["api_key"] == "test-key"
+        assert result["provider_resource_id"] == "gemini-2.5-flash"
+
+    async def test_non_gemini_provider_returns_none(self):
+        impl = self._make_impl_with_router(
+            provider_module="llama_stack.providers.remote.inference.openai",
+            base_url="https://api.openai.com/v1",
+        )
+        result = await impl._get_passthrough_info("openai/gpt-4o")
+
+        assert result is None
+
+    async def test_no_api_key_returns_none(self):
+        impl = self._make_impl_with_router(
+            provider_module="llama_stack.providers.remote.inference.gemini.gemini",
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+            api_key=None,
+        )
+        result = await impl._get_passthrough_info("gemini/gemini-2.5-flash")
+
+        assert result is None
+
+    async def test_no_routing_table_returns_none(self):
+        mock_inference = AsyncMock(spec=[])
+        impl = BuiltinInteractionsImpl(config=InteractionsConfig(), inference_api=mock_inference)
+        result = await impl._get_passthrough_info("gemini/gemini-2.5-flash")
+
+        assert result is None
+
+    async def test_openai_suffix_stripped(self):
+        impl = self._make_impl_with_router(
+            provider_module="llama_stack.providers.remote.inference.gemini.gemini",
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai",
+        )
+        result = await impl._get_passthrough_info("gemini/gemini-2.5-flash")
+
+        assert result is not None
+        assert result["base_url"] == "https://generativelanguage.googleapis.com/v1beta"
+
+    async def test_network_config_propagated(self):
+        network_config = MagicMock()
+        impl = self._make_impl_with_router(
+            provider_module="llama_stack.providers.remote.inference.gemini.gemini",
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai",
+            network_config=network_config,
+        )
+        result = await impl._get_passthrough_info("gemini/gemini-2.5-flash")
+
+        assert result is not None
+        assert result["network_config"] is network_config
+
+
+class TestCreateInteractionPassthrough:
+    def _make_impl_with_router(
+        self,
+        provider_module: str,
+        base_url: str,
+        api_key: str | None = "test-key",
+        network_config=None,
+    ):
+        mock_inference = AsyncMock()
+        mock_inference.routing_table = AsyncMock()
+
+        mock_obj = MagicMock()
+        mock_obj.identifier = "gemini/gemini-2.5-flash"
+        mock_obj.provider_resource_id = "gemini-2.5-flash"
+        mock_inference.routing_table.get_object_by_identifier = AsyncMock(return_value=mock_obj)
+
+        mock_provider = MagicMock()
+        mock_provider.__class__.__module__ = provider_module
+        mock_provider.get_base_url = MagicMock(return_value=base_url)
+        mock_provider._get_api_key_from_config_or_provider_data = MagicMock(return_value=api_key)
+        mock_provider.config = MagicMock()
+        mock_provider.config.network = network_config
+        mock_inference.routing_table.get_provider_impl = AsyncMock(return_value=mock_provider)
+
+        return BuiltinInteractionsImpl(config=InteractionsConfig(), inference_api=mock_inference)
+
+    async def test_non_streaming_uses_native_passthrough(self):
+        impl = self._make_impl_with_router(
+            provider_module="llama_stack.providers.remote.inference.gemini.gemini",
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai",
+        )
+        expected = MagicMock()
+        impl._passthrough_request = AsyncMock(return_value=expected)
+
+        request = GoogleCreateInteractionRequest(model="gemini/gemini-2.5-flash", input="hello", stream=False)
+        result = await impl.create_interaction(request)
+
+        assert result is expected
+        impl._passthrough_request.assert_awaited_once()
+        impl.inference_api.openai_chat_completion.assert_not_awaited()
+
+    async def test_streaming_skips_passthrough_and_uses_translation(self):
+        impl = self._make_impl_with_router(
+            provider_module="llama_stack.providers.remote.inference.gemini.gemini",
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai",
+        )
+        impl._passthrough_request = AsyncMock()
+
+        chunk = MagicMock()
+        chunk.choices = [MagicMock()]
+        chunk.choices[0].delta = MagicMock()
+        chunk.choices[0].delta.content = "hello"
+        chunk.choices[0].delta.tool_calls = None
+        chunk.choices[0].finish_reason = "stop"
+        chunk.usage = None
+
+        async def mock_stream():
+            yield chunk
+
+        impl.inference_api.openai_chat_completion = AsyncMock(return_value=mock_stream())
+        translated_stream = object()
+        impl._stream_openai_to_google = MagicMock(return_value=translated_stream)
+
+        request = GoogleCreateInteractionRequest(model="gemini/gemini-2.5-flash", input="hello", stream=True)
+        result = await impl.create_interaction(request)
+
+        assert result is translated_stream
+        impl._passthrough_request.assert_not_awaited()
+        impl.inference_api.routing_table.get_object_by_identifier.assert_not_awaited()
+        impl.inference_api.openai_chat_completion.assert_awaited_once()
+
+
+class TestPassthroughRequest:
+    async def test_non_streaming_uses_header_auth_and_no_query_params(self, monkeypatch):
+        impl = BuiltinInteractionsImpl(config=InteractionsConfig(), inference_api=AsyncMock())
+        passthrough = {
+            "base_url": "https://generativelanguage.googleapis.com/v1beta",
+            "api_key": "test-key",
+            "provider_resource_id": "gemini-2.5-flash",
+            "network_config": None,
+        }
+        request = GoogleCreateInteractionRequest(model="gemini/gemini-2.5-flash", input="hello", stream=False)
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "id": "interaction-test",
+            "model": "gemini-2.5-flash",
+            "outputs": [{"text": "hello"}],
+        }
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_client.post = AsyncMock(return_value=mock_response)
+        async_client_ctor = MagicMock(return_value=mock_client)
+        monkeypatch.setattr("llama_stack.providers.inline.interactions.impl.httpx.AsyncClient", async_client_ctor)
+
+        result = await impl._passthrough_request(passthrough, request)
+
+        assert result.model == "gemini-2.5-flash"
+        ctor_kwargs = async_client_ctor.call_args.kwargs
+        assert ctor_kwargs["headers"]["x-goog-api-key"] == "test-key"
+        assert ctor_kwargs["headers"]["content-type"] == "application/json"
+
+        post_kwargs = mock_client.post.call_args.kwargs
+        assert "params" not in post_kwargs
+        assert post_kwargs["json"]["model"] == "gemini-2.5-flash"
+
+    async def test_non_streaming_applies_network_config_client_kwargs(self, monkeypatch):
+        impl = BuiltinInteractionsImpl(config=InteractionsConfig(), inference_api=AsyncMock())
+        network_config = MagicMock()
+        passthrough = {
+            "base_url": "https://generativelanguage.googleapis.com/v1beta",
+            "api_key": "test-key",
+            "provider_resource_id": "gemini-2.5-flash",
+            "network_config": network_config,
+        }
+        request = GoogleCreateInteractionRequest(model="gemini/gemini-2.5-flash", input="hello", stream=False)
+
+        built_kwargs = {"headers": {"x-custom-header": "enabled"}, "timeout": httpx.Timeout(42.0)}
+        build_kwargs_mock = MagicMock(return_value=built_kwargs)
+        monkeypatch.setattr(
+            "llama_stack.providers.inline.interactions.impl._build_network_client_kwargs",
+            build_kwargs_mock,
+        )
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "id": "interaction-test",
+            "model": "gemini-2.5-flash",
+            "outputs": [{"text": "hello"}],
+        }
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_client.post = AsyncMock(return_value=mock_response)
+        async_client_ctor = MagicMock(return_value=mock_client)
+        monkeypatch.setattr("llama_stack.providers.inline.interactions.impl.httpx.AsyncClient", async_client_ctor)
+
+        await impl._passthrough_request(passthrough, request)
+
+        build_kwargs_mock.assert_called_once_with(network_config)
+        ctor_kwargs = async_client_ctor.call_args.kwargs
+        assert ctor_kwargs["headers"]["x-custom-header"] == "enabled"
+        assert ctor_kwargs["headers"]["x-goog-api-key"] == "test-key"
+        assert ctor_kwargs["timeout"] == built_kwargs["timeout"]
+
+    async def test_non_streaming_accepts_thought_outputs(self, monkeypatch):
+        impl = BuiltinInteractionsImpl(config=InteractionsConfig(), inference_api=AsyncMock())
+        passthrough = {
+            "base_url": "https://generativelanguage.googleapis.com/v1beta",
+            "api_key": "test-key",
+            "provider_resource_id": "gemini-2.5-flash",
+            "network_config": None,
+        }
+        request = GoogleCreateInteractionRequest(model="gemini/gemini-2.5-flash", input="hello", stream=False)
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "id": "interaction-test",
+            "status": "completed",
+            "model": "gemini-2.5-flash",
+            "outputs": [
+                {
+                    "type": "thought",
+                    "signature": "sig-123",
+                },
+                {
+                    "type": "text",
+                    "text": "4",
+                },
+            ],
+            "usage": {
+                "total_input_tokens": 10,
+                "total_output_tokens": 1,
+                "total_tokens": 11,
+            },
+            "role": "model",
+            "object": "interaction",
+        }
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_client.post = AsyncMock(return_value=mock_response)
+        async_client_ctor = MagicMock(return_value=mock_client)
+        monkeypatch.setattr("llama_stack.providers.inline.interactions.impl.httpx.AsyncClient", async_client_ctor)
+
+        result = await impl._passthrough_request(passthrough, request)
+
+        assert len(result.outputs) == 2
+        assert result.outputs[0].type == "thought"
+        assert getattr(result.outputs[0], "signature", None) == "sig-123"
+        assert result.outputs[1].type == "text"
+        assert getattr(result.outputs[1], "text", None) == "4"
+
+
+class TestSSEParsing:
+    """Tests for the _parse_sse_event method used in passthrough streaming."""
+
+    @pytest.fixture
+    def impl(self):
+        mock_inference = AsyncMock()
+        return BuiltinInteractionsImpl(config=InteractionsConfig(), inference_api=mock_inference)
+
+    def test_parse_interaction_start(self, impl):
+        event = impl._parse_sse_event(
+            "interaction.start",
+            {"interaction": {"id": "test-123", "status": "in_progress", "model": "gemini-2.5-flash"}},
+        )
+        assert event is not None
+        assert event.event_type == "interaction.start"
+        assert event.interaction.id == "test-123"
+
+    def test_parse_content_start(self, impl):
+        event = impl._parse_sse_event("content.start", {"index": 0, "content": {"type": "text"}})
+        assert event is not None
+        assert event.event_type == "content.start"
+        assert event.index == 0
+        assert event.content.type == "text"
+
+    def test_parse_content_delta(self, impl):
+        event = impl._parse_sse_event("content.delta", {"index": 0, "delta": {"type": "text", "text": "Hello"}})
+        assert event is not None
+        assert event.event_type == "content.delta"
+        assert event.delta.text == "Hello"
+
+    def test_parse_content_stop(self, impl):
+        event = impl._parse_sse_event("content.stop", {"index": 0})
+        assert event is not None
+        assert event.event_type == "content.stop"
+
+    def test_parse_interaction_complete(self, impl):
+        event = impl._parse_sse_event(
+            "interaction.complete",
+            {
+                "interaction": {
+                    "id": "test-123",
+                    "status": "completed",
+                    "model": "gemini-2.5-flash",
+                    "usage": {"total_input_tokens": 10, "total_output_tokens": 5, "total_tokens": 15},
+                }
+            },
+        )
+        assert event is not None
+        assert event.event_type == "interaction.complete"
+        assert event.interaction.usage.total_input_tokens == 10
+
+    def test_parse_unknown_event_returns_none(self, impl):
+        event = impl._parse_sse_event("unknown.event", {"foo": "bar"})
+        assert event is None

@@ -7,17 +7,24 @@
 """Built-in Google Interactions API implementation.
 
 Translates Google Interactions format to/from OpenAI Chat Completions format,
-delegating to the inference API for actual model calls.
+delegating to the inference API for actual model calls. When the underlying
+inference provider natively supports the Google Interactions API (e.g. Gemini),
+requests are forwarded directly without translation.
 """
 
 from __future__ import annotations
 
+import json
 import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, TypedDict
+
+import httpx
 
 from llama_stack.log import get_logger
+from llama_stack.providers.utils.inference.http_client import _build_network_client_kwargs
+from llama_stack.providers.utils.inference.model_registry import NetworkConfig
 from llama_stack_api import (
     Inference,
     OpenAIChatCompletion,
@@ -33,8 +40,10 @@ from llama_stack_api.interactions.models import (
     GoogleGenerationConfig,
     GoogleInputTurn,
     GoogleInteractionResponse,
+    GoogleOutput,
     GoogleStreamEvent,
     GoogleTextOutput,
+    GoogleThoughtOutput,
     GoogleUsage,
     InteractionCompleteEvent,
     InteractionStartEvent,
@@ -51,6 +60,13 @@ logger = get_logger(name=__name__, category="interactions")
 
 def _now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S+00:00")
+
+
+class _PassthroughInfo(TypedDict):
+    base_url: str
+    api_key: str
+    provider_resource_id: str
+    network_config: NetworkConfig | None
 
 
 class BuiltinInteractionsImpl(Interactions):
@@ -70,6 +86,13 @@ class BuiltinInteractionsImpl(Interactions):
         self,
         request: GoogleCreateInteractionRequest,
     ) -> GoogleInteractionResponse | AsyncIterator[GoogleStreamEvent]:
+        # Stream translation currently supports the subset of events exposed by GoogleStreamEvent.
+        # Native Gemini streaming can emit additional event/content types, so only passthrough
+        # non-streaming requests for now.
+        passthrough = await self._get_passthrough_info(request.model) if not request.stream else None
+        if passthrough:
+            return await self._passthrough_request(passthrough, request)
+
         openai_params = self._google_to_openai(request)
 
         result = await self.inference_api.openai_chat_completion(openai_params)
@@ -78,6 +101,131 @@ class BuiltinInteractionsImpl(Interactions):
             return self._stream_openai_to_google(result, request.model)
 
         return self._openai_to_google(result, request.model)
+
+    # -- Native passthrough for providers with /interactions support --
+
+    # Module paths of provider impls known to support /interactions natively
+    _NATIVE_INTERACTIONS_MODULES = {"llama_stack.providers.remote.inference.gemini"}
+
+    async def _get_passthrough_info(self, model: str) -> _PassthroughInfo | None:
+        """Check if the model's provider supports /interactions natively.
+
+        Returns a dict with 'base_url' and 'api_key' for passthrough, or None to use translation.
+        """
+        routing_table = getattr(self.inference_api, "routing_table", None)
+        if routing_table is None:
+            return None
+
+        obj = await routing_table.get_object_by_identifier("model", model)
+        if obj is None:
+            return None
+
+        provider_impl = await routing_table.get_provider_impl(obj.identifier)
+        provider_module = type(provider_impl).__module__
+        is_native = any(provider_module.startswith(m) for m in self._NATIVE_INTERACTIONS_MODULES)
+
+        if is_native and hasattr(provider_impl, "get_base_url"):
+            base_url = str(provider_impl.get_base_url()).rstrip("/")
+            # The Gemini provider returns a URL like
+            # https://generativelanguage.googleapis.com/v1beta/openai
+            # Strip the /openai suffix — Interactions sits alongside it at /v1beta/interactions
+            if base_url.endswith("/openai"):
+                base_url = base_url[: -len("/openai")]
+
+            api_key = None
+            if hasattr(provider_impl, "_get_api_key_from_config_or_provider_data"):
+                api_key = provider_impl._get_api_key_from_config_or_provider_data()
+
+            if not api_key:
+                logger.debug("No API key for passthrough, falling back to translation", model=model)
+                return None
+
+            provider_config = getattr(provider_impl, "config", None)
+            network_config = getattr(provider_config, "network", None)
+            logger.info("Using native /interactions passthrough", model=model, base_url=base_url)
+            return {
+                "base_url": base_url,
+                "api_key": api_key,
+                "provider_resource_id": obj.provider_resource_id,
+                "network_config": network_config,
+            }
+
+        return None
+
+    def _build_passthrough_client_kwargs(self, passthrough: _PassthroughInfo) -> dict[str, Any]:
+        client_kwargs = _build_network_client_kwargs(passthrough["network_config"])
+        headers = dict(client_kwargs.get("headers", {}))
+        headers.update(
+            {
+                "content-type": "application/json",
+                "x-goog-api-key": passthrough["api_key"],
+            }
+        )
+        client_kwargs["headers"] = headers
+        client_kwargs.setdefault("timeout", httpx.Timeout(300.0))
+        return client_kwargs
+
+    async def _passthrough_request(
+        self,
+        passthrough: _PassthroughInfo,
+        request: GoogleCreateInteractionRequest,
+    ) -> GoogleInteractionResponse | AsyncIterator[GoogleStreamEvent]:
+        """Forward the request directly to the provider's /interactions endpoint."""
+        base_url = passthrough["base_url"]
+        provider_model = passthrough["provider_resource_id"]
+
+        url = f"{base_url}/interactions"
+        body = request.model_dump(exclude_none=True)
+        body["model"] = provider_model
+
+        client_kwargs = self._build_passthrough_client_kwargs(passthrough)
+
+        if request.stream:
+            return self._passthrough_stream(url, body, client_kwargs)
+
+        async with httpx.AsyncClient(**client_kwargs) as client:
+            resp = await client.post(url, json=body)
+            resp.raise_for_status()
+            return GoogleInteractionResponse(**resp.json())
+
+    async def _passthrough_stream(
+        self,
+        url: str,
+        body: dict[str, Any],
+        client_kwargs: dict[str, Any],
+    ) -> AsyncIterator[GoogleStreamEvent]:
+        """Stream SSE events directly from the provider."""
+        async with httpx.AsyncClient(**client_kwargs) as client:
+            async with client.stream("POST", url, json=body) as resp:
+                resp.raise_for_status()
+                event_type = None
+                async for line in resp.aiter_lines():
+                    line = line.strip()
+                    if line.startswith("event: "):
+                        event_type = line[7:]
+                    elif line.startswith("data: ") and event_type:
+                        data = json.loads(line[6:])
+                        event = self._parse_sse_event(event_type, data)
+                        if event:
+                            yield event
+                        event_type = None
+
+    def _parse_sse_event(self, event_type: str, data: dict[str, Any]) -> GoogleStreamEvent | None:
+        """Parse a Google Interactions SSE event from its type and data."""
+        if event_type == "interaction.start":
+            return InteractionStartEvent(interaction=_InteractionRef(**data.get("interaction", data)))
+        if event_type == "content.start":
+            return ContentStartEvent(index=data.get("index", 0), content=_ContentRef())
+        if event_type == "content.delta":
+            delta_data = data.get("delta", {})
+            return ContentDeltaEvent(index=data.get("index", 0), delta=_TextDelta(text=delta_data.get("text", "")))
+        if event_type == "content.stop":
+            return ContentStopEvent(index=data.get("index", 0))
+        if event_type == "interaction.complete":
+            return InteractionCompleteEvent(
+                interaction=_InteractionCompleteRef(**data.get("interaction", data)),
+            )
+        return None
 
     # -- Request translation --
 
@@ -124,7 +272,7 @@ class BuiltinInteractionsImpl(Interactions):
     # -- Response translation --
 
     def _openai_to_google(self, response: OpenAIChatCompletion, request_model: str) -> GoogleInteractionResponse:
-        outputs: list[GoogleTextOutput] = []
+        outputs: list[GoogleTextOutput | GoogleThoughtOutput | GoogleOutput] = []
 
         if response.choices:
             choice = response.choices[0]
