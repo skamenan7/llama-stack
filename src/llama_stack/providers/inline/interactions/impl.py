@@ -23,7 +23,7 @@ from typing import Any, TypedDict
 import httpx
 
 from llama_stack.log import get_logger
-from llama_stack.providers.utils.inference.http_client import _build_network_client_kwargs
+from llama_stack.providers.utils.inference.http_client import build_network_client_kwargs
 from llama_stack.providers.utils.inference.model_registry import NetworkConfig
 from llama_stack_api import (
     Inference,
@@ -153,7 +153,7 @@ class BuiltinInteractionsImpl(Interactions):
         return None
 
     def _build_passthrough_client_kwargs(self, passthrough: _PassthroughInfo) -> dict[str, Any]:
-        client_kwargs = _build_network_client_kwargs(passthrough["network_config"])
+        client_kwargs = build_network_client_kwargs(passthrough["network_config"])
         headers = dict(client_kwargs.get("headers", {}))
         headers.update(
             {
