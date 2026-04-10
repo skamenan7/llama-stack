@@ -95,6 +95,23 @@ class GoogleTextOutput(BaseModel):
     text: str
 
 
+class GoogleThoughtOutput(BaseModel):
+    """A thought output item emitted by Gemini."""
+
+    type: Literal["thought"] = "thought"
+    signature: str | None = None
+
+
+class GoogleOutput(BaseModel):
+    """Fallback output item for forward compatibility with new Google output types."""
+
+    model_config = ConfigDict(extra="allow")
+
+    type: str
+    text: str | None = None
+    signature: str | None = None
+
+
 class GoogleUsage(BaseModel):
     """Token usage statistics."""
 
@@ -111,7 +128,10 @@ class GoogleInteractionResponse(BaseModel):
     status: Literal["completed"] = "completed"
     updated: str | None = Field(default=None, description="Last update timestamp.")
     model: str = Field(..., description="Model used for generation.")
-    outputs: list[GoogleTextOutput] = Field(..., description="Response output items.")
+    outputs: list[GoogleTextOutput | GoogleThoughtOutput | GoogleOutput] = Field(
+        ...,
+        description="Response output items.",
+    )
     role: Literal["model"] = "model"
     usage: GoogleUsage = Field(default_factory=GoogleUsage)
     object: Literal["interaction"] = "interaction"
