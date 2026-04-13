@@ -10,10 +10,11 @@ Tests cover context loading, deduplication, sliding window
 truncation, and system prompt preservation.
 """
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
+from llama_stack.providers.inline.messages.config import MessagesConfig, SessionStoreConfig
 from llama_stack.providers.inline.messages.impl import BuiltinMessagesImpl
 from llama_stack_api.messages.models import (
     AnthropicMessage,
@@ -23,9 +24,9 @@ from llama_stack_api.messages.models import (
 
 @pytest.fixture
 def messages_impl():
-    config = MagicMock()
-    config.session_store.max_history_turns = 10
-    config.session_store.enabled = False
+    config = MessagesConfig(
+        session_store=SessionStoreConfig(enabled=False, max_history_turns=10),
+    )
     inference = AsyncMock()
     impl = BuiltinMessagesImpl(config, inference)
     return impl

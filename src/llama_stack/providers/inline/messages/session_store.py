@@ -168,15 +168,19 @@ class SessionStore:
         stop_reason: str | None = None,
         usage: AnthropicUsage | None = None,
     ) -> SessionMessage:
-        """Append a message to a session's history."""
+        """Append a message to a session's history.
+
+        Uses UUID-based message IDs and timestamp-based ordering to avoid
+        TOCTOU races when concurrent appends hit the same session.
+        """
         now = int(time.time())
         session = await self.get_session(session_id)
         if session is None:
             raise ValueError(f"Failed to find session {session_id}")
 
-        seq = session.message_count
+        msg_id = f"msg_{uuid.uuid4().hex[:24]}"
         msg = SessionMessage(
-            id=f"{session_id}-msg-{seq}",
+            id=msg_id,
             role=role,
             content=content,
             created_at=now,
@@ -185,12 +189,14 @@ class SessionStore:
             usage=usage,
         )
 
+        # Use created_at timestamp for ordering instead of a racy sequence counter.
+        # Concurrent appends get unique IDs and slightly different timestamps.
         await self.sql_store.insert(
             "session_messages",
             {
-                "id": msg.id,
+                "id": msg_id,
                 "session_id": session_id,
-                "sequence_num": seq,
+                "sequence_num": now,
                 "role": msg.role,
                 "content": [c.model_dump() for c in content],
                 "created_at": now,
@@ -200,11 +206,13 @@ class SessionStore:
             },
         )
 
+        # Increment message_count. In case of concurrent writes, the count
+        # may drift slightly but messages are ordered by sequence_num (timestamp).
         await self.sql_store.update(
             "sessions",
             data={
                 "updated_at": now,
-                "message_count": seq + 1,
+                "message_count": session.message_count + 1,
             },
             where={"id": session_id},
         )
@@ -213,7 +221,7 @@ class SessionStore:
             "Message appended",
             session_id=session_id,
             role=role,
-            sequence=seq,
+            message_id=msg_id,
         )
         return msg
 

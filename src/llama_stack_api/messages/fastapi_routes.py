@@ -35,6 +35,9 @@ from .models import (
     AnthropicMessageResponse,
     CreateSessionRequest,
     Session,
+    SessionClosedError,
+    SessionExpiredError,
+    SessionNotFoundError,
     _AnthropicErrorDetail,
 )
 
@@ -103,6 +106,7 @@ def _anthropic_error_response(status_code: int, message: str) -> JSONResponse:
         401: "authentication_error",
         403: "permission_error",
         404: "not_found_error",
+        410: "not_found_error",
         429: "rate_limit_error",
     }
     error_type = error_type_map.get(status_code, "api_error")
@@ -152,6 +156,10 @@ def create_router(impl: Messages) -> APIRouter:
             return _anthropic_error_response(501, str(e))
         except ModelNotFoundError as e:
             return _anthropic_error_response(404, str(e))
+        except SessionNotFoundError as e:
+            return _anthropic_error_response(404, str(e))
+        except (SessionExpiredError, SessionClosedError) as e:
+            return _anthropic_error_response(410, str(e))
         except ValueError as e:
             return _anthropic_error_response(400, str(e))
         except HTTPException as e:

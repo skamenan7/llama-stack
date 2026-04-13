@@ -33,9 +33,16 @@ from .models import (
     ContentBlockDeltaEvent,
     ContentBlockStartEvent,
     ContentBlockStopEvent,
+    CreateSessionRequest,
     MessageDeltaEvent,
     MessageStartEvent,
     MessageStopEvent,
+    Session,
+    SessionClosedError,
+    SessionExpiredError,
+    SessionMessage,
+    SessionMetadata,
+    SessionNotFoundError,
 )
 
 __all__ = [
@@ -59,8 +66,15 @@ __all__ = [
     "ContentBlockDeltaEvent",
     "ContentBlockStartEvent",
     "ContentBlockStopEvent",
+    "CreateSessionRequest",
     "MessageDeltaEvent",
     "MessageStartEvent",
     "MessageStopEvent",
+    "Session",
+    "SessionClosedError",
+    "SessionExpiredError",
+    "SessionMessage",
+    "SessionMetadata",
+    "SessionNotFoundError",
     "fastapi_routes",
 ]

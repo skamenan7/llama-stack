@@ -21,6 +21,7 @@ from typing import Any
 
 import httpx
 
+from llama_stack.core.storage.datatypes import SqlStoreReference
 from llama_stack.log import get_logger
 from llama_stack_api import (
     Inference,
@@ -54,7 +55,10 @@ from llama_stack_api.messages.models import (
     MessageStartEvent,
     MessageStopEvent,
     Session,
+    SessionClosedError,
+    SessionExpiredError,
     SessionMetadata,
+    SessionNotFoundError,
     _InputJsonDelta,
     _MessageDelta,
     _TextDelta,
@@ -94,8 +98,6 @@ class BuiltinMessagesImpl(Messages):
     async def initialize(self) -> None:
         self._client = httpx.AsyncClient()
         if self.config.session_store.enabled:
-            from llama_stack.core.storage.datatypes import SqlStoreReference
-
             self._session_store = SessionStore(
                 sql_store_config=SqlStoreReference(
                     backend="sql_default",
@@ -126,6 +128,19 @@ class BuiltinMessagesImpl(Messages):
             raise NotImplementedError("Session store is not enabled")
         return await self._session_store.get_session(session_id)
 
+    async def _validate_session(self, session_id: str) -> Session:
+        """Validate a session exists and is active. Raises on invalid state."""
+        if not self._session_store:
+            raise NotImplementedError("Session store is not enabled")
+        session = await self._session_store.get_session(session_id)
+        if session is None:
+            raise SessionNotFoundError(f"Failed to find session {session_id}")
+        if session.status == "expired":
+            raise SessionExpiredError(f"Failed to recover session {session_id}: session expired")
+        if session.status == "closed":
+            raise SessionClosedError(f"Failed to recover session {session_id}: session was closed")
+        return session
+
     async def list_sessions(
         self,
         limit: int = 20,
@@ -153,7 +168,8 @@ class BuiltinMessagesImpl(Messages):
         Loads history from the store, applies truncation,
         and appends the new messages.
         """
-        assert self._session_store is not None
+        if not self._session_store:
+            raise RuntimeError("Failed to build context: session store not initialized")
         history = await self._session_store.get_messages(
             session_id,
             limit=self.config.session_store.max_history_turns * 2,
@@ -190,44 +206,111 @@ class BuiltinMessagesImpl(Messages):
         messages: list[AnthropicMessage],
         max_turns: int,
     ) -> list[AnthropicMessage]:
-        """Apply sliding window truncation.
-
-        Preserves system messages and keeps the most recent max_turns messages.
-        """
+        """Apply sliding window truncation, keeping the most recent max_turns messages."""
         if len(messages) <= max_turns:
             return messages
 
-        system_msgs: list[AnthropicMessage] = []
-        non_system: list[AnthropicMessage] = []
-        for msg in messages:
-            if hasattr(msg, "role") and msg.role == "system":
-                system_msgs.append(msg)
-            else:
-                non_system.append(msg)
-
-        truncated = non_system[-max_turns:]
+        truncated = messages[-max_turns:]
 
         logger.info(
             "Applied sliding window truncation",
             original_count=len(messages),
-            truncated_count=len(system_msgs) + len(truncated),
-            dropped=len(non_system) - len(truncated),
+            truncated_count=len(truncated),
+            dropped=len(messages) - len(truncated),
         )
 
-        return system_msgs + truncated
+        return truncated
 
     # -- Message creation --
+
+    async def _store_new_messages(
+        self,
+        session_id: str,
+        new_messages: list[AnthropicMessage],
+    ) -> None:
+        """Store only the NEW user messages (not historical ones) in the session."""
+        if not self._session_store:
+            return
+        for msg in new_messages:
+            if msg.role == "user":
+                content = msg.content if isinstance(msg.content, list) else [AnthropicTextBlock(text=msg.content)]
+                await self._session_store.append_message(
+                    session_id=session_id,
+                    role="user",
+                    content=content,
+                )
+
+    async def _store_assistant_response(
+        self,
+        session_id: str,
+        response: AnthropicMessageResponse,
+    ) -> None:
+        """Store the assistant response in the session."""
+        if not self._session_store:
+            return
+        await self._session_store.append_message(
+            session_id=session_id,
+            role="assistant",
+            content=response.content,
+            model=response.model,
+            stop_reason=response.stop_reason,
+            usage=response.usage,
+        )
+
+    async def _wrap_stream_with_persistence(
+        self,
+        stream: AsyncIterator[AnthropicStreamEvent],
+        session_id: str,
+        new_messages: list[AnthropicMessage],
+    ) -> AsyncIterator[AnthropicStreamEvent]:
+        """Wrap a streaming response to persist messages after stream completes."""
+        content_blocks: list[AnthropicContentBlock] = []
+        model = ""
+        stop_reason = "end_turn"
+        usage = AnthropicUsage()
+
+        async for event in stream:
+            yield event
+
+            if isinstance(event, MessageStartEvent):
+                model = event.message.model
+            elif isinstance(event, ContentBlockStartEvent):
+                content_blocks.append(event.content_block)
+            elif isinstance(event, ContentBlockDeltaEvent):
+                if content_blocks and isinstance(event.delta, _TextDelta):
+                    block = content_blocks[event.index]
+                    if isinstance(block, AnthropicTextBlock):
+                        content_blocks[event.index] = AnthropicTextBlock(
+                            text=block.text + event.delta.text,
+                        )
+            elif isinstance(event, MessageDeltaEvent):
+                if event.delta.stop_reason:
+                    stop_reason = event.delta.stop_reason
+                if event.usage:
+                    usage = event.usage
+
+        # Stream complete — persist the exchange
+        await self._store_new_messages(session_id, new_messages)
+        response = AnthropicMessageResponse(
+            id=f"msg_{uuid.uuid4().hex[:24]}",
+            content=content_blocks,
+            model=model,
+            stop_reason=stop_reason,
+            usage=usage,
+        )
+        await self._store_assistant_response(session_id, response)
 
     async def create_message(
         self,
         request: AnthropicCreateMessageRequest,
     ) -> AnthropicMessageResponse | AsyncIterator[AnthropicStreamEvent]:
         session_id = request.session_id
-        incoming_messages = request.messages
+        new_messages = list(request.messages)  # save original new messages before merging
 
-        # If session_id provided and store is active, load context
+        # If session_id provided and store is active, validate and load context
         if session_id and self._session_store:
-            context_messages = await self._build_context(session_id, incoming_messages)
+            await self._validate_session(session_id)
+            context_messages = await self._build_context(session_id, new_messages)
             context_messages = self._apply_sliding_window(
                 context_messages,
                 self.config.session_store.max_history_turns,
@@ -249,26 +332,12 @@ class BuiltinMessagesImpl(Messages):
                 result = self._openai_to_anthropic(openai_result, request.model)
 
         # Store messages in session if active
-        if session_id and self._session_store and isinstance(result, AnthropicMessageResponse):
-            # Store the new user messages
-            for msg in incoming_messages:
-                if msg.role == "user":
-                    content = msg.content if isinstance(msg.content, list) else [AnthropicTextBlock(text=msg.content)]
-                    await self._session_store.append_message(
-                        session_id=session_id,
-                        role="user",
-                        content=content,
-                    )
-
-            # Store the assistant response
-            await self._session_store.append_message(
-                session_id=session_id,
-                role="assistant",
-                content=result.content,
-                model=result.model,
-                stop_reason=result.stop_reason,
-                usage=result.usage,
-            )
+        if session_id and self._session_store:
+            if isinstance(result, AnthropicMessageResponse):
+                await self._store_new_messages(session_id, new_messages)
+                await self._store_assistant_response(session_id, result)
+            elif isinstance(result, AsyncIterator):
+                result = self._wrap_stream_with_persistence(result, session_id, new_messages)
 
         return result
 
