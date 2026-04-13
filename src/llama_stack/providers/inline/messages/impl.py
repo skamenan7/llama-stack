@@ -14,6 +14,7 @@ requests are forwarded directly without translation.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
 from collections.abc import AsyncIterator
@@ -98,15 +99,19 @@ class BuiltinMessagesImpl(Messages):
     async def initialize(self) -> None:
         self._client = httpx.AsyncClient()
         if self.config.session_store.enabled:
-            self._session_store = SessionStore(
-                sql_store_config=SqlStoreReference(
-                    backend="sql_default",
-                    table_name="messages_sessions",
-                ),
-                policy=[],
-            )
-            await self._session_store.initialize()
-            logger.info("Session store initialized")
+            try:
+                self._session_store = SessionStore(
+                    sql_store_config=SqlStoreReference(
+                        backend="sql_default",
+                        table_name="messages_sessions",
+                    ),
+                    policy=[],
+                )
+                await self._session_store.initialize()
+                logger.info("Session store initialized")
+            except Exception:
+                logger.warning("Failed to initialize session store, sessions disabled")
+                self._session_store = None
 
     async def shutdown(self) -> None:
         await self._client.aclose()
@@ -263,33 +268,62 @@ class BuiltinMessagesImpl(Messages):
         session_id: str,
         new_messages: list[AnthropicMessage],
     ) -> AsyncIterator[AnthropicStreamEvent]:
-        """Wrap a streaming response to persist messages after stream completes."""
+        """Wrap a streaming response to persist messages after stream completes.
+
+        Uses try/finally with asyncio.shield to persist even if the client
+        disconnects mid-stream (CancelledError).
+        """
         content_blocks: list[AnthropicContentBlock] = []
         model = ""
         stop_reason = "end_turn"
         usage = AnthropicUsage()
 
-        async for event in stream:
-            yield event
+        try:
+            async for event in stream:
+                yield event
 
-            if isinstance(event, MessageStartEvent):
-                model = event.message.model
-            elif isinstance(event, ContentBlockStartEvent):
-                content_blocks.append(event.content_block)
-            elif isinstance(event, ContentBlockDeltaEvent):
-                if content_blocks and isinstance(event.delta, _TextDelta):
-                    block = content_blocks[event.index]
-                    if isinstance(block, AnthropicTextBlock):
-                        content_blocks[event.index] = AnthropicTextBlock(
-                            text=block.text + event.delta.text,
-                        )
-            elif isinstance(event, MessageDeltaEvent):
-                if event.delta.stop_reason:
-                    stop_reason = event.delta.stop_reason
-                if event.usage:
-                    usage = event.usage
+                if isinstance(event, MessageStartEvent):
+                    model = event.message.model
+                elif isinstance(event, ContentBlockStartEvent):
+                    content_blocks.append(event.content_block)
+                elif isinstance(event, ContentBlockDeltaEvent):
+                    if content_blocks and isinstance(event.delta, _TextDelta):
+                        block = content_blocks[event.index]
+                        if isinstance(block, AnthropicTextBlock):
+                            content_blocks[event.index] = AnthropicTextBlock(
+                                text=block.text + event.delta.text,
+                            )
+                elif isinstance(event, MessageDeltaEvent):
+                    if event.delta.stop_reason:
+                        stop_reason = event.delta.stop_reason
+                    if event.usage:
+                        usage = event.usage
+        finally:
+            # Persist whatever we accumulated, even on client disconnect
+            if content_blocks:
+                try:
+                    persist_coro = self._persist_stream_result(
+                        session_id,
+                        new_messages,
+                        content_blocks,
+                        model,
+                        stop_reason,
+                        usage,
+                    )
+                    await asyncio.shield(persist_coro)
+                except asyncio.CancelledError:
+                    logger.warning("Stream persistence cancelled", session_id=session_id)
 
-        # Stream complete — persist the exchange
+    async def _persist_stream_result(
+        self,
+        session_id: str,
+        new_messages: list[AnthropicMessage],
+        content_blocks: list[AnthropicContentBlock],
+        model: str,
+        stop_reason: str,
+        usage: AnthropicUsage,
+    ) -> None:
+        """Persist accumulated stream results to the session store."""
         await self._store_new_messages(session_id, new_messages)
         response = AnthropicMessageResponse(
             id=f"msg_{uuid.uuid4().hex[:24]}",

@@ -60,7 +60,7 @@ class SessionStore:
             {
                 "id": ColumnDefinition(type=ColumnType.STRING, primary_key=True),
                 "session_id": ColumnType.STRING,
-                "sequence_num": ColumnType.INTEGER,
+                "order_key": ColumnType.INTEGER,
                 "role": ColumnType.STRING,
                 "content": ColumnType.JSON,
                 "created_at": ColumnType.INTEGER,
@@ -196,7 +196,7 @@ class SessionStore:
             {
                 "id": msg_id,
                 "session_id": session_id,
-                "sequence_num": now,
+                "order_key": now,
                 "role": msg.role,
                 "content": [c.model_dump() for c in content],
                 "created_at": now,
@@ -207,7 +207,7 @@ class SessionStore:
         )
 
         # Increment message_count. In case of concurrent writes, the count
-        # may drift slightly but messages are ordered by sequence_num (timestamp).
+        # may drift slightly but messages are ordered by order_key (timestamp).
         await self.sql_store.update(
             "sessions",
             data={
@@ -235,7 +235,7 @@ class SessionStore:
         result = await self.sql_store.fetch_all(
             "session_messages",
             where={"session_id": session_id},
-            order_by=[("sequence_num", "asc")],
+            order_by=[("order_key", "asc")],
             cursor=("id", after) if after else None,
             limit=limit,
         )
@@ -258,21 +258,27 @@ class SessionStore:
         return messages
 
     async def expire_sessions(self, ttl_seconds: int) -> int:
-        """Mark sessions older than TTL as expired. Returns count."""
+        """Mark sessions older than TTL as expired. Returns count.
+
+        Processes in batches of 500 to avoid loading unbounded rows.
+        """
         cutoff = int(time.time()) - ttl_seconds
         result = await self.sql_store.fetch_all(
             "sessions",
             where={"status": "active"},
+            order_by=[("updated_at", "asc")],
+            limit=500,
         )
         expired = 0
         for row in result.data:
-            if row["updated_at"] < cutoff:
-                await self.sql_store.update(
-                    "sessions",
-                    data={"status": "expired"},
-                    where={"id": row["id"]},
-                )
-                expired += 1
+            if row["updated_at"] >= cutoff:
+                break
+            await self.sql_store.update(
+                "sessions",
+                data={"status": "expired"},
+                where={"id": row["id"]},
+            )
+            expired += 1
         if expired:
             logger.info("Expired sessions", count=expired, ttl=ttl_seconds)
         return expired

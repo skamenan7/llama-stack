@@ -296,6 +296,13 @@ from .messages import (
     AnthropicToolResultBlock,
     AnthropicToolUseBlock,
     AnthropicUsage,
+    CreateSessionRequest,
+    Session,
+    SessionClosedError,
+    SessionExpiredError,
+    SessionMessage,
+    SessionMetadata,
+    SessionNotFoundError,
 )
 from .models import (
     CommonModelFields,
@@ -1026,6 +1033,13 @@ __all__ = [
     "AnthropicToolResultBlock",
     "AnthropicToolUseBlock",
     "AnthropicUsage",
+    "CreateSessionRequest",
+    "Session",
+    "SessionClosedError",
+    "SessionExpiredError",
+    "SessionMessage",
+    "SessionMetadata",
+    "SessionNotFoundError",
     # Validators
     "validate_embeddings_input_is_text",
     # helpers
