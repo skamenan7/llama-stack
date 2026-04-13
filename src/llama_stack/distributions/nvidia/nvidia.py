@@ -20,7 +20,7 @@ def get_distribution_template(name: str = "nvidia") -> DistributionTemplate:
         name: the distribution name.
 
     Returns:
-        A DistributionTemplate configured for NVIDIA NIM inference, eval, and safety.
+        A DistributionTemplate configured for NVIDIA NIM inference and safety.
     """
     providers = {
         "inference": [BuildProvider(provider_type="remote::nvidia")],

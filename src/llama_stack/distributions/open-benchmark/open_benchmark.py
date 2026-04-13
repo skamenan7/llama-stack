@@ -96,7 +96,7 @@ def get_inference_providers() -> tuple[list[Provider], dict[str, list[ProviderMo
 
 
 def get_distribution_template() -> DistributionTemplate:
-    """Build the open-benchmark distribution template for running evaluations.
+    """Build the open-benchmark distribution template.
 
     Returns:
         A DistributionTemplate configured for open benchmarking.
