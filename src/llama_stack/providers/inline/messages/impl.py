@@ -53,6 +53,8 @@ from llama_stack_api.messages.models import (
     MessageDeltaEvent,
     MessageStartEvent,
     MessageStopEvent,
+    Session,
+    SessionMetadata,
     _InputJsonDelta,
     _MessageDelta,
     _TextDelta,
@@ -60,6 +62,7 @@ from llama_stack_api.messages.models import (
 )
 
 from .config import MessagesConfig
+from .session_store import SessionStore
 
 logger = get_logger(name=__name__, category="messages")
 
@@ -86,30 +89,188 @@ class BuiltinMessagesImpl(Messages):
     def __init__(self, config: MessagesConfig, inference_api: Inference):
         self.config = config
         self.inference_api = inference_api
+        self._session_store: SessionStore | None = None
 
     async def initialize(self) -> None:
         self._client = httpx.AsyncClient()
+        if self.config.session_store.enabled:
+            from llama_stack.core.storage.datatypes import SqlStoreReference
+
+            self._session_store = SessionStore(
+                sql_store_config=SqlStoreReference(
+                    backend="sql_default",
+                    table_name="messages_sessions",
+                ),
+                policy=[],
+            )
+            await self._session_store.initialize()
+            logger.info("Session store initialized")
 
     async def shutdown(self) -> None:
         await self._client.aclose()
+        if self._session_store:
+            await self._session_store.shutdown()
+
+    # -- Session management --
+
+    async def create_session(
+        self,
+        metadata: SessionMetadata | None = None,
+    ) -> Session:
+        if not self._session_store:
+            raise NotImplementedError("Session store is not enabled")
+        return await self._session_store.create_session(metadata)
+
+    async def get_session(self, session_id: str) -> Session | None:
+        if not self._session_store:
+            raise NotImplementedError("Session store is not enabled")
+        return await self._session_store.get_session(session_id)
+
+    async def list_sessions(
+        self,
+        limit: int = 20,
+        after: str | None = None,
+        status: str | None = None,
+    ) -> list[Session]:
+        if not self._session_store:
+            raise NotImplementedError("Session store is not enabled")
+        return await self._session_store.list_sessions(limit, after, status)
+
+    async def delete_session(self, session_id: str) -> bool:
+        if not self._session_store:
+            raise NotImplementedError("Session store is not enabled")
+        return await self._session_store.delete_session(session_id)
+
+    # -- Context building --
+
+    async def _build_context(
+        self,
+        session_id: str,
+        new_messages: list[AnthropicMessage],
+    ) -> list[AnthropicMessage]:
+        """Build the full message context for a session.
+
+        Loads history from the store, applies truncation,
+        and appends the new messages.
+        """
+        assert self._session_store is not None
+        history = await self._session_store.get_messages(
+            session_id,
+            limit=self.config.session_store.max_history_turns * 2,
+        )
+
+        history_msgs = [AnthropicMessage(role=m.role, content=m.content) for m in history]
+
+        overlap = self._find_overlap(history_msgs, new_messages)
+        if overlap > 0:
+            new_messages = new_messages[overlap:]
+
+        full_context = history_msgs + new_messages
+        return full_context
+
+    def _find_overlap(
+        self,
+        history: list[AnthropicMessage],
+        incoming: list[AnthropicMessage],
+    ) -> int:
+        """Find how many leading incoming messages duplicate the tail of history."""
+        if not history or not incoming:
+            return 0
+
+        max_check = min(len(history), len(incoming))
+        for overlap_size in range(max_check, 0, -1):
+            tail = history[-overlap_size:]
+            head = incoming[:overlap_size]
+            if all(t.role == h.role and t.content == h.content for t, h in zip(tail, head, strict=False)):
+                return overlap_size
+        return 0
+
+    def _apply_sliding_window(
+        self,
+        messages: list[AnthropicMessage],
+        max_turns: int,
+    ) -> list[AnthropicMessage]:
+        """Apply sliding window truncation.
+
+        Preserves system messages and keeps the most recent max_turns messages.
+        """
+        if len(messages) <= max_turns:
+            return messages
+
+        system_msgs: list[AnthropicMessage] = []
+        non_system: list[AnthropicMessage] = []
+        for msg in messages:
+            if hasattr(msg, "role") and msg.role == "system":
+                system_msgs.append(msg)
+            else:
+                non_system.append(msg)
+
+        truncated = non_system[-max_turns:]
+
+        logger.info(
+            "Applied sliding window truncation",
+            original_count=len(messages),
+            truncated_count=len(system_msgs) + len(truncated),
+            dropped=len(non_system) - len(truncated),
+        )
+
+        return system_msgs + truncated
+
+    # -- Message creation --
 
     async def create_message(
         self,
         request: AnthropicCreateMessageRequest,
     ) -> AnthropicMessageResponse | AsyncIterator[AnthropicStreamEvent]:
+        session_id = request.session_id
+        incoming_messages = request.messages
+
+        # If session_id provided and store is active, load context
+        if session_id and self._session_store:
+            context_messages = await self._build_context(session_id, incoming_messages)
+            context_messages = self._apply_sliding_window(
+                context_messages,
+                self.config.session_store.max_history_turns,
+            )
+            request = request.model_copy(update={"messages": context_messages})
+
         # Try native passthrough for providers that support /v1/messages directly
         passthrough_url = await self._get_passthrough_url(request.model)
+        result: AnthropicMessageResponse | AsyncIterator[AnthropicStreamEvent]
         if passthrough_url:
-            return await self._passthrough_request(passthrough_url, request)
+            result = await self._passthrough_request(passthrough_url, request)
+        else:
+            openai_params = self._anthropic_to_openai(request)
+            openai_result = await self.inference_api.openai_chat_completion(openai_params)
 
-        # Translation mode: convert Anthropic format to OpenAI format
-        openai_params = self._anthropic_to_openai(request)
-        openai_result = await self.inference_api.openai_chat_completion(openai_params)
+            if isinstance(openai_result, AsyncIterator):
+                result = self._stream_openai_to_anthropic(openai_result, request.model)
+            else:
+                result = self._openai_to_anthropic(openai_result, request.model)
 
-        if isinstance(openai_result, AsyncIterator):
-            return self._stream_openai_to_anthropic(openai_result, request.model)
+        # Store messages in session if active
+        if session_id and self._session_store and isinstance(result, AnthropicMessageResponse):
+            # Store the new user messages
+            for msg in incoming_messages:
+                if msg.role == "user":
+                    content = msg.content if isinstance(msg.content, list) else [AnthropicTextBlock(text=msg.content)]
+                    await self._session_store.append_message(
+                        session_id=session_id,
+                        role="user",
+                        content=content,
+                    )
 
-        return self._openai_to_anthropic(openai_result, request.model)
+            # Store the assistant response
+            await self._session_store.append_message(
+                session_id=session_id,
+                role="assistant",
+                content=result.content,
+                model=result.model,
+                stop_reason=result.stop_reason,
+                usage=result.usage,
+            )
+
+        return result
 
     async def count_message_tokens(
         self,

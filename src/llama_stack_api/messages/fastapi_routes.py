@@ -17,7 +17,7 @@ import logging  # allow-direct-logging
 from collections.abc import AsyncIterator
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, HTTPException, Request, Response
+from fastapi import APIRouter, Body, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
@@ -33,6 +33,8 @@ from .models import (
     AnthropicCreateMessageRequest,
     AnthropicErrorResponse,
     AnthropicMessageResponse,
+    CreateSessionRequest,
+    Session,
     _AnthropicErrorDetail,
 )
 
@@ -194,6 +196,104 @@ def create_router(impl: Messages) -> APIRouter:
 
         return JSONResponse(
             content=result.model_dump(),
+            headers={"anthropic-version": ANTHROPIC_VERSION},
+        )
+
+    # -- Session endpoints --
+
+    @router.post(
+        "/sessions",
+        summary="Create a session.",
+        description="Create a new conversation session for multi-turn persistence.",
+        status_code=200,
+        response_model=Session,
+    )
+    async def create_session(
+        params: Annotated[CreateSessionRequest, Body(...)],
+    ) -> Response:
+        try:
+            result = await impl.create_session(params.metadata)
+        except NotImplementedError as e:
+            return _anthropic_error_response(501, str(e))
+        except Exception:
+            logger.exception("Failed to create session")
+            return _anthropic_error_response(500, "Internal server error")
+
+        return JSONResponse(
+            content=result.model_dump(),
+            headers={"anthropic-version": ANTHROPIC_VERSION},
+        )
+
+    @router.get(
+        "/sessions/{session_id}",
+        summary="Get a session.",
+        description="Retrieve a conversation session by ID.",
+        response_model=Session,
+    )
+    async def get_session(
+        session_id: str,
+    ) -> Response:
+        try:
+            result = await impl.get_session(session_id)
+        except NotImplementedError as e:
+            return _anthropic_error_response(501, str(e))
+        except Exception:
+            logger.exception("Failed to get session")
+            return _anthropic_error_response(500, "Internal server error")
+
+        if result is None:
+            return _anthropic_error_response(404, "Session not found")
+
+        return JSONResponse(
+            content=result.model_dump(),
+            headers={"anthropic-version": ANTHROPIC_VERSION},
+        )
+
+    @router.get(
+        "/sessions",
+        summary="List sessions.",
+        description="List conversation sessions with optional filtering.",
+        response_model=list[Session],
+    )
+    async def list_sessions(
+        limit: int = Query(default=20, ge=1, le=100),
+        after: str | None = Query(default=None),
+        status: str | None = Query(default=None),
+    ) -> Response:
+        try:
+            results = await impl.list_sessions(limit=limit, after=after, status=status)
+        except NotImplementedError as e:
+            return _anthropic_error_response(501, str(e))
+        except Exception:
+            logger.exception("Failed to list sessions")
+            return _anthropic_error_response(500, "Internal server error")
+
+        return JSONResponse(
+            content=[r.model_dump() for r in results],
+            headers={"anthropic-version": ANTHROPIC_VERSION},
+        )
+
+    @router.delete(
+        "/sessions/{session_id}",
+        summary="Delete a session.",
+        description="Delete a conversation session and its messages.",
+    )
+    async def delete_session(
+        session_id: str,
+    ) -> Response:
+        try:
+            deleted = await impl.delete_session(session_id)
+        except NotImplementedError as e:
+            return _anthropic_error_response(501, str(e))
+        except Exception:
+            logger.exception("Failed to delete session")
+            return _anthropic_error_response(500, "Internal server error")
+
+        if not deleted:
+            return _anthropic_error_response(404, "Session not found")
+
+        return JSONResponse(
+            content={"id": session_id, "deleted": True},
             headers={"anthropic-version": ANTHROPIC_VERSION},
         )
 

@@ -10,8 +10,20 @@ title: inline::builtin
 
 Implements the Anthropic Messages API with two modes: native passthrough for providers that support /v1/messages natively (e.g. Ollama, vLLM), and automatic translation for all other providers by converting between Anthropic and OpenAI Chat Completions formats.
 
+## Configuration
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `session_store` | `SessionStoreConfig` | No | enabled=False session_ttl_seconds=86400 max_history_turns=100 | Session persistence configuration. |
+| `session_store.enabled` | `bool` | No | False | Enable server-side session persistence. |
+| `session_store.session_ttl_seconds` | `int` | No | 86400 | Session time-to-live in seconds (default: 24 hours). |
+| `session_store.max_history_turns` | `int` | No | 100 | Maximum number of message turns to store per session. |
+
 ## Sample Configuration
 
 ```yaml
-{}
+session_store:
+  enabled: false
+  session_ttl_seconds: 86400
+  max_history_turns: 100
 ```

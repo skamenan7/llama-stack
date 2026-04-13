@@ -144,6 +144,7 @@ class AnthropicCreateMessageRequest(BaseModel):
     metadata: dict[str, str] | None = Field(default=None, description="Request metadata.")
     thinking: AnthropicThinkingConfig | None = Field(default=None, description="Extended thinking configuration.")
     service_tier: str | None = Field(default=None, description="Service tier to use.")
+    session_id: str | None = Field(default=None, description="Session ID for multi-turn conversation persistence.")
 
 
 class AnthropicCountTokensRequest(BaseModel):
@@ -279,3 +280,59 @@ class AnthropicErrorResponse(BaseModel):
 
     type: Literal["error"] = "error"
     error: _AnthropicErrorDetail
+
+
+# -- Session models --
+
+
+class SessionMessage(BaseModel):
+    """A single message in a session's history."""
+
+    id: str = Field(..., description="Unique message ID within the session.")
+    role: Literal["user", "assistant"] = Field(..., description="Message role.")
+    content: list[AnthropicContentBlock] = Field(..., description="Message content blocks.")
+    created_at: int = Field(..., description="Unix timestamp of message creation.")
+    model: str | None = Field(default=None, description="Model used for assistant messages.")
+    stop_reason: str | None = Field(default=None, description="Stop reason for assistant messages.")
+    usage: AnthropicUsage | None = Field(default=None, description="Token usage for assistant messages.")
+
+
+class SessionMetadata(BaseModel):
+    """Metadata for a session."""
+
+    model: str | None = Field(default=None, description="Default model for this session.")
+    system: str | list[AnthropicTextBlock] | None = Field(default=None, description="System prompt for this session.")
+    tools: list[AnthropicToolDef] | None = Field(default=None, description="Tools available in this session.")
+    extra: dict[str, str] | None = Field(default=None, description="Arbitrary key-value metadata.")
+
+
+class Session(BaseModel):
+    """A conversation session."""
+
+    id: str = Field(..., description="Unique session identifier.")
+    created_at: int = Field(..., description="Unix timestamp of session creation.")
+    updated_at: int = Field(..., description="Unix timestamp of last activity.")
+    metadata: SessionMetadata = Field(default_factory=SessionMetadata, description="Session metadata.")
+    message_count: int = Field(default=0, description="Number of messages in session.")
+    status: Literal["active", "expired", "closed"] = Field(default="active", description="Session status.")
+
+
+class CreateSessionRequest(BaseModel):
+    """Request body for POST /v1/sessions."""
+
+    metadata: SessionMetadata | None = Field(default=None, description="Session metadata.")
+
+
+# -- Session errors --
+
+
+class SessionNotFoundError(Exception):
+    pass
+
+
+class SessionExpiredError(Exception):
+    pass
+
+
+class SessionClosedError(Exception):
+    pass

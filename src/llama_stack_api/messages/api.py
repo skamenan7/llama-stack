@@ -13,6 +13,8 @@ from .models import (
     AnthropicCreateMessageRequest,
     AnthropicMessageResponse,
     AnthropicStreamEvent,
+    Session,
+    SessionMetadata,
 )
 
 
@@ -29,3 +31,25 @@ class Messages(Protocol):
         self,
         request: AnthropicCountTokensRequest,
     ) -> AnthropicCountTokensResponse: ...
+
+    async def create_session(
+        self,
+        metadata: SessionMetadata | None = None,
+    ) -> Session: ...
+
+    async def get_session(
+        self,
+        session_id: str,
+    ) -> Session | None: ...
+
+    async def list_sessions(
+        self,
+        limit: int = 20,
+        after: str | None = None,
+        status: str | None = None,
+    ) -> list[Session]: ...
+
+    async def delete_session(
+        self,
+        session_id: str,
+    ) -> bool: ...

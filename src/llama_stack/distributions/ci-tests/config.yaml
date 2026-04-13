@@ -206,6 +206,11 @@ providers:
   messages:
   - provider_id: builtin
     provider_type: inline::builtin
+    config:
+      session_store:
+        enabled: false
+        session_ttl_seconds: 86400
+        max_history_turns: 100
   responses:
   - provider_id: builtin
     provider_type: inline::builtin

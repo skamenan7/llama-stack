@@ -3763,6 +3763,153 @@ paths:
             schema:
               $ref: '#/components/schemas/AnthropicCountTokensRequest'
         required: true
+  /v1/sessions:
+    get:
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Session'
+                title: Response List Sessions V1 Sessions Get
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+          description: Bad Request
+        '429':
+          $ref: '#/components/responses/TooManyRequests429'
+          description: Too Many Requests
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+          description: Internal Server Error
+        default:
+          $ref: '#/components/responses/DefaultError'
+          description: Default Response
+      tags:
+      - Messages
+      summary: List sessions.
+      description: List conversation sessions with optional filtering.
+      operationId: list_sessions_v1_sessions_get
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Limit
+      - name: after
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: After
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+    post:
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+          description: Bad Request
+        '429':
+          $ref: '#/components/responses/TooManyRequests429'
+          description: Too Many Requests
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+          description: Internal Server Error
+        default:
+          $ref: '#/components/responses/DefaultError'
+          description: Default Response
+      tags:
+      - Messages
+      summary: Create a session.
+      description: Create a new conversation session for multi-turn persistence.
+      operationId: create_session_v1_sessions_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+  /v1/sessions/{session_id}:
+    get:
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+          description: Bad Request
+        '429':
+          $ref: '#/components/responses/TooManyRequests429'
+          description: Too Many Requests
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+          description: Internal Server Error
+        default:
+          $ref: '#/components/responses/DefaultError'
+          description: Default Response
+      tags:
+      - Messages
+      summary: Get a session.
+      description: Retrieve a conversation session by ID.
+      operationId: get_session_v1_sessions__session_id__get
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Session Id
+    delete:
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+          description: Bad Request
+        '429':
+          $ref: '#/components/responses/TooManyRequests429'
+          description: Too Many Requests
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+          description: Internal Server Error
+        default:
+          $ref: '#/components/responses/DefaultError'
+          description: Default Response
+        '204':
+          description: Successful Response
+      tags:
+      - Messages
+      summary: Delete a session.
+      description: Delete a conversation session and its messages.
+      operationId: delete_session_v1_sessions__session_id__delete
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Session Id
   /v1alpha/interactions:
     post:
       responses:
@@ -10472,6 +10619,11 @@ components:
           - type: string
           - type: 'null'
           description: Service tier to use.
+        session_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Session ID for multi-turn conversation persistence.
       additionalProperties: true
       type: object
       required:
@@ -11433,6 +11585,18 @@ components:
       - model
       title: CreateResponseRequest
       description: Request model for creating a response.
+    CreateSessionRequest:
+      properties:
+        metadata:
+          anyOf:
+          - $ref: '#/components/schemas/SessionMetadata'
+            title: SessionMetadata
+          - type: 'null'
+          description: Session metadata.
+          title: SessionMetadata
+      type: object
+      title: CreateSessionRequest
+      description: Request body for POST /v1/sessions.
     EmbeddedChunk-Input:
       properties:
         content:
@@ -12997,6 +13161,78 @@ components:
       - priority
       title: ServiceTier
       description: The service tier for the request.
+    Session:
+      properties:
+        id:
+          type: string
+          title: Id
+          description: Unique session identifier.
+        created_at:
+          type: integer
+          title: Created At
+          description: Unix timestamp of session creation.
+        updated_at:
+          type: integer
+          title: Updated At
+          description: Unix timestamp of last activity.
+        metadata:
+          $ref: '#/components/schemas/SessionMetadata'
+          description: Session metadata.
+        message_count:
+          type: integer
+          title: Message Count
+          description: Number of messages in session.
+          default: 0
+        status:
+          type: string
+          enum:
+          - active
+          - expired
+          - closed
+          title: Status
+          description: Session status.
+          default: active
+      type: object
+      required:
+      - id
+      - created_at
+      - updated_at
+      title: Session
+      description: A conversation session.
+    SessionMetadata:
+      properties:
+        model:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Default model for this session.
+        system:
+          anyOf:
+          - type: string
+          - items:
+              $ref: '#/components/schemas/AnthropicTextBlock'
+            type: array
+            title: list[AnthropicTextBlock]
+          - type: 'null'
+          title: string | list[AnthropicTextBlock]
+          description: System prompt for this session.
+        tools:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/AnthropicToolDef'
+            type: array
+          - type: 'null'
+          description: Tools available in this session.
+        extra:
+          anyOf:
+          - additionalProperties:
+              type: string
+            type: object
+          - type: 'null'
+          description: Arbitrary key-value metadata.
+      type: object
+      title: SessionMetadata
+      description: Metadata for a session.
     SetDefaultVersionBodyRequest:
       properties:
         version:
