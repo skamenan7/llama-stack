@@ -1,0 +1,2712 @@
+{
+  "test_id": "tests/integration/responses/test_basic_responses.py::test_include_logprobs_non_streaming[txt=bedrock/openai.gpt-oss-20b-1:0]",
+  "request": {
+    "method": "POST",
+    "url": "https://bedrock-runtime.us-west-2.amazonaws.com/openai/v1/v1/chat/completions",
+    "headers": {},
+    "body": {
+      "model": "openai.gpt-oss-20b-1:0",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Which planet do humans live on?"
+        }
+      ],
+      "logprobs": true,
+      "stream": true,
+      "stream_options": {
+        "include_usage": true
+      }
+    },
+    "endpoint": "/v1/chat/completions",
+    "model": "openai.gpt-oss-20b-1:0",
+    "provider_metadata": {
+      "openai_sdk_version": "2.30.0"
+    }
+  },
+  "response": {
+    "body": [
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-78b8199a57be",
+          "choices": [
+            {
+              "delta": {
+                "content": "",
+                "function_call": null,
+                "refusal": null,
+                "role": "assistant",
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": null,
+              "obfuscation": "HPDvzlpOamhtJ1o1yQZdcUPBgi34ZpTtxOTCPmFop"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-78b8199a57be",
+          "choices": [
+            {
+              "delta": {
+                "content": null,
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": "<|channel|>",
+                    "bytes": [
+                      60,
+                      124,
+                      99,
+                      104,
+                      97,
+                      110,
+                      110,
+                      101,
+                      108,
+                      124,
+                      62
+                    ],
+                    "logprob": 0.0,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "ObI0vBRL5Xk3dZRu8nwGwsp6owFQ8BZSC7lFkO2HruJrGQsBe4tNsGBt"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-78b8199a57be",
+          "choices": [
+            {
+              "delta": {
+                "content": "<reasoning>The user asks: \"Which planet do humans live on?\" Possibly in context of science-fiction scenario? But the user hasn't given context. The simplest answer: Earth. But we might ask clarification. But the tone might be: they want answer that humanity's home</reasoning>",
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": "analysis",
+                    "bytes": [
+                      97,
+                      110,
+                      97,
+                      108,
+                      121,
+                      115,
+                      105,
+                      115
+                    ],
+                    "logprob": 0.0,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "<|message|>",
+                    "bytes": [
+                      60,
+                      124,
+                      109,
+                      101,
+                      115,
+                      115,
+                      97,
+                      103,
+                      101,
+                      124,
+                      62
+                    ],
+                    "logprob": -5.960462772236497e-07,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "The",
+                    "bytes": [
+                      84,
+                      104,
+                      101
+                    ],
+                    "logprob": -0.6328513026237488,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " user",
+                    "bytes": [
+                      32,
+                      117,
+                      115,
+                      101,
+                      114
+                    ],
+                    "logprob": -0.04792382940649986,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " asks",
+                    "bytes": [
+                      32,
+                      97,
+                      115,
+                      107,
+                      115
+                    ],
+                    "logprob": -0.25657013058662415,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ":",
+                    "bytes": [
+                      58
+                    ],
+                    "logprob": -0.15424567461013794,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " \"",
+                    "bytes": [
+                      32,
+                      34
+                    ],
+                    "logprob": -0.002814263105392456,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "Which",
+                    "bytes": [
+                      87,
+                      104,
+                      105,
+                      99,
+                      104
+                    ],
+                    "logprob": -1.0728830375228426e-06,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " planet",
+                    "bytes": [
+                      32,
+                      112,
+                      108,
+                      97,
+                      110,
+                      101,
+                      116
+                    ],
+                    "logprob": -1.4305104514278355e-06,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " do",
+                    "bytes": [
+                      32,
+                      100,
+                      111
+                    ],
+                    "logprob": -6.556489552167477e-06,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " humans",
+                    "bytes": [
+                      32,
+                      104,
+                      117,
+                      109,
+                      97,
+                      110,
+                      115
+                    ],
+                    "logprob": -1.7881377516459906e-06,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " live",
+                    "bytes": [
+                      32,
+                      108,
+                      105,
+                      118,
+                      101
+                    ],
+                    "logprob": -3.6954195820726454e-05,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " on",
+                    "bytes": [
+                      32,
+                      111,
+                      110
+                    ],
+                    "logprob": -7.867782187531702e-06,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "?\"",
+                    "bytes": [
+                      63,
+                      34
+                    ],
+                    "logprob": -0.004649067297577858,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Possibly",
+                    "bytes": [
+                      32,
+                      80,
+                      111,
+                      115,
+                      115,
+                      105,
+                      98,
+                      108,
+                      121
+                    ],
+                    "logprob": -4.4410929679870605,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " in",
+                    "bytes": [
+                      32,
+                      105,
+                      110
+                    ],
+                    "logprob": -4.045298099517822,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " context",
+                    "bytes": [
+                      32,
+                      99,
+                      111,
+                      110,
+                      116,
+                      101,
+                      120,
+                      116
+                    ],
+                    "logprob": -1.0863113403320312,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " of",
+                    "bytes": [
+                      32,
+                      111,
+                      102
+                    ],
+                    "logprob": -0.06641402095556259,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " science",
+                    "bytes": [
+                      32,
+                      115,
+                      99,
+                      105,
+                      101,
+                      110,
+                      99,
+                      101
+                    ],
+                    "logprob": -3.4962477684020996,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "-fiction",
+                    "bytes": [
+                      45,
+                      102,
+                      105,
+                      99,
+                      116,
+                      105,
+                      111,
+                      110
+                    ],
+                    "logprob": -3.094874620437622,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " scenario",
+                    "bytes": [
+                      32,
+                      115,
+                      99,
+                      101,
+                      110,
+                      97,
+                      114,
+                      105,
+                      111
+                    ],
+                    "logprob": -4.0107011795043945,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "?",
+                    "bytes": [
+                      63
+                    ],
+                    "logprob": -0.7501741647720337,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " But",
+                    "bytes": [
+                      32,
+                      66,
+                      117,
+                      116
+                    ],
+                    "logprob": -1.083629131317139,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " the",
+                    "bytes": [
+                      32,
+                      116,
+                      104,
+                      101
+                    ],
+                    "logprob": -3.3152260780334473,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " user",
+                    "bytes": [
+                      32,
+                      117,
+                      115,
+                      101,
+                      114
+                    ],
+                    "logprob": -1.7323429584503174,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " hasn't",
+                    "bytes": [
+                      32,
+                      104,
+                      97,
+                      115,
+                      110,
+                      39,
+                      116
+                    ],
+                    "logprob": -1.2956486940383911,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " given",
+                    "bytes": [
+                      32,
+                      103,
+                      105,
+                      118,
+                      101,
+                      110
+                    ],
+                    "logprob": -1.3580589294433594,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " context",
+                    "bytes": [
+                      32,
+                      99,
+                      111,
+                      110,
+                      116,
+                      101,
+                      120,
+                      116
+                    ],
+                    "logprob": -0.20000459253787992,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".",
+                    "bytes": [
+                      46
+                    ],
+                    "logprob": -0.08314258605241776,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " The",
+                    "bytes": [
+                      32,
+                      84,
+                      104,
+                      101
+                    ],
+                    "logprob": -1.564772367477417,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " simplest",
+                    "bytes": [
+                      32,
+                      115,
+                      105,
+                      109,
+                      112,
+                      108,
+                      101,
+                      115,
+                      116
+                    ],
+                    "logprob": -3.04691219329834,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " answer",
+                    "bytes": [
+                      32,
+                      97,
+                      110,
+                      115,
+                      119,
+                      101,
+                      114
+                    ],
+                    "logprob": -0.019555745646357536,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ":",
+                    "bytes": [
+                      58
+                    ],
+                    "logprob": -0.06640855967998505,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Earth",
+                    "bytes": [
+                      32,
+                      69,
+                      97,
+                      114,
+                      116,
+                      104
+                    ],
+                    "logprob": -0.3911452293395996,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".",
+                    "bytes": [
+                      46
+                    ],
+                    "logprob": -0.039344578981399536,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " But",
+                    "bytes": [
+                      32,
+                      66,
+                      117,
+                      116
+                    ],
+                    "logprob": -0.8128533363342285,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " we",
+                    "bytes": [
+                      32,
+                      119,
+                      101
+                    ],
+                    "logprob": -1.983961582183838,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " might",
+                    "bytes": [
+                      32,
+                      109,
+                      105,
+                      103,
+                      104,
+                      116
+                    ],
+                    "logprob": -1.1496038436889648,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " ask",
+                    "bytes": [
+                      32,
+                      97,
+                      115,
+                      107
+                    ],
+                    "logprob": -2.8309829235076904,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " clarification",
+                    "bytes": [
+                      32,
+                      99,
+                      108,
+                      97,
+                      114,
+                      105,
+                      102,
+                      105,
+                      99,
+                      97,
+                      116,
+                      105,
+                      111,
+                      110
+                    ],
+                    "logprob": -2.8607378005981445,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".",
+                    "bytes": [
+                      46
+                    ],
+                    "logprob": -1.2096530199050903,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " But",
+                    "bytes": [
+                      32,
+                      66,
+                      117,
+                      116
+                    ],
+                    "logprob": -1.1919503211975098,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " the",
+                    "bytes": [
+                      32,
+                      116,
+                      104,
+                      101
+                    ],
+                    "logprob": -1.6139146089553833,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " tone",
+                    "bytes": [
+                      32,
+                      116,
+                      111,
+                      110,
+                      101
+                    ],
+                    "logprob": -5.8851847648620605,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " might",
+                    "bytes": [
+                      32,
+                      109,
+                      105,
+                      103,
+                      104,
+                      116
+                    ],
+                    "logprob": -2.4350781440734863,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " be",
+                    "bytes": [
+                      32,
+                      98,
+                      101
+                    ],
+                    "logprob": -0.1139674261212349,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ":",
+                    "bytes": [
+                      58
+                    ],
+                    "logprob": -4.481038570404053,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " they",
+                    "bytes": [
+                      32,
+                      116,
+                      104,
+                      101,
+                      121
+                    ],
+                    "logprob": -2.4236209392547607,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " want",
+                    "bytes": [
+                      32,
+                      119,
+                      97,
+                      110,
+                      116
+                    ],
+                    "logprob": -0.7358049154281616,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " answer",
+                    "bytes": [
+                      32,
+                      97,
+                      110,
+                      115,
+                      119,
+                      101,
+                      114
+                    ],
+                    "logprob": -2.5930795669555664,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " that",
+                    "bytes": [
+                      32,
+                      116,
+                      104,
+                      97,
+                      116
+                    ],
+                    "logprob": -2.473824977874756,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " humanity",
+                    "bytes": [
+                      32,
+                      104,
+                      117,
+                      109,
+                      97,
+                      110,
+                      105,
+                      116,
+                      121
+                    ],
+                    "logprob": -5.2692694664001465,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "'s",
+                    "bytes": [
+                      39,
+                      115
+                    ],
+                    "logprob": -4.116548538208008,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " home",
+                    "bytes": [
+                      32,
+                      104,
+                      111,
+                      109,
+                      101
+                    ],
+                    "logprob": -0.21954086422920227,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "TJDUAypYHYH60ByE25vKuM3z1nVZeMZa4cKHqPzybphUBgJ6e6HpJaSTKKquRTQyaP8dkCt4nRe9VR11SmtN68FEm0t7i66Lqdk1"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-78b8199a57be",
+          "choices": [
+            {
+              "delta": {
+                "content": "<reasoning> is Earth. We can give short answer with explanation that humans inhabit Earth, and mention hypothetical where humans live on other planets like Mars etc. But the safe: Earth. Provide supportive context. Also mention future colonization. There's no context, so likely</reasoning>",
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": " is",
+                    "bytes": [
+                      32,
+                      105,
+                      115
+                    ],
+                    "logprob": -1.5209577083587646,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Earth",
+                    "bytes": [
+                      32,
+                      69,
+                      97,
+                      114,
+                      116,
+                      104
+                    ],
+                    "logprob": -0.012449881993234158,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".",
+                    "bytes": [
+                      46
+                    ],
+                    "logprob": -0.1060260683298111,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " We",
+                    "bytes": [
+                      32,
+                      87,
+                      101
+                    ],
+                    "logprob": -2.4782514572143555,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " can",
+                    "bytes": [
+                      32,
+                      99,
+                      97,
+                      110
+                    ],
+                    "logprob": -0.6040850281715393,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " give",
+                    "bytes": [
+                      32,
+                      103,
+                      105,
+                      118,
+                      101
+                    ],
+                    "logprob": -2.6020867824554443,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " short",
+                    "bytes": [
+                      32,
+                      115,
+                      104,
+                      111,
+                      114,
+                      116
+                    ],
+                    "logprob": -2.714910984039306,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " answer",
+                    "bytes": [
+                      32,
+                      97,
+                      110,
+                      115,
+                      119,
+                      101,
+                      114
+                    ],
+                    "logprob": -0.08214525133371353,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " with",
+                    "bytes": [
+                      32,
+                      119,
+                      105,
+                      116,
+                      104
+                    ],
+                    "logprob": -5.1334757804870605,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " explanation",
+                    "bytes": [
+                      32,
+                      101,
+                      120,
+                      112,
+                      108,
+                      97,
+                      110,
+                      97,
+                      116,
+                      105,
+                      111,
+                      110
+                    ],
+                    "logprob": -1.3109126091003418,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " that",
+                    "bytes": [
+                      32,
+                      116,
+                      104,
+                      97,
+                      116
+                    ],
+                    "logprob": -3.724374532699585,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " humans",
+                    "bytes": [
+                      32,
+                      104,
+                      117,
+                      109,
+                      97,
+                      110,
+                      115
+                    ],
+                    "logprob": -0.5912705063819885,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " inhabit",
+                    "bytes": [
+                      32,
+                      105,
+                      110,
+                      104,
+                      97,
+                      98,
+                      105,
+                      116
+                    ],
+                    "logprob": -2.8180673122406006,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Earth",
+                    "bytes": [
+                      32,
+                      69,
+                      97,
+                      114,
+                      116,
+                      104
+                    ],
+                    "logprob": -0.02776625193655491,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ",",
+                    "bytes": [
+                      44
+                    ],
+                    "logprob": -0.8274964094161987,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " and",
+                    "bytes": [
+                      32,
+                      97,
+                      110,
+                      100
+                    ],
+                    "logprob": -2.672804355621338,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " mention",
+                    "bytes": [
+                      32,
+                      109,
+                      101,
+                      110,
+                      116,
+                      105,
+                      111,
+                      110
+                    ],
+                    "logprob": -1.1042786836624146,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " hypothetical",
+                    "bytes": [
+                      32,
+                      104,
+                      121,
+                      112,
+                      111,
+                      116,
+                      104,
+                      101,
+                      116,
+                      105,
+                      99,
+                      97,
+                      108
+                    ],
+                    "logprob": -4.577132225036621,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " where",
+                    "bytes": [
+                      32,
+                      119,
+                      104,
+                      101,
+                      114,
+                      101
+                    ],
+                    "logprob": -5.502804279327393,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " humans",
+                    "bytes": [
+                      32,
+                      104,
+                      117,
+                      109,
+                      97,
+                      110,
+                      115
+                    ],
+                    "logprob": -0.2875135540962219,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " live",
+                    "bytes": [
+                      32,
+                      108,
+                      105,
+                      118,
+                      101
+                    ],
+                    "logprob": -2.0156478881835938,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " on",
+                    "bytes": [
+                      32,
+                      111,
+                      110
+                    ],
+                    "logprob": -0.4005930125713349,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " other",
+                    "bytes": [
+                      32,
+                      111,
+                      116,
+                      104,
+                      101,
+                      114
+                    ],
+                    "logprob": -0.14983674883842468,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " planets",
+                    "bytes": [
+                      32,
+                      112,
+                      108,
+                      97,
+                      110,
+                      101,
+                      116,
+                      115
+                    ],
+                    "logprob": -0.02393447980284691,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " like",
+                    "bytes": [
+                      32,
+                      108,
+                      105,
+                      107,
+                      101
+                    ],
+                    "logprob": -1.6968472003936768,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Mars",
+                    "bytes": [
+                      32,
+                      77,
+                      97,
+                      114,
+                      115
+                    ],
+                    "logprob": -0.04303359612822533,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " etc",
+                    "bytes": [
+                      32,
+                      101,
+                      116,
+                      99
+                    ],
+                    "logprob": -2.7704288959503174,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".",
+                    "bytes": [
+                      46
+                    ],
+                    "logprob": -0.14862681925296783,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " But",
+                    "bytes": [
+                      32,
+                      66,
+                      117,
+                      116
+                    ],
+                    "logprob": -0.2856244146823883,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " the",
+                    "bytes": [
+                      32,
+                      116,
+                      104,
+                      101
+                    ],
+                    "logprob": -1.7280120849609375,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " safe",
+                    "bytes": [
+                      32,
+                      115,
+                      97,
+                      102,
+                      101
+                    ],
+                    "logprob": -4.67387580871582,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ":",
+                    "bytes": [
+                      58
+                    ],
+                    "logprob": -4.217782020568848,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Earth",
+                    "bytes": [
+                      32,
+                      69,
+                      97,
+                      114,
+                      116,
+                      104
+                    ],
+                    "logprob": -0.33107075095176697,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".",
+                    "bytes": [
+                      46
+                    ],
+                    "logprob": -0.2120371311903,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Provide",
+                    "bytes": [
+                      32,
+                      80,
+                      114,
+                      111,
+                      118,
+                      105,
+                      100,
+                      101
+                    ],
+                    "logprob": -1.3800561428070068,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " supportive",
+                    "bytes": [
+                      32,
+                      115,
+                      117,
+                      112,
+                      112,
+                      111,
+                      114,
+                      116,
+                      105,
+                      118,
+                      101
+                    ],
+                    "logprob": -5.134285926818848,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " context",
+                    "bytes": [
+                      32,
+                      99,
+                      111,
+                      110,
+                      116,
+                      101,
+                      120,
+                      116
+                    ],
+                    "logprob": -1.9498711824417112,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".",
+                    "bytes": [
+                      46
+                    ],
+                    "logprob": -0.3700283169746399,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Also",
+                    "bytes": [
+                      32,
+                      65,
+                      108,
+                      115,
+                      111
+                    ],
+                    "logprob": -2.6058430671691895,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " mention",
+                    "bytes": [
+                      32,
+                      109,
+                      101,
+                      110,
+                      116,
+                      105,
+                      111,
+                      110
+                    ],
+                    "logprob": -0.7403803467750549,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " future",
+                    "bytes": [
+                      32,
+                      102,
+                      117,
+                      116,
+                      117,
+                      114,
+                      101
+                    ],
+                    "logprob": -3.4604036808013916,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " colon",
+                    "bytes": [
+                      32,
+                      99,
+                      111,
+                      108,
+                      111,
+                      110
+                    ],
+                    "logprob": -0.862256646156311,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "ization",
+                    "bytes": [
+                      105,
+                      122,
+                      97,
+                      116,
+                      105,
+                      111,
+                      110
+                    ],
+                    "logprob": -0.0291509497910738,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".",
+                    "bytes": [
+                      46
+                    ],
+                    "logprob": -0.5608950853347778,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " There's",
+                    "bytes": [
+                      32,
+                      84,
+                      104,
+                      101,
+                      114,
+                      101,
+                      39,
+                      115
+                    ],
+                    "logprob": -6.010361671447754,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " no",
+                    "bytes": [
+                      32,
+                      110,
+                      111
+                    ],
+                    "logprob": -0.19641733169555664,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " context",
+                    "bytes": [
+                      32,
+                      99,
+                      111,
+                      110,
+                      116,
+                      101,
+                      120,
+                      116
+                    ],
+                    "logprob": -2.4221224784851074,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ",",
+                    "bytes": [
+                      44
+                    ],
+                    "logprob": -2.054619550704956,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " so",
+                    "bytes": [
+                      32,
+                      115,
+                      111
+                    ],
+                    "logprob": -0.22152528166770935,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " likely",
+                    "bytes": [
+                      32,
+                      108,
+                      105,
+                      107,
+                      101,
+                      108,
+                      121
+                    ],
+                    "logprob": -3.0845255851745605,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "GblQaNZNc9hOlmFmSUmg5CYmfMVjsZ5OAelxNsr635eOEXVDVPCIo2ERbrPaJmfSrJRAHvzvH9MXHzBQQzR61JbQWlbeIbiTTrNIoAfUKUpdprcywe1"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-78b8199a57be",
+          "choices": [
+            {
+              "delta": {
+                "content": "<reasoning> answer: Earth.\n\nHence final: Earth. Possibly mention that humans are primarily on Earth; future expansions to Mars, etc.</reasoning>",
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": " answer",
+                    "bytes": [
+                      32,
+                      97,
+                      110,
+                      115,
+                      119,
+                      101,
+                      114
+                    ],
+                    "logprob": -1.4710969924926758,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ":",
+                    "bytes": [
+                      58
+                    ],
+                    "logprob": -0.37457355856895447,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Earth",
+                    "bytes": [
+                      32,
+                      69,
+                      97,
+                      114,
+                      116,
+                      104
+                    ],
+                    "logprob": -0.01101484801620245,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".\n\n",
+                    "bytes": [
+                      46,
+                      10,
+                      10
+                    ],
+                    "logprob": -1.9241231679916384,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "Hence",
+                    "bytes": [
+                      72,
+                      101,
+                      110,
+                      99,
+                      101
+                    ],
+                    "logprob": -4.9759345054626465,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " final",
+                    "bytes": [
+                      32,
+                      102,
+                      105,
+                      110,
+                      97,
+                      108
+                    ],
+                    "logprob": -3.5500659942626953,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ":",
+                    "bytes": [
+                      58
+                    ],
+                    "logprob": -1.238430380821228,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Earth",
+                    "bytes": [
+                      32,
+                      69,
+                      97,
+                      114,
+                      116,
+                      104
+                    ],
+                    "logprob": -1.4974298477172852,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".",
+                    "bytes": [
+                      46
+                    ],
+                    "logprob": -0.29248857498168945,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Possibly",
+                    "bytes": [
+                      32,
+                      80,
+                      111,
+                      115,
+                      115,
+                      105,
+                      98,
+                      108,
+                      121
+                    ],
+                    "logprob": -3.825318574905395,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " mention",
+                    "bytes": [
+                      32,
+                      109,
+                      101,
+                      110,
+                      116,
+                      105,
+                      111,
+                      110
+                    ],
+                    "logprob": -0.4226162135601044,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " that",
+                    "bytes": [
+                      32,
+                      116,
+                      104,
+                      97,
+                      116
+                    ],
+                    "logprob": -1.113544464111328,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " humans",
+                    "bytes": [
+                      32,
+                      104,
+                      117,
+                      109,
+                      97,
+                      110,
+                      115
+                    ],
+                    "logprob": -0.9078497290611268,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " are",
+                    "bytes": [
+                      32,
+                      97,
+                      114,
+                      101
+                    ],
+                    "logprob": -2.0263140201568604,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " primarily",
+                    "bytes": [
+                      32,
+                      112,
+                      114,
+                      105,
+                      109,
+                      97,
+                      114,
+                      105,
+                      108,
+                      121
+                    ],
+                    "logprob": -2.1802730560302734,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " on",
+                    "bytes": [
+                      32,
+                      111,
+                      110
+                    ],
+                    "logprob": -0.10665158927440643,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Earth",
+                    "bytes": [
+                      32,
+                      69,
+                      97,
+                      114,
+                      116,
+                      104
+                    ],
+                    "logprob": -0.003939369227737188,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ";",
+                    "bytes": [
+                      59
+                    ],
+                    "logprob": -2.218467712402344,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " future",
+                    "bytes": [
+                      32,
+                      102,
+                      117,
+                      116,
+                      117,
+                      114,
+                      101
+                    ],
+                    "logprob": -2.7131223678588867,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " expansions",
+                    "bytes": [
+                      32,
+                      101,
+                      120,
+                      112,
+                      97,
+                      110,
+                      115,
+                      105,
+                      111,
+                      110,
+                      115
+                    ],
+                    "logprob": -2.4806180000305176,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " to",
+                    "bytes": [
+                      32,
+                      116,
+                      111
+                    ],
+                    "logprob": -1.2262297868728638,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Mars",
+                    "bytes": [
+                      32,
+                      77,
+                      97,
+                      114,
+                      115
+                    ],
+                    "logprob": -0.6929799318313599,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ",",
+                    "bytes": [
+                      44
+                    ],
+                    "logprob": -0.3615240454673767,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " etc",
+                    "bytes": [
+                      32,
+                      101,
+                      116,
+                      99
+                    ],
+                    "logprob": -1.609752535820007,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".",
+                    "bytes": [
+                      46
+                    ],
+                    "logprob": -0.16688506305217743,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "<|end|>",
+                    "bytes": [
+                      60,
+                      124,
+                      101,
+                      110,
+                      100,
+                      124,
+                      62
+                    ],
+                    "logprob": -0.7068850994110107,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "<|start|>",
+                    "bytes": [
+                      60,
+                      124,
+                      115,
+                      116,
+                      97,
+                      114,
+                      116,
+                      124,
+                      62
+                    ],
+                    "logprob": 0.0,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "k75TIJk2OOu2nSw9YPdh5KoXfEh8NWrHqWEdOHTM6SzHJQucCoKtN1rlS5MlJYkTnT2V5qhqsCmjv3jA"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-78b8199a57be",
+          "choices": [
+            {
+              "delta": {
+                "content": "Humans live on **Earth**.  \nIt\u2019s the only planet currently populated with the vast majority of the human population. While there are plans and",
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": "assistant",
+                    "bytes": [
+                      97,
+                      115,
+                      115,
+                      105,
+                      115,
+                      116,
+                      97,
+                      110,
+                      116
+                    ],
+                    "logprob": 0.0,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "<|channel|>",
+                    "bytes": [
+                      60,
+                      124,
+                      99,
+                      104,
+                      97,
+                      110,
+                      110,
+                      101,
+                      108,
+                      124,
+                      62
+                    ],
+                    "logprob": 0.0,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "final",
+                    "bytes": [
+                      102,
+                      105,
+                      110,
+                      97,
+                      108
+                    ],
+                    "logprob": 0.0,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "<|message|>",
+                    "bytes": [
+                      60,
+                      124,
+                      109,
+                      101,
+                      115,
+                      115,
+                      97,
+                      103,
+                      101,
+                      124,
+                      62
+                    ],
+                    "logprob": -1.311301275563892e-06,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "Hum",
+                    "bytes": [
+                      72,
+                      117,
+                      109
+                    ],
+                    "logprob": -0.23935136198997495,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "ans",
+                    "bytes": [
+                      97,
+                      110,
+                      115
+                    ],
+                    "logprob": -4.994744449504651e-05,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " live",
+                    "bytes": [
+                      32,
+                      108,
+                      105,
+                      118,
+                      101
+                    ],
+                    "logprob": -0.6081174612045288,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " on",
+                    "bytes": [
+                      32,
+                      111,
+                      110
+                    ],
+                    "logprob": -0.005934712942689657,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " **",
+                    "bytes": [
+                      32,
+                      42,
+                      42
+                    ],
+                    "logprob": -0.03807010501623154,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "Earth",
+                    "bytes": [
+                      69,
+                      97,
+                      114,
+                      116,
+                      104
+                    ],
+                    "logprob": -0.0003110878460574895,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "**",
+                    "bytes": [
+                      42,
+                      42
+                    ],
+                    "logprob": -0.014111850410699844,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".",
+                    "bytes": [
+                      46
+                    ],
+                    "logprob": -0.4706924557685852,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "  \n",
+                    "bytes": [
+                      32,
+                      32,
+                      10
+                    ],
+                    "logprob": -1.4756693840026855,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "It",
+                    "bytes": [
+                      73,
+                      116
+                    ],
+                    "logprob": -2.1074023246765137,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "\u2019s",
+                    "bytes": [
+                      226,
+                      128,
+                      153,
+                      115
+                    ],
+                    "logprob": -0.281825453042984,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " the",
+                    "bytes": [
+                      32,
+                      116,
+                      104,
+                      101
+                    ],
+                    "logprob": -0.01853245683014393,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " only",
+                    "bytes": [
+                      32,
+                      111,
+                      110,
+                      108,
+                      121
+                    ],
+                    "logprob": -0.31491297483444214,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " planet",
+                    "bytes": [
+                      32,
+                      112,
+                      108,
+                      97,
+                      110,
+                      101,
+                      116
+                    ],
+                    "logprob": -0.01687208190560341,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " currently",
+                    "bytes": [
+                      32,
+                      99,
+                      117,
+                      114,
+                      114,
+                      101,
+                      110,
+                      116,
+                      108,
+                      121
+                    ],
+                    "logprob": -2.136946201324463,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " populated",
+                    "bytes": [
+                      32,
+                      112,
+                      111,
+                      112,
+                      117,
+                      108,
+                      97,
+                      116,
+                      101,
+                      100
+                    ],
+                    "logprob": -2.107795476913452,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " with",
+                    "bytes": [
+                      32,
+                      119,
+                      105,
+                      116,
+                      104
+                    ],
+                    "logprob": -5.514730930328369,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " the",
+                    "bytes": [
+                      32,
+                      116,
+                      104,
+                      101
+                    ],
+                    "logprob": -3.1932530403137207,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " vast",
+                    "bytes": [
+                      32,
+                      118,
+                      97,
+                      115,
+                      116
+                    ],
+                    "logprob": -0.510155439376831,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " majority",
+                    "bytes": [
+                      32,
+                      109,
+                      97,
+                      106,
+                      111,
+                      114,
+                      105,
+                      116,
+                      121
+                    ],
+                    "logprob": -0.09247485548257828,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " of",
+                    "bytes": [
+                      32,
+                      111,
+                      102
+                    ],
+                    "logprob": -0.01141540426760912,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " the",
+                    "bytes": [
+                      32,
+                      116,
+                      104,
+                      101
+                    ],
+                    "logprob": -0.8841622471809387,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " human",
+                    "bytes": [
+                      32,
+                      104,
+                      117,
+                      109,
+                      97,
+                      110
+                    ],
+                    "logprob": -0.365477591753006,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " population",
+                    "bytes": [
+                      32,
+                      112,
+                      111,
+                      112,
+                      117,
+                      108,
+                      97,
+                      116,
+                      105,
+                      111,
+                      110
+                    ],
+                    "logprob": -0.31135064363479614,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".",
+                    "bytes": [
+                      46
+                    ],
+                    "logprob": -1.611220359802246,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " While",
+                    "bytes": [
+                      32,
+                      87,
+                      104,
+                      105,
+                      108,
+                      101
+                    ],
+                    "logprob": -0.4075735211372375,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " there",
+                    "bytes": [
+                      32,
+                      116,
+                      104,
+                      101,
+                      114,
+                      101
+                    ],
+                    "logprob": -0.9469547271728516,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " are",
+                    "bytes": [
+                      32,
+                      97,
+                      114,
+                      101
+                    ],
+                    "logprob": -0.03719596564769745,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " plans",
+                    "bytes": [
+                      32,
+                      112,
+                      108,
+                      97,
+                      110,
+                      115
+                    ],
+                    "logprob": -0.5272787809371948,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " and",
+                    "bytes": [
+                      32,
+                      97,
+                      110,
+                      100
+                    ],
+                    "logprob": -0.1364949196577072,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "TmVcbciCRvx0PwpO83TxNVVdUwU7Ahpg9YMyOqiI2aH7hd52AO215YnUbvcoF6aA1KbRaLjHeOt4YaAHfQHjb7XAns8Jk4xrek4n"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-78b8199a57be",
+          "choices": [
+            {
+              "delta": {
+                "content": " ongoing projects to establish human habitats on other planets\u2014especially Mars\u2014and to explore the habitability of moons such as Europa or Titan, Earth remains our home base.",
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": "stop",
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": " ongoing",
+                    "bytes": [
+                      32,
+                      111,
+                      110,
+                      103,
+                      111,
+                      105,
+                      110,
+                      103
+                    ],
+                    "logprob": -1.1144437789916992,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " projects",
+                    "bytes": [
+                      32,
+                      112,
+                      114,
+                      111,
+                      106,
+                      101,
+                      99,
+                      116,
+                      115
+                    ],
+                    "logprob": -1.6784539222717283,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " to",
+                    "bytes": [
+                      32,
+                      116,
+                      111
+                    ],
+                    "logprob": -0.11981293559074402,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " establish",
+                    "bytes": [
+                      32,
+                      101,
+                      115,
+                      116,
+                      97,
+                      98,
+                      108,
+                      105,
+                      115,
+                      104
+                    ],
+                    "logprob": -0.2462560087442398,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " human",
+                    "bytes": [
+                      32,
+                      104,
+                      117,
+                      109,
+                      97,
+                      110
+                    ],
+                    "logprob": -0.3195255994796753,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " habitats",
+                    "bytes": [
+                      32,
+                      104,
+                      97,
+                      98,
+                      105,
+                      116,
+                      97,
+                      116,
+                      115
+                    ],
+                    "logprob": -1.1681790351867676,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " on",
+                    "bytes": [
+                      32,
+                      111,
+                      110
+                    ],
+                    "logprob": -0.009241541847586632,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " other",
+                    "bytes": [
+                      32,
+                      111,
+                      116,
+                      104,
+                      101,
+                      114
+                    ],
+                    "logprob": -0.31165385246276855,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " planets",
+                    "bytes": [
+                      32,
+                      112,
+                      108,
+                      97,
+                      110,
+                      101,
+                      116,
+                      115
+                    ],
+                    "logprob": -1.787461280822754,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "\u2014",
+                    "bytes": [
+                      226,
+                      128,
+                      148
+                    ],
+                    "logprob": -0.427420049905777,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "especially",
+                    "bytes": [
+                      101,
+                      115,
+                      112,
+                      101,
+                      99,
+                      105,
+                      97,
+                      108,
+                      108,
+                      121
+                    ],
+                    "logprob": -1.96796190738678,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Mars",
+                    "bytes": [
+                      32,
+                      77,
+                      97,
+                      114,
+                      115
+                    ],
+                    "logprob": -0.04897697642445564,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "\u2014and",
+                    "bytes": [
+                      226,
+                      128,
+                      148,
+                      97,
+                      110,
+                      100
+                    ],
+                    "logprob": -1.8893535137176511,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " to",
+                    "bytes": [
+                      32,
+                      116,
+                      111
+                    ],
+                    "logprob": -1.278527855873108,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " explore",
+                    "bytes": [
+                      32,
+                      101,
+                      120,
+                      112,
+                      108,
+                      111,
+                      114,
+                      101
+                    ],
+                    "logprob": -1.45854389667511,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " the",
+                    "bytes": [
+                      32,
+                      116,
+                      104,
+                      101
+                    ],
+                    "logprob": -1.302303671836853,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " habit",
+                    "bytes": [
+                      32,
+                      104,
+                      97,
+                      98,
+                      105,
+                      116
+                    ],
+                    "logprob": -5.702381134033203,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "ability",
+                    "bytes": [
+                      97,
+                      98,
+                      105,
+                      108,
+                      105,
+                      116,
+                      121
+                    ],
+                    "logprob": -9.333651541965082e-05,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " of",
+                    "bytes": [
+                      32,
+                      111,
+                      102
+                    ],
+                    "logprob": -0.0005728749092668295,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " moons",
+                    "bytes": [
+                      32,
+                      109,
+                      111,
+                      111,
+                      110,
+                      115
+                    ],
+                    "logprob": -0.0940440446138382,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " such",
+                    "bytes": [
+                      32,
+                      115,
+                      117,
+                      99,
+                      104
+                    ],
+                    "logprob": -1.4349740743637085,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " as",
+                    "bytes": [
+                      32,
+                      97,
+                      115
+                    ],
+                    "logprob": -2.9802276912960224e-06,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Europa",
+                    "bytes": [
+                      32,
+                      69,
+                      117,
+                      114,
+                      111,
+                      112,
+                      97
+                    ],
+                    "logprob": -0.031492143869400024,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " or",
+                    "bytes": [
+                      32,
+                      111,
+                      114
+                    ],
+                    "logprob": -0.2595161199569702,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Titan",
+                    "bytes": [
+                      32,
+                      84,
+                      105,
+                      116,
+                      97,
+                      110
+                    ],
+                    "logprob": -0.6465842127799988,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ",",
+                    "bytes": [
+                      44
+                    ],
+                    "logprob": -0.0005318895564414561,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Earth",
+                    "bytes": [
+                      32,
+                      69,
+                      97,
+                      114,
+                      116,
+                      104
+                    ],
+                    "logprob": -1.303805947303772,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " remains",
+                    "bytes": [
+                      32,
+                      114,
+                      101,
+                      109,
+                      97,
+                      105,
+                      110,
+                      115
+                    ],
+                    "logprob": -0.0010762381134554744,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " our",
+                    "bytes": [
+                      32,
+                      111,
+                      117,
+                      114
+                    ],
+                    "logprob": -0.6071078777313232,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " home",
+                    "bytes": [
+                      32,
+                      104,
+                      111,
+                      109,
+                      101
+                    ],
+                    "logprob": -0.7325699329376221,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " base",
+                    "bytes": [
+                      32,
+                      98,
+                      97,
+                      115,
+                      101
+                    ],
+                    "logprob": -0.546116054058075,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".",
+                    "bytes": [
+                      46
+                    ],
+                    "logprob": -0.7633841633796692,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "<|return|>",
+                    "bytes": [
+                      60,
+                      124,
+                      114,
+                      101,
+                      116,
+                      117,
+                      114,
+                      110,
+                      124,
+                      62
+                    ],
+                    "logprob": -0.0008896207436919212,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "XXiEYwwpEV4a9iPQFuayvyCMFZ4alVpbPMr8ER9rxnSow0mfRm5PmzsofZFRkE"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-78b8199a57be",
+          "choices": [],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": {
+            "completion_tokens": 199,
+            "prompt_tokens": 74,
+            "total_tokens": 273,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          }
+        }
+      }
+    ],
+    "is_streaming": true
+  },
+  "id_normalization_mapping": {}
+}

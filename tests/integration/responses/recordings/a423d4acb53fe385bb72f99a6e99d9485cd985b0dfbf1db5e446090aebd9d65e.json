@@ -1,0 +1,1238 @@
+{
+  "test_id": "tests/integration/responses/test_basic_responses.py::test_include_logprobs_with_function_tools[txt=bedrock/openai.gpt-oss-20b-1:0]",
+  "request": {
+    "method": "POST",
+    "url": "https://bedrock-runtime.us-west-2.amazonaws.com/openai/v1/v1/chat/completions",
+    "headers": {},
+    "body": {
+      "model": "openai.gpt-oss-20b-1:0",
+      "messages": [
+        {
+          "role": "user",
+          "content": "What is the weather in Paris?"
+        }
+      ],
+      "logprobs": true,
+      "parallel_tool_calls": true,
+      "stream": true,
+      "stream_options": {
+        "include_usage": true
+      },
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "type": "function",
+            "name": "get_weather",
+            "description": "Get weather information for a specified location",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "location": {
+                  "type": "string",
+                  "description": "The city name (e.g., 'New York', 'London')"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "endpoint": "/v1/chat/completions",
+    "model": "openai.gpt-oss-20b-1:0",
+    "provider_metadata": {
+      "openai_sdk_version": "2.30.0"
+    }
+  },
+  "response": {
+    "body": [
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-a423d4acb53f",
+          "choices": [
+            {
+              "delta": {
+                "content": "",
+                "function_call": null,
+                "refusal": null,
+                "role": "assistant",
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": null,
+              "obfuscation": "qqTueN0naOkh5YnlQo9W5OsB3ncu8RxbbtieJn7tWBtBoriVrlsp523i"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-a423d4acb53f",
+          "choices": [
+            {
+              "delta": {
+                "content": null,
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": "<|channel|>",
+                    "bytes": [
+                      60,
+                      124,
+                      99,
+                      104,
+                      97,
+                      110,
+                      110,
+                      101,
+                      108,
+                      124,
+                      62
+                    ],
+                    "logprob": 0.0,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "o500oWTyxJm1cKXYMuXNziv9bZqKjEgVQglEePUsIfFOFc0Zmwjr5xIzItC3oclq"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-a423d4acb53f",
+          "choices": [
+            {
+              "delta": {
+                "content": "<reasoning>We need to respond asking for the location? The user asked \"What is the weather in Paris?\" That is a request. We'll need to call get_weather with location \"Paris\".</reasoning>",
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": "analysis",
+                    "bytes": [
+                      97,
+                      110,
+                      97,
+                      108,
+                      121,
+                      115,
+                      105,
+                      115
+                    ],
+                    "logprob": -4.768370445162873e-07,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "<|message|>",
+                    "bytes": [
+                      60,
+                      124,
+                      109,
+                      101,
+                      115,
+                      115,
+                      97,
+                      103,
+                      101,
+                      124,
+                      62
+                    ],
+                    "logprob": -3.576278118089249e-07,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "We",
+                    "bytes": [
+                      87,
+                      101
+                    ],
+                    "logprob": -0.6504355669021606,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " need",
+                    "bytes": [
+                      32,
+                      110,
+                      101,
+                      101,
+                      100
+                    ],
+                    "logprob": -0.17231112718582153,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " to",
+                    "bytes": [
+                      32,
+                      116,
+                      111
+                    ],
+                    "logprob": -0.002597888465970754,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " respond",
+                    "bytes": [
+                      32,
+                      114,
+                      101,
+                      115,
+                      112,
+                      111,
+                      110,
+                      100
+                    ],
+                    "logprob": -3.1112771034240723,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " asking",
+                    "bytes": [
+                      32,
+                      97,
+                      115,
+                      107,
+                      105,
+                      110,
+                      103
+                    ],
+                    "logprob": -3.663891553878784,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " for",
+                    "bytes": [
+                      32,
+                      102,
+                      111,
+                      114
+                    ],
+                    "logprob": -0.5537814497947693,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " the",
+                    "bytes": [
+                      32,
+                      116,
+                      104,
+                      101
+                    ],
+                    "logprob": -1.901723265647888,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " location",
+                    "bytes": [
+                      32,
+                      108,
+                      111,
+                      99,
+                      97,
+                      116,
+                      105,
+                      111,
+                      110
+                    ],
+                    "logprob": -1.1055086851119995,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "?",
+                    "bytes": [
+                      63
+                    ],
+                    "logprob": -0.5817584991455078,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " The",
+                    "bytes": [
+                      32,
+                      84,
+                      104,
+                      101
+                    ],
+                    "logprob": -0.711986780166626,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " user",
+                    "bytes": [
+                      32,
+                      117,
+                      115,
+                      101,
+                      114
+                    ],
+                    "logprob": -0.13470755517482758,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " asked",
+                    "bytes": [
+                      32,
+                      97,
+                      115,
+                      107,
+                      101,
+                      100
+                    ],
+                    "logprob": -0.7452131509780884,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " \"",
+                    "bytes": [
+                      32,
+                      34
+                    ],
+                    "logprob": -0.49465274810791016,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "What",
+                    "bytes": [
+                      87,
+                      104,
+                      97,
+                      116
+                    ],
+                    "logprob": -0.0017525089206174016,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " is",
+                    "bytes": [
+                      32,
+                      105,
+                      115
+                    ],
+                    "logprob": -1.0490362910786644e-05,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " the",
+                    "bytes": [
+                      32,
+                      116,
+                      104,
+                      101
+                    ],
+                    "logprob": -2.81329957942944e-05,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " weather",
+                    "bytes": [
+                      32,
+                      119,
+                      101,
+                      97,
+                      116,
+                      104,
+                      101,
+                      114
+                    ],
+                    "logprob": -1.1920928244535389e-07,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " in",
+                    "bytes": [
+                      32,
+                      105,
+                      110
+                    ],
+                    "logprob": -6.9141146923357155e-06,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " Paris",
+                    "bytes": [
+                      32,
+                      80,
+                      97,
+                      114,
+                      105,
+                      115
+                    ],
+                    "logprob": -9.536738616588992e-07,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "?\"",
+                    "bytes": [
+                      63,
+                      34
+                    ],
+                    "logprob": -0.01859143376350403,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " That",
+                    "bytes": [
+                      32,
+                      84,
+                      104,
+                      97,
+                      116
+                    ],
+                    "logprob": -3.224440097808838,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " is",
+                    "bytes": [
+                      32,
+                      105,
+                      115
+                    ],
+                    "logprob": -0.33764591813087463,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " a",
+                    "bytes": [
+                      32,
+                      97
+                    ],
+                    "logprob": -0.3192460834980011,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " request",
+                    "bytes": [
+                      32,
+                      114,
+                      101,
+                      113,
+                      117,
+                      101,
+                      115,
+                      116
+                    ],
+                    "logprob": -0.588949978351593,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".",
+                    "bytes": [
+                      46
+                    ],
+                    "logprob": -1.313063383102417,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " We'll",
+                    "bytes": [
+                      32,
+                      87,
+                      101,
+                      39,
+                      108,
+                      108
+                    ],
+                    "logprob": -5.815850257873535,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " need",
+                    "bytes": [
+                      32,
+                      110,
+                      101,
+                      101,
+                      100
+                    ],
+                    "logprob": -1.3482836484909058,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " to",
+                    "bytes": [
+                      32,
+                      116,
+                      111
+                    ],
+                    "logprob": -0.0031773580703884363,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " call",
+                    "bytes": [
+                      32,
+                      99,
+                      97,
+                      108,
+                      108
+                    ],
+                    "logprob": -0.32936006784439087,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " get",
+                    "bytes": [
+                      32,
+                      103,
+                      101,
+                      116
+                    ],
+                    "logprob": -0.6583690643310547,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "_weather",
+                    "bytes": [
+                      95,
+                      119,
+                      101,
+                      97,
+                      116,
+                      104,
+                      101,
+                      114
+                    ],
+                    "logprob": -7.033323527139146e-06,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " with",
+                    "bytes": [
+                      32,
+                      119,
+                      105,
+                      116,
+                      104
+                    ],
+                    "logprob": -0.47782018780708313,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " location",
+                    "bytes": [
+                      32,
+                      108,
+                      111,
+                      99,
+                      97,
+                      116,
+                      105,
+                      111,
+                      110
+                    ],
+                    "logprob": -0.00214406312443316,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " \"",
+                    "bytes": [
+                      32,
+                      34
+                    ],
+                    "logprob": -0.6812073588371277,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "Paris",
+                    "bytes": [
+                      80,
+                      97,
+                      114,
+                      105,
+                      115
+                    ],
+                    "logprob": -2.074220174108632e-05,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "\".",
+                    "bytes": [
+                      34,
+                      46
+                    ],
+                    "logprob": -0.042426615953445435,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "<|end|>",
+                    "bytes": [
+                      60,
+                      124,
+                      101,
+                      110,
+                      100,
+                      124,
+                      62
+                    ],
+                    "logprob": -0.610106885433197,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "JSKqFypL1XfFG0jzVcrIrIDN6BYM9cfRZHa5XPYLTsmrfEHQOSsp0NjEJyBLNwcFP5asj2BsaEhkva3oiGPHmqEnJBKMD00E6Gc88kvbhLmrMPENvAEt1jP"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-a423d4acb53f",
+          "choices": [
+            {
+              "delta": {
+                "content": null,
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": "<|start|>",
+                    "bytes": [
+                      60,
+                      124,
+                      115,
+                      116,
+                      97,
+                      114,
+                      116,
+                      124,
+                      62
+                    ],
+                    "logprob": 0.0,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "assistant",
+                    "bytes": [
+                      97,
+                      115,
+                      115,
+                      105,
+                      115,
+                      116,
+                      97,
+                      110,
+                      116
+                    ],
+                    "logprob": 0.0,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "<|channel|>",
+                    "bytes": [
+                      60,
+                      124,
+                      99,
+                      104,
+                      97,
+                      110,
+                      110,
+                      101,
+                      108,
+                      124,
+                      62
+                    ],
+                    "logprob": -1.1920922133867862e-06,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "comment",
+                    "bytes": [
+                      99,
+                      111,
+                      109,
+                      109,
+                      101,
+                      110,
+                      116
+                    ],
+                    "logprob": -1.549719513604941e-06,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "WpAaosuhWDNVP7ebbzmDCcngV8AsuyWvucNT37wWGoazv8MCIYtdouHztu4GQBU"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-a423d4acb53f",
+          "choices": [
+            {
+              "delta": {
+                "content": null,
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": "ary",
+                    "bytes": [
+                      97,
+                      114,
+                      121
+                    ],
+                    "logprob": 0.0,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " to",
+                    "bytes": [
+                      32,
+                      116,
+                      111
+                    ],
+                    "logprob": -0.005951777566224337,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "ZqlcS8Bw8BZnxENXIj86HaNtdRZB2D1NNY"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-a423d4acb53f",
+          "choices": [
+            {
+              "delta": {
+                "content": null,
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": "=",
+                    "bytes": [
+                      61
+                    ],
+                    "logprob": 0.0,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "2bxAahPeYTxD0HjMAac7mlTDdzKOpesN7wyrSas42VgkGxAKIj0zLXbfzy5RhXaKa340ljaKayiBK9AHl5YpOQy2f4Rvw8Mw"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-a423d4acb53f",
+          "choices": [
+            {
+              "delta": {
+                "content": null,
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": "functions",
+                    "bytes": [
+                      102,
+                      117,
+                      110,
+                      99,
+                      116,
+                      105,
+                      111,
+                      110,
+                      115
+                    ],
+                    "logprob": 0.0,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": ".get",
+                    "bytes": [
+                      46,
+                      103,
+                      101,
+                      116
+                    ],
+                    "logprob": -2.9802276912960224e-06,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "581OAh2aSVgWb1OdfYW0JeR8R9MniTnm3tHffXt8e8YGPZhK2aP37iUc7930prGaKqCblWbTzHzoa6AEvoM8bG6NmGH37YXkkZeUCz"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-a423d4acb53f",
+          "choices": [
+            {
+              "delta": {
+                "content": null,
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": "_weather",
+                    "bytes": [
+                      95,
+                      119,
+                      101,
+                      97,
+                      116,
+                      104,
+                      101,
+                      114
+                    ],
+                    "logprob": 0.0,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": " ",
+                    "bytes": [
+                      32
+                    ],
+                    "logprob": -0.0002727136597968638,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "PySMqEvLRX1enzzANJqFUJePDoiEG4UWJdUpyf4hHAKb08HcNhWLCb6qvHAvTTezfXdnlbI2yX6WqCOoKWoZD67uho9Dd7gYlJykrmpXJ2nbGZv0VyVq"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-a423d4acb53f",
+          "choices": [
+            {
+              "delta": {
+                "content": null,
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": "<|constrain|>",
+                    "bytes": [
+                      60,
+                      124,
+                      99,
+                      111,
+                      110,
+                      115,
+                      116,
+                      114,
+                      97,
+                      105,
+                      110,
+                      124,
+                      62
+                    ],
+                    "logprob": 0.0,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "fjlatl9d5xEkWKsUVfFMSIpzME2g2fiIuO1g2KigneGthma8p4P9dXM9cvLGsdHzC2sKRuMMZ28ZrMPNp0eIsXjm1CSy8FEQVlrf"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-a423d4acb53f",
+          "choices": [
+            {
+              "delta": {
+                "content": null,
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": [
+                  {
+                    "index": 0,
+                    "id": "chatcmpl-tool-bee8c1e8bae9d56e",
+                    "function": {
+                      "arguments": "",
+                      "name": "get_weather"
+                    },
+                    "type": "function"
+                  }
+                ]
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": "json",
+                    "bytes": [
+                      106,
+                      115,
+                      111,
+                      110
+                    ],
+                    "logprob": -0.00027021096320822835,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "<|message|>",
+                    "bytes": [
+                      60,
+                      124,
+                      109,
+                      101,
+                      115,
+                      115,
+                      97,
+                      103,
+                      101,
+                      124,
+                      62
+                    ],
+                    "logprob": -0.0002445875434204936,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "u1Zxs3s6xDXtgB0XIGQ6U9YTqxK3Bwmh4EdAztnpt8G7h9NEUImhHiMcOrqHq"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-a423d4acb53f",
+          "choices": [
+            {
+              "delta": {
+                "content": null,
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": [
+                  {
+                    "index": 0,
+                    "id": null,
+                    "function": {
+                      "arguments": "{\"",
+                      "name": null
+                    },
+                    "type": "function"
+                  },
+                  {
+                    "index": 0,
+                    "id": null,
+                    "function": {
+                      "arguments": "location",
+                      "name": null
+                    },
+                    "type": "function"
+                  },
+                  {
+                    "index": 0,
+                    "id": null,
+                    "function": {
+                      "arguments": "\":\"",
+                      "name": null
+                    },
+                    "type": "function"
+                  }
+                ]
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": "{\"",
+                    "bytes": [
+                      123,
+                      34
+                    ],
+                    "logprob": -0.0009423820883966982,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "location",
+                    "bytes": [
+                      108,
+                      111,
+                      99,
+                      97,
+                      116,
+                      105,
+                      111,
+                      110
+                    ],
+                    "logprob": -3.576278118089249e-07,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "\":\"",
+                    "bytes": [
+                      34,
+                      58,
+                      34
+                    ],
+                    "logprob": -0.0005534547381103039,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "QgqHvnIWjEscR9hYi726FSx90WZTUEaN6FXVNwv58Q0YQVmFksBFUUdrAhvyvRos1bplvBVJC9rLhZ5XNAM1fdzcOJLkhaOueePVvI2i6NBKJW"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-a423d4acb53f",
+          "choices": [
+            {
+              "delta": {
+                "content": null,
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": [
+                  {
+                    "index": 0,
+                    "id": null,
+                    "function": {
+                      "arguments": "Paris",
+                      "name": null
+                    },
+                    "type": "function"
+                  },
+                  {
+                    "index": 0,
+                    "id": null,
+                    "function": {
+                      "arguments": "\"}",
+                      "name": null
+                    },
+                    "type": "function"
+                  }
+                ]
+              },
+              "finish_reason": "tool_calls",
+              "index": 0,
+              "logprobs": {
+                "content": [
+                  {
+                    "token": "Paris",
+                    "bytes": [
+                      80,
+                      97,
+                      114,
+                      105,
+                      115
+                    ],
+                    "logprob": -7.510157047363464e-06,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "\"}",
+                    "bytes": [
+                      34,
+                      125
+                    ],
+                    "logprob": -2.109982233378105e-05,
+                    "top_logprobs": []
+                  },
+                  {
+                    "token": "<|call|>",
+                    "bytes": [
+                      60,
+                      124,
+                      99,
+                      97,
+                      108,
+                      108,
+                      124,
+                      62
+                    ],
+                    "logprob": -2.384185506798531e-07,
+                    "top_logprobs": []
+                  }
+                ],
+                "refusal": null
+              },
+              "obfuscation": "qcHmEo3A0azmS8cue2FA4GDBMS1V008j4FKgsyMuBChWRsgCygPPj3VSkQFYRkUp4c8ktGtWNxB6cr6k0UaDnJn0JR7NUTfChQ"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-a423d4acb53f",
+          "choices": [],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": {
+            "completion_tokens": 60,
+            "prompt_tokens": 142,
+            "total_tokens": 202,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          }
+        }
+      }
+    ],
+    "is_streaming": true
+  },
+  "id_normalization_mapping": {}
+}
