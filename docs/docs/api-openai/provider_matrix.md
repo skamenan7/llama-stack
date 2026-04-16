@@ -20,7 +20,7 @@ inference provider, based on integration test results.
 | Provider | Tested | Passing | Failing | Coverage |
 |----------|--------|---------|---------|----------|
 | azure | 114 | 114 | 0 | 86% |
-| bedrock | 8 | 8 | 0 | 6% |
+| bedrock | 27 | 27 | 0 | 20% |
 | ollama | 2 | 2 | 0 | 2% |
 | openai | 133 | 133 | 0 | 100% |
 | vllm | 3 | 3 | 0 | 2% |
@@ -48,12 +48,12 @@ Models, endpoints, and versions used during test recordings.
 | include logprobs streaming | ✅ | ✅ | — | ✅ | — | ✅ |
 | include logprobs with function tools | ✅ | ✅ | — | ✅ | — | ✅ |
 | include logprobs with web search | ✅ | ✅ | — | ✅ | — | ✅ |
-| non streaming basic | ✅ | ⏭️ | — | ✅ | — | ✅ |
+| non streaming basic | ✅ | ✅ | — | ✅ | — | ✅ |
 | non streaming image | ✅ | ⏭️ | — | ✅ | — | ⏭️ |
-| non streaming multi turn | ✅ | ⏭️ | — | ✅ | — | ✅ |
+| non streaming multi turn | ✅ | ✅ | — | ✅ | — | ✅ |
 | non streaming multi turn image | ✅ | ⏭️ | — | ✅ | — | ⏭️ |
-| streaming basic | ✅ | ⏭️ | — | ✅ | — | ✅ |
-| streaming incremental content | ✅ | ⏭️ | — | ✅ | — | ✅ |
+| streaming basic | ✅ | ✅ | — | ✅ | — | ✅ |
+| streaming incremental content | ✅ | ✅ | — | ✅ | — | ✅ |
 
 ## Compact Responses
 
@@ -76,11 +76,11 @@ Models, endpoints, and versions used during test recordings.
 
 | Feature | azure | bedrock | ollama | openai | vllm | watsonx |
 | --- | --- | --- | --- | --- | --- | --- |
-| conversation backward compatibility | ✅ | — | — | ✅ | — | ✅ |
-| conversation basic workflow | ✅ | — | — | ✅ | — | ✅ |
-| conversation context loading | ✅ | — | — | ✅ | — | ✅ |
-| conversation error handling | ⏭️ | — | — | ✅ | — | ⏭️ |
-| conversation multi turn and streaming | ✅ | — | — | ✅ | — | ✅ |
+| conversation backward compatibility | ✅ | ✅ | — | ✅ | — | ✅ |
+| conversation basic workflow | ✅ | ✅ | — | ✅ | — | ✅ |
+| conversation context loading | ✅ | ✅ | — | ✅ | — | ✅ |
+| conversation error handling | ⏭️ | ⏭️ | — | ✅ | — | ⏭️ |
+| conversation multi turn and streaming | ✅ | ✅ | — | ✅ | — | ✅ |
 
 ## File Search
 
@@ -98,8 +98,8 @@ Models, endpoints, and versions used during test recordings.
 
 | Feature | azure | bedrock | ollama | openai | vllm | watsonx |
 | --- | --- | --- | --- | --- | --- | --- |
-| mcp authorization backward compatibility | ✅ | — | — | ✅ | — | — |
-| mcp authorization bearer | ✅ | — | — | ✅ | — | — |
+| mcp authorization backward compatibility | ✅ | ✅ | — | ✅ | — | — |
+| mcp authorization bearer | ✅ | ✅ | — | ✅ | — | — |
 
 ## Openai Responses
 
@@ -154,12 +154,12 @@ Models, endpoints, and versions used during test recordings.
 
 | Feature | azure | bedrock | ollama | openai | vllm | watsonx |
 | --- | --- | --- | --- | --- | --- | --- |
-| basic prompt template | ✅ | — | — | ✅ | — | ✅ |
-| multi variable prompt template | ✅ | — | — | ✅ | — | ✅ |
-| multi version prompt template | ✅ | — | — | ✅ | — | ✅ |
-| prompt template no variables | ✅ | — | — | ✅ | — | ✅ |
-| prompt template with multi turn | ✅ | — | — | ✅ | — | ✅ |
-| prompt template with streaming | ✅ | — | — | ✅ | — | ✅ |
+| basic prompt template | ✅ | ✅ | — | ✅ | — | ✅ |
+| multi variable prompt template | ✅ | ✅ | — | ✅ | — | ✅ |
+| multi version prompt template | ✅ | ✅ | — | ✅ | — | ✅ |
+| prompt template no variables | ✅ | ✅ | — | ✅ | — | ✅ |
+| prompt template with multi turn | ✅ | ✅ | — | ✅ | — | ✅ |
+| prompt template with streaming | ✅ | ✅ | — | ✅ | — | ✅ |
 
 ## Reasoning
 
@@ -184,11 +184,11 @@ Models, endpoints, and versions used during test recordings.
 
 | Feature | azure | bedrock | ollama | openai | vllm | watsonx |
 | --- | --- | --- | --- | --- | --- | --- |
-| completed response has no error | ✅ | — | — | ✅ | — | ✅ |
-| invalid base64 image returns image error | ✅ | — | — | ✅ | — | ⏭️ |
-| invalid image url returns image error | ✅ | — | — | ✅ | — | ⏭️ |
-| non vision model returns error for image input | ✅ | — | — | ✅ | — | ✅ |
-| non vision model with base64 image returns server error | ✅ | — | — | ✅ | — | ✅ |
+| completed response has no error | ✅ | ✅ | — | ✅ | — | ✅ |
+| invalid base64 image returns image error | ✅ | ⏭️ | — | ✅ | — | ⏭️ |
+| invalid image url returns image error | ✅ | ⏭️ | — | ✅ | — | ⏭️ |
+| non vision model returns error for image input | ✅ | ✅ | — | ✅ | — | ✅ |
+| non vision model with base64 image returns server error | ✅ | ✅ | — | ✅ | — | ✅ |
 
 ## Structured Output
 
