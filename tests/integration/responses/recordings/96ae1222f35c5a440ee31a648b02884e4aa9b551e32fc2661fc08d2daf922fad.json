@@ -1,19 +1,15 @@
 {
-  "test_id": "tests/integration/responses/test_prompt_templates.py::test_multi_variable_prompt_template[client_with_models-txt=bedrock/openai.gpt-oss-20b]",
+  "test_id": "tests/integration/responses/test_basic_responses.py::test_include_logprobs_non_streaming[txt=bedrock/openai.gpt-oss-20b-1:0]",
   "request": {
     "method": "POST",
-    "url": "https://bedrock-runtime.us-east-2.amazonaws.com/openai/v1/v1/chat/completions",
+    "url": "https://bedrock-runtime.us-west-2.amazonaws.com/openai/v1/v1/chat/completions",
     "headers": {},
     "body": {
-      "model": "openai.gpt-oss-20b",
+      "model": "openai.gpt-oss-20b-1:0",
       "messages": [
         {
-          "role": "system",
-          "content": "You are a technical support assistant specializing in software engineering.  Your responsibilities include debugging code and answering questions.  Always maintain a professional tone."
-        },
-        {
           "role": "user",
-          "content": "What do you do?"
+          "content": "Which planet do humans live on?"
         }
       ],
       "stream": true,
@@ -22,9 +18,9 @@
       }
     },
     "endpoint": "/v1/chat/completions",
-    "model": "openai.gpt-oss-20b",
+    "model": "openai.gpt-oss-20b-1:0",
     "provider_metadata": {
-      "openai_sdk_version": "2.5.0"
+      "openai_sdk_version": "2.30.0"
     }
   },
   "response": {
@@ -32,7 +28,7 @@
       {
         "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
         "__data__": {
-          "id": "rec-2e46c50d186a",
+          "id": "rec-96ae1222f35c",
           "choices": [
             {
               "delta": {
@@ -45,11 +41,11 @@
               "finish_reason": null,
               "index": 0,
               "logprobs": null,
-              "obfuscation": "IzLN9mSnI0JZyqiTVpZcJsYSxjyn448dot7ksePwl2SZEz96edIVDvWiAvx0RcoZwy2jv7vWc8dFbSLNxsNoIapqGeGVvoVX84zuS87"
+              "obfuscation": "5aoBDStYbsWzLVxRgdJBLCnDUQ8Yg5dZqm2H"
             }
           ],
           "created": 0,
-          "model": "openai.gpt-oss-20b",
+          "model": "openai.gpt-oss-20b-1:0",
           "object": "chat.completion.chunk",
           "service_tier": "default",
           "system_fingerprint": null,
@@ -59,7 +55,7 @@
       {
         "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
         "__data__": {
-          "id": "rec-2e46c50d186a",
+          "id": "rec-96ae1222f35c",
           "choices": [
             {
               "delta": {
@@ -67,17 +63,16 @@
                 "function_call": null,
                 "refusal": null,
                 "role": null,
-                "tool_calls": null,
-                "reasoning": "User: \"What do you do?\" They want to know what the assistant does. They likely want an answer still. Provide a concise explanation."
+                "tool_calls": null
               },
               "finish_reason": null,
               "index": 0,
               "logprobs": null,
-              "obfuscation": "00GCbmdzmabFXtaNHCevBLjgBmndxVllOj4NmzS7BW15I2mpA"
+              "obfuscation": "ccAe8f2bvcXIqvx1oZnzZzF29LNQVIFgeLgHUYhW9YwP0CeWtb1hTpckoYHmwHPXIHhEh8ajIWcagIyLHD3JddvGMaHRYF3CjEI0"
             }
           ],
           "created": 0,
-          "model": "openai.gpt-oss-20b",
+          "model": "openai.gpt-oss-20b-1:0",
           "object": "chat.completion.chunk",
           "service_tier": "default",
           "system_fingerprint": null,
@@ -87,11 +82,11 @@
       {
         "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
         "__data__": {
-          "id": "rec-2e46c50d186a",
+          "id": "rec-96ae1222f35c",
           "choices": [
             {
               "delta": {
-                "content": "I\u2019m a technical support assistant focused on software engineering. My role includes:\n\n- **Debugging code**: I help identify, explain, and fix bugs in a wide",
+                "content": "<reasoning>User asks: \"Which planet do humans live on?\" They likely want answer \"Earth\". Provide succinct</reasoning>",
                 "function_call": null,
                 "refusal": null,
                 "role": null,
@@ -100,11 +95,11 @@
               "finish_reason": null,
               "index": 0,
               "logprobs": null,
-              "obfuscation": "X28BkbPnjA1tOU1EaKooj8aDHhDTiEN1pEMPVmwYXSPnpP"
+              "obfuscation": "4QGiykhlTVfQ301mQnwtZRszz6TNatZtOKXJi0wGtXGtHd5CMeFKbr5Ub8KZKmyuSTlVKmKDqA2tnQo8dAI9zPuRAVP4AR7rJrlosPzXiVGBdosfVQhRwf"
             }
           ],
           "created": 0,
-          "model": "openai.gpt-oss-20b",
+          "model": "openai.gpt-oss-20b-1:0",
           "object": "chat.completion.chunk",
           "service_tier": "default",
           "system_fingerprint": null,
@@ -114,11 +109,11 @@
       {
         "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
         "__data__": {
-          "id": "rec-2e46c50d186a",
+          "id": "rec-96ae1222f35c",
           "choices": [
             {
               "delta": {
-                "content": " variety of languages and frameworks.\n- **Answering questions**: I provide clear, step\u2011by\u2011step explanations on programming concepts, best practices, and troubleshooting techniques.\n- **Guiding best practices**: I advise on code quality, refactoring, testing, and maintainability.\n- **Assisting with drafts and documentation**: I help you write or improve code",
+                "content": "<reasoning> answer. Could mention humans live on Earth, the third planet from</reasoning>",
                 "function_call": null,
                 "refusal": null,
                 "role": null,
@@ -127,11 +122,11 @@
               "finish_reason": null,
               "index": 0,
               "logprobs": null,
-              "obfuscation": "tAxlv3R6wN11vWbgnGBCHNf9EdVGiRISAmwvmKgN6BBjVivg7TmjpTnwvOPI58qDPdyEkoRSFO8o6S8V6GlZrQFf24vhXXvS"
+              "obfuscation": "Z01oZzSzktXL8gRGSc7JGBTHvE4axtRfmyNtafDJ6ARfxeLm02YLgxAbQE8er5u5cyR6Tjk"
             }
           ],
           "created": 0,
-          "model": "openai.gpt-oss-20b",
+          "model": "openai.gpt-oss-20b-1:0",
           "object": "chat.completion.chunk",
           "service_tier": "default",
           "system_fingerprint": null,
@@ -141,11 +136,11 @@
       {
         "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
         "__data__": {
-          "id": "rec-2e46c50d186a",
+          "id": "rec-96ae1222f35c",
           "choices": [
             {
               "delta": {
-                "content": " comments, README files, and other project documentation.\n- **Providing resources**: I point you toward helpful libraries, tools, and learning materials.\n\nThink of me as a knowledgeable colleague who can help you move projects forward and overcome technical challenges.",
+                "content": "<reasoning> the Sun. Provide brief.</reasoning>",
                 "function_call": null,
                 "refusal": null,
                 "role": null,
@@ -154,11 +149,11 @@
               "finish_reason": null,
               "index": 0,
               "logprobs": null,
-              "obfuscation": "lkTvGV7f3bp12W3qL57ybFvZ8P3o10iIXFNEMKXRTWMASwdihbyTDbpOLVxHv2i6bqsdeEaJN"
+              "obfuscation": "VArk5KNMcdbh4qR783rLUGZ7zzpfeFk3HHJxgWmxdJemtEY7wYjvPJuN"
             }
           ],
           "created": 0,
-          "model": "openai.gpt-oss-20b",
+          "model": "openai.gpt-oss-20b-1:0",
           "object": "chat.completion.chunk",
           "service_tier": "default",
           "system_fingerprint": null,
@@ -168,11 +163,65 @@
       {
         "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
         "__data__": {
-          "id": "rec-2e46c50d186a",
+          "id": "rec-96ae1222f35c",
           "choices": [
             {
               "delta": {
-                "content": null,
+                "content": "Humans live on **",
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": null,
+              "obfuscation": "dvbKGGiRxQg6NwEP9N2SweBvOJaxTlvVQ0pnGub0IyNEOGKVmEI"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-96ae1222f35c",
+          "choices": [
+            {
+              "delta": {
+                "content": "Earth**\u2014the third planet from the Sun, known as our home",
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": null,
+              "obfuscation": "jWu2T8LoldYffcgwHl77ui0I6i2G0Zm5BaVzBNYhhgLooKP5O6cSu7zJq4rJNTPOtrytrIfIor2Yb6jVxfn2WDGxS6YsFOKgSqVi"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-96ae1222f35c",
+          "choices": [
+            {
+              "delta": {
+                "content": " world.",
                 "function_call": null,
                 "refusal": null,
                 "role": null,
@@ -181,11 +230,11 @@
               "finish_reason": "stop",
               "index": 0,
               "logprobs": null,
-              "obfuscation": "cId83yyS7aiuOj1XjgcHngkOAJXd4E0bJeuaasIKYK2MCiJkoYw5wMKYxpfVVbLWBUOsEYcgEcSnSZ6bs0W1Db5pSOVpYI9tn4yXjm1JuyQKF8rgE3gHMP3X7Pq2"
+              "obfuscation": "nY0EcKazSYAjtsFbjTTt1xMqTcRQ3uXK3QbmB"
             }
           ],
           "created": 0,
-          "model": "openai.gpt-oss-20b",
+          "model": "openai.gpt-oss-20b-1:0",
           "object": "chat.completion.chunk",
           "service_tier": "default",
           "system_fingerprint": null,
@@ -195,17 +244,17 @@
       {
         "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
         "__data__": {
-          "id": "rec-2e46c50d186a",
+          "id": "rec-96ae1222f35c",
           "choices": [],
           "created": 0,
-          "model": "openai.gpt-oss-20b",
+          "model": "openai.gpt-oss-20b-1:0",
           "object": "chat.completion.chunk",
           "service_tier": "default",
           "system_fingerprint": null,
           "usage": {
-            "completion_tokens": 195,
-            "prompt_tokens": 102,
-            "total_tokens": 297,
+            "completion_tokens": 70,
+            "prompt_tokens": 74,
+            "total_tokens": 144,
             "completion_tokens_details": null,
             "prompt_tokens_details": null
           }
