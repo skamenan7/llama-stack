@@ -1,11 +1,11 @@
 {
-  "test_id": "tests/integration/inference/test_openai_completion.py::test_openai_chat_completion_streaming[client_with_models-txt=bedrock/openai.gpt-oss-20b-inference:chat_completion:streaming_02]",
+  "test_id": "tests/integration/inference/test_openai_completion.py::test_openai_chat_completion_streaming[client_with_models-txt=bedrock/openai.gpt-oss-20b-1:0-inference:chat_completion:streaming_02]",
   "request": {
     "method": "POST",
     "url": "https://bedrock-runtime.us-west-2.amazonaws.com/openai/v1/v1/chat/completions",
     "headers": {},
     "body": {
-      "model": "openai.gpt-oss-20b",
+      "model": "openai.gpt-oss-20b-1:0",
       "messages": [
         {
           "role": "user",
@@ -15,14 +15,17 @@
       "stream": true
     },
     "endpoint": "/v1/chat/completions",
-    "model": "openai.gpt-oss-20b"
+    "model": "openai.gpt-oss-20b-1:0",
+    "provider_metadata": {
+      "openai_sdk_version": "2.30.0"
+    }
   },
   "response": {
     "body": [
       {
         "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
         "__data__": {
-          "id": "rec-1675987cb787",
+          "id": "rec-b82395f96e95",
           "choices": [
             {
               "delta": {
@@ -35,11 +38,11 @@
               "finish_reason": null,
               "index": 0,
               "logprobs": null,
-              "obfuscation": "zlJX8pmQQksCBzYMHLsuhD3dFrQbKv8GlTHn6pudqohK8jLWrErFuwT7GYaeqYJ6dpLdel9vRn6LaJZvtXGQnPpfkxZFUcTVT6fzoh1fhqIjFYBTR2MV6mk3Cs"
+              "obfuscation": "UnJBNrOsTvQE1LAyu8uKoEuKTcvCSeYvrdw7y0TyvTNd3HKqRijyUxp4Q2UDpZbJ3JrM2BU7CA2ObSF4VzeRLxx"
             }
           ],
           "created": 0,
-          "model": "openai.gpt-oss-20b",
+          "model": "openai.gpt-oss-20b-1:0",
           "object": "chat.completion.chunk",
           "service_tier": "default",
           "system_fingerprint": null,
@@ -49,67 +52,11 @@
       {
         "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
         "__data__": {
-          "id": "rec-1675987cb787",
+          "id": "rec-b82395f96e95",
           "choices": [
             {
               "delta": {
                 "content": null,
-                "function_call": null,
-                "refusal": null,
-                "role": null,
-                "tool_calls": null,
-                "reasoning": "The user asks: \"What is the name of the US captial?\" Likely means \"capital\" as capital city: Washington, D.C. Might be mispelling also \"captial\" could mean \"capital\" meaning money. But context: \"US captial\" likely capital city. So answer: Washington, D"
-              },
-              "finish_reason": null,
-              "index": 0,
-              "logprobs": null,
-              "obfuscation": "8OELnr0cYWf8p0nDUVF0tV4L8MQVotSKK4CKUnVdAQNXdBsaqWk8pulRKJfKEvBMbDDk2r0gt3dsVAcKVXy9dUoMDxVsLvAb5sWkCbY52dvhTyDHlWs5o9EU7K8"
-            }
-          ],
-          "created": 0,
-          "model": "openai.gpt-oss-20b",
-          "object": "chat.completion.chunk",
-          "service_tier": "default",
-          "system_fingerprint": null,
-          "usage": null
-        }
-      },
-      {
-        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
-        "__data__": {
-          "id": "rec-1675987cb787",
-          "choices": [
-            {
-              "delta": {
-                "content": null,
-                "function_call": null,
-                "refusal": null,
-                "role": null,
-                "tool_calls": null,
-                "reasoning": ".C. Provide clarity maybe mention that \"Capital\" spelled incorrectly. Provide answer.\n\nWe must respond as ChatGPT. Provide short answer, maybe correct spelling: Washington, D.C."
-              },
-              "finish_reason": null,
-              "index": 0,
-              "logprobs": null,
-              "obfuscation": "l94ckWgD1OTOD1AkONmusYHOjACTumtHpExwhwn3CWnduI50wADxZlyw7YHyXbBQ1a3ACdSfywWyh3qJoEAxzhJLkPL"
-            }
-          ],
-          "created": 0,
-          "model": "openai.gpt-oss-20b",
-          "object": "chat.completion.chunk",
-          "service_tier": "default",
-          "system_fingerprint": null,
-          "usage": null
-        }
-      },
-      {
-        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
-        "__data__": {
-          "id": "rec-1675987cb787",
-          "choices": [
-            {
-              "delta": {
-                "content": "",
                 "function_call": null,
                 "refusal": null,
                 "role": null,
@@ -118,11 +65,11 @@
               "finish_reason": null,
               "index": 0,
               "logprobs": null,
-              "obfuscation": "wi6gCt6GCJ8yaqpZGC3TpDdlsDb0aNw5BOP5BypDPa2dFXvRuyUckGty9FIoZB9vVEcwOYhqXoUvMtbLYX"
+              "obfuscation": "WDEzhQf9dYdf3vJt6hqtJMWB6cjYXeBuZ35l5o5Izg9B04LkZoiVEsb07fAWTY3WzTZo2Ru0Nmrloego"
             }
           ],
           "created": 0,
-          "model": "openai.gpt-oss-20b",
+          "model": "openai.gpt-oss-20b-1:0",
           "object": "chat.completion.chunk",
           "service_tier": "default",
           "system_fingerprint": null,
@@ -132,11 +79,11 @@
       {
         "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
         "__data__": {
-          "id": "rec-1675987cb787",
+          "id": "rec-b82395f96e95",
           "choices": [
             {
               "delta": {
-                "content": "The U.S. capital is **Washington,\u202fD.C.**",
+                "content": "<reasoning>The user asks: \"What is the name of the US captial?\" likely misspelled \"capital\". The answer: Washington, D.C. Probably mention official name: Washington, D.C. (District of Columbia). The capital is Washington, D.C. Provide answer.</reasoning>",
                 "function_call": null,
                 "refusal": null,
                 "role": null,
@@ -145,11 +92,11 @@
               "finish_reason": null,
               "index": 0,
               "logprobs": null,
-              "obfuscation": "H0uBwH8s35VVoED8L2XC1xP1Elb3tLjgBtUXFfwhYymswl8ZVmwEm"
+              "obfuscation": "Ki8ogkPb9ii1DwonXepWHXHA1vSGgSZc"
             }
           ],
           "created": 0,
-          "model": "openai.gpt-oss-20b",
+          "model": "openai.gpt-oss-20b-1:0",
           "object": "chat.completion.chunk",
           "service_tier": "default",
           "system_fingerprint": null,
@@ -159,7 +106,34 @@
       {
         "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
         "__data__": {
-          "id": "rec-1675987cb787",
+          "id": "rec-b82395f96e95",
+          "choices": [
+            {
+              "delta": {
+                "content": "The capital of the United States is **Washington, D.C.** (the District of Columbia).",
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": null,
+              "obfuscation": "0PPizw1bGDYi3WAUHjjTp02DpQ8rsvHzuBWcJyNuWpuUieQQkCP2djJdR5Nzk3Lfm4saxSTS9PqD0e0anADCUTavPYq6CEKWMMWzYcW8Pw9sI3vlSd"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-b82395f96e95",
           "choices": [
             {
               "delta": {
@@ -172,11 +146,11 @@
               "finish_reason": "stop",
               "index": 0,
               "logprobs": null,
-              "obfuscation": "ik0pN8kEq5P4AbBzmonBcKGIjKey0zSrMePYcT02VauqqaGJx5DvUUEbprxLFc93SbsN2VJsp8zd78ohgFcYDZZRd0zPEBMYXFZq0YY0Owv0e"
+              "obfuscation": "vyHqx8ExdlIX7h3A9SXrrD0DHyixblFinsl8bZcb8EMjs8HydST5tpIwq0P65sVfE0YQ1xirO4M2mY09F7FrokADlwWOKmscBGCIFdvvALfbbIbPn"
             }
           ],
           "created": 0,
-          "model": "openai.gpt-oss-20b",
+          "model": "openai.gpt-oss-20b-1:0",
           "object": "chat.completion.chunk",
           "service_tier": "default",
           "system_fingerprint": null,

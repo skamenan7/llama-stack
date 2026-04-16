@@ -1,11 +1,11 @@
 {
-  "test_id": "tests/integration/inference/test_openai_completion.py::test_inference_store[client_with_models-txt=bedrock/openai.gpt-oss-20b-True]",
+  "test_id": "tests/integration/inference/test_openai_completion.py::test_inference_store[client_with_models-txt=bedrock/openai.gpt-oss-20b-1:0-True]",
   "request": {
     "method": "POST",
     "url": "https://bedrock-runtime.us-west-2.amazonaws.com/openai/v1/v1/chat/completions",
     "headers": {},
     "body": {
-      "model": "openai.gpt-oss-20b",
+      "model": "openai.gpt-oss-20b-1:0",
       "messages": [
         {
           "role": "user",
@@ -15,14 +15,17 @@
       "stream": true
     },
     "endpoint": "/v1/chat/completions",
-    "model": "openai.gpt-oss-20b"
+    "model": "openai.gpt-oss-20b-1:0",
+    "provider_metadata": {
+      "openai_sdk_version": "2.30.0"
+    }
   },
   "response": {
     "body": [
       {
         "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
         "__data__": {
-          "id": "rec-718bb1cd939e",
+          "id": "rec-3dcb9e38f66c",
           "choices": [
             {
               "delta": {
@@ -35,11 +38,11 @@
               "finish_reason": null,
               "index": 0,
               "logprobs": null,
-              "obfuscation": "KLYgxw6Rj4eZXZif2K1dMp19xph8G20OeIlYOpDQYGOmZpxzr7DEaKw2kufxLKkkgRtWo"
+              "obfuscation": "F04TtE37adFVBDOm0YNs76rYXC8vfgLJobytooZhqx86ld43nNwL7VsZmzfXcoORYskvmR8pRoVJlz46cXDg9OOj6n"
             }
           ],
           "created": 0,
-          "model": "openai.gpt-oss-20b",
+          "model": "openai.gpt-oss-20b-1:0",
           "object": "chat.completion.chunk",
           "service_tier": "default",
           "system_fingerprint": null,
@@ -49,39 +52,11 @@
       {
         "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
         "__data__": {
-          "id": "rec-718bb1cd939e",
+          "id": "rec-3dcb9e38f66c",
           "choices": [
             {
               "delta": {
                 "content": null,
-                "function_call": null,
-                "refusal": null,
-                "role": null,
-                "tool_calls": null,
-                "reasoning": "The user says \"Hello, world!\" That seems to be greeting. We respond politely. Possibly a conversation about hello world. Just greet and ask how can help?"
-              },
-              "finish_reason": null,
-              "index": 0,
-              "logprobs": null,
-              "obfuscation": "Xjz08CwfpOTyKyJM8QpRka4tPYBbn5dcDFcC2WhaQeUaH"
-            }
-          ],
-          "created": 0,
-          "model": "openai.gpt-oss-20b",
-          "object": "chat.completion.chunk",
-          "service_tier": "default",
-          "system_fingerprint": null,
-          "usage": null
-        }
-      },
-      {
-        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
-        "__data__": {
-          "id": "rec-718bb1cd939e",
-          "choices": [
-            {
-              "delta": {
-                "content": "Hello! \ud83d\udc4b How can I assist you today?",
                 "function_call": null,
                 "refusal": null,
                 "role": null,
@@ -90,11 +65,11 @@
               "finish_reason": null,
               "index": 0,
               "logprobs": null,
-              "obfuscation": "A3vUQMEqKtBw3MuigRVhsbhjOS6Vv11OGfVKNR71kfO7fMKTbvK8DqBDpK7NYsH1XDJsdj0nQ52TolzbAeSZ9gGatmWagiBfi1J4f1ZwHJdacmPiUVcefi78Dsxg4"
+              "obfuscation": "LGaf06XVvgJo4GeIbmYmdC7SaBkeNUMU5CxxtcKGOOVmYOsFBdVOt777jDob0sdSvry7fxZ9LapvpW97QOShsFn3f4fL4Pg0oBa0HY798c"
             }
           ],
           "created": 0,
-          "model": "openai.gpt-oss-20b",
+          "model": "openai.gpt-oss-20b-1:0",
           "object": "chat.completion.chunk",
           "service_tier": "default",
           "system_fingerprint": null,
@@ -104,11 +79,38 @@
       {
         "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
         "__data__": {
-          "id": "rec-718bb1cd939e",
+          "id": "rec-3dcb9e38f66c",
           "choices": [
             {
               "delta": {
-                "content": null,
+                "content": "<reasoning>The user says \"Hello, world!\" Maybe a greeting. We need to respond politely. Possibly ask or do something? Keep it simple.</reasoning>",
+                "function_call": null,
+                "refusal": null,
+                "role": null,
+                "tool_calls": null
+              },
+              "finish_reason": null,
+              "index": 0,
+              "logprobs": null,
+              "obfuscation": "OSBntQKnA0vMPGxU8mkkOPvcK6BsYl5WjUmdxx65r5mTmzkxW7zwIBOtGBIb2UT2UgMDt2jCpPMD"
+            }
+          ],
+          "created": 0,
+          "model": "openai.gpt-oss-20b-1:0",
+          "object": "chat.completion.chunk",
+          "service_tier": "default",
+          "system_fingerprint": null,
+          "usage": null
+        }
+      },
+      {
+        "__type__": "openai.types.chat.chat_completion_chunk.ChatCompletionChunk",
+        "__data__": {
+          "id": "rec-3dcb9e38f66c",
+          "choices": [
+            {
+              "delta": {
+                "content": "Hello! \ud83d\udc4b\n\nHow can I help you today?",
                 "function_call": null,
                 "refusal": null,
                 "role": null,
@@ -117,11 +119,11 @@
               "finish_reason": "stop",
               "index": 0,
               "logprobs": null,
-              "obfuscation": "FqAC2mtNG6f1JmISAxfOyNptqi5qYuBGFFqvStyTUXceITSaNeQfDaKz0iSiyWSY3XNZHWwkwYPpHnSEaqW4HPEWHvAoohHG0Kk"
+              "obfuscation": "JAmi4zoh32VKV6oREZWtgQAMVeHX014TT0GcxyDZhNzK1Gj7dXfRYbvB2Y29"
             }
           ],
           "created": 0,
-          "model": "openai.gpt-oss-20b",
+          "model": "openai.gpt-oss-20b-1:0",
           "object": "chat.completion.chunk",
           "service_tier": "default",
           "system_fingerprint": null,
