@@ -24,6 +24,7 @@ from llama_stack_api import (
     ChatCompletionMessageList,
     ListOpenAIChatCompletionResponse,
     OpenAIChatCompletion,
+    OpenAIChatCompletionContentPartParam,
     OpenAIChatCompletionResponseMessage,
     OpenAICompletionWithInputMessages,
     OpenAIMessageParam,
@@ -40,6 +41,22 @@ class _WriteItem(NamedTuple):
     request_context: RequestContext
 
 
+def _supported_content_parts(content: Any) -> list[OpenAIChatCompletionContentPartParam] | None:
+    """Return only multipart content parts supported by the listing response schema."""
+    if not isinstance(content, list):
+        return None
+
+    supported_parts = []
+    for part in content:
+        if not isinstance(part, dict):
+            continue
+        if part.get("type") not in {"text", "image_url"}:
+            continue
+        supported_parts.append(part)
+
+    return supported_parts or None
+
+
 def _message_from_input(message_id: str, input_message: OpenAIMessageParam) -> ChatCompletionMessage:
     """Convert a stored input message into the list response format."""
     data = input_message.model_dump()
@@ -47,7 +64,7 @@ def _message_from_input(message_id: str, input_message: OpenAIMessageParam) -> C
     # OpenAI spec: content is string|null, multipart goes in content_parts
     if isinstance(content, list):
         text_content = None
-        content_parts = content
+        content_parts = _supported_content_parts(content)
     else:
         text_content = content
         content_parts = None

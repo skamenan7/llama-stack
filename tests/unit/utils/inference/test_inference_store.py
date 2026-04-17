@@ -17,10 +17,13 @@ from llama_stack.core.storage.sqlstore.sqlstore import register_sqlstore_backend
 from llama_stack.providers.utils.inference.inference_store import InferenceStore
 from llama_stack_api import (
     OpenAIChatCompletion,
+    OpenAIChatCompletionContentPartTextParam,
     OpenAIChatCompletionResponseMessage,
     OpenAIChatCompletionToolCall,
     OpenAIChatCompletionToolCallFunction,
     OpenAIChoice,
+    OpenAIFile,
+    OpenAIFileFile,
     OpenAISystemMessageParam,
     OpenAIUserMessageParam,
     Order,
@@ -456,6 +459,60 @@ async def test_list_chat_completion_messages_preserves_tool_calls():
     assert len(assistant_message.tool_calls) == 1
     assert assistant_message.tool_calls[0].function is not None
     assert assistant_message.tool_calls[0].function.name == "get_weather"
+
+
+async def test_list_chat_completion_messages_ignores_unsupported_file_content_parts():
+    """Multipart file parts are ignored instead of failing the listing response."""
+    store = await create_test_store()
+    completion_id = "chatcmpl-msg-file"
+    completion = create_test_chat_completion(completion_id, int(time.time()))
+    input_messages = [
+        OpenAIUserMessageParam(
+            role="user",
+            content=[
+                OpenAIFile(
+                    type="file",
+                    file=OpenAIFileFile(file_id="file-123"),
+                )
+            ],
+        )
+    ]
+    await store.store_chat_completion(completion, input_messages)
+    await store.flush()
+
+    result = await store.list_chat_completion_messages(completion_id)
+
+    assert result.data[0].content is None
+    assert result.data[0].content_parts is None
+
+
+async def test_list_chat_completion_messages_preserves_supported_parts_from_mixed_content():
+    """Mixed multipart content keeps supported parts and drops unsupported ones."""
+    store = await create_test_store()
+    completion_id = "chatcmpl-msg-mixed"
+    completion = create_test_chat_completion(completion_id, int(time.time()))
+    input_messages = [
+        OpenAIUserMessageParam(
+            role="user",
+            content=[
+                OpenAIChatCompletionContentPartTextParam(type="text", text="hello"),
+                OpenAIFile(
+                    type="file",
+                    file=OpenAIFileFile(file_id="file-123"),
+                ),
+            ],
+        )
+    ]
+    await store.store_chat_completion(completion, input_messages)
+    await store.flush()
+
+    result = await store.list_chat_completion_messages(completion_id)
+
+    assert result.data[0].content is None
+    assert result.data[0].content_parts is not None
+    assert len(result.data[0].content_parts) == 1
+    assert result.data[0].content_parts[0].type == "text"
+    assert result.data[0].content_parts[0].text == "hello"
 
 
 async def test_list_chat_completion_messages_after_last_message_returns_empty_page():
