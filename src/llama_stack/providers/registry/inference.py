@@ -121,7 +121,7 @@ def available_providers() -> list[ProviderSpec]:
             api=Api.inference,
             adapter_type="bedrock",
             provider_type="remote::bedrock",
-            pip_packages=[],
+            pip_packages=["boto3"],
             module="llama_stack.providers.remote.inference.bedrock",
             config_class="llama_stack.providers.remote.inference.bedrock.BedrockConfig",
             provider_data_validator="llama_stack.providers.remote.inference.bedrock.config.BedrockProviderDataValidator",
@@ -213,10 +213,9 @@ Authentication Setup:
 Option 1 (Recommended): gcloud auth application-default login
 Option 2: Set GOOGLE_APPLICATION_CREDENTIALS to service account key path
 
-Available Models:
-- vertex_ai/gemini-2.0-flash
-- vertex_ai/gemini-2.5-flash
-- vertex_ai/gemini-2.5-pro""",
+Models are automatically discovered from your Vertex AI project at startup.
+Model identifiers use the full publisher path (e.g. vertexai/publishers/google/models/gemini-2.5-flash).
+Short names like vertexai/gemini-2.5-flash also work in API requests.""",
         ),
         RemoteProviderSpec(
             api=Api.inference,

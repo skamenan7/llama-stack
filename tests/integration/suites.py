@@ -116,12 +116,12 @@ SETUP_DEFINITIONS: dict[str, Setup] = {
     "bedrock": Setup(
         name="bedrock",
         description=(
-            "AWS Bedrock via OpenAI-compatible Mantle API (OpenAI GPT-OSS; "
+            "AWS Bedrock via OpenAI-compatible API (OpenAI GPT-OSS; "
             "see AWS Chat Completions docs). No default vision model — GPT-OSS is text-only; "
             "tests that require vision_model_id skip unless you pass --vision-model."
         ),
         defaults={
-            "text_model": "bedrock/openai.gpt-oss-20b",
+            "text_model": "bedrock/openai.gpt-oss-20b-1:0",
             "embedding_model": "sentence-transformers/nomic-ai/nomic-embed-text-v1.5",
             "embedding_dimension": 768,
         },
@@ -203,6 +203,15 @@ SETUP_DEFINITIONS: dict[str, Setup] = {
         description="Llama models from https://api.llama.com",
         defaults={
             "text_model": "llama_openai_compat/Llama-3.3-8B-Instruct",
+        },
+    ),
+    "gemini": Setup(
+        name="gemini",
+        description="Google Gemini models via GenAI API",
+        defaults={
+            "text_model": "gemini/gemini-2.5-flash-lite",
+            "embedding_model": "gemini/text-embedding-004",
+            "embedding_dimension": 768,
         },
     ),
     "groq": Setup(
@@ -292,7 +301,7 @@ SUITE_DEFINITIONS: dict[str, Suite] = {
     "interactions": Suite(
         name="interactions",
         roots=["tests/integration/interactions"],
-        default_setup="ollama",
+        default_setup="gemini",
     ),
     # Bedrock-specific tests with pre-recorded responses (no live API calls in CI)
     "bedrock": Suite(

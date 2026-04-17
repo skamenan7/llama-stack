@@ -184,6 +184,63 @@ async def register_resources(run_config: StackConfig, impls: dict[Api, Any]) -> 
                 if not obj.provider_id or obj.provider_id == "__disabled__":
                     logger.debug("Skipping registration for disabled provider", resource=rsrc.capitalize())
                     continue
+                # Handle provider_id="all" - register unprefixed alias using first active provider
+                if obj.provider_id == "all":
+                    if rsrc != "models":
+                        logger.warning(
+                            "provider_id=all is only supported for models, skipping",
+                            resource=rsrc.capitalize(),
+                        )
+                        continue
+                    # Get all active inference providers from the routing table
+                    routing_table = impls[api]
+                    if not hasattr(routing_table, "impls_by_provider_id"):
+                        logger.warning(
+                            "Cannot resolve provider_id=all - routing table has no providers",
+                            resource=rsrc.capitalize(),
+                        )
+                        continue
+                    provider_ids = list(routing_table.impls_by_provider_id.keys())
+                    if not provider_ids:
+                        logger.warning(
+                            "Cannot resolve provider_id=all - no active providers found",
+                            resource=rsrc.capitalize(),
+                        )
+                        continue
+                    # Use first active provider for the unprefixed alias
+                    first_provider = provider_ids[0]
+                    logger.info(
+                        "Registering unprefixed model alias using first active inference provider",
+                        model_id=obj.model_id,
+                        provider_id=first_provider,
+                        available_providers=provider_ids,
+                    )
+
+                    # Mark this as an unprefixed alias in metadata
+                    metadata = (obj.metadata or {}).copy()
+                    metadata["_unprefixed_alias"] = True
+                    obj_copy = obj.model_copy(
+                        update={
+                            "provider_id": first_provider,
+                            "metadata": metadata,
+                        }
+                    )
+
+                    if request_class is not None:
+                        request = request_class(**obj_copy.model_dump())
+                        try:
+                            await method(request)
+                        except Exception as e:
+                            logger.warning(
+                                "Failed to register unprefixed model alias",
+                                model_id=obj_copy.model_id,
+                                provider_id=first_provider,
+                                error=str(e),
+                            )
+                    else:
+                        await method(**{k: getattr(obj_copy, k) for k in obj_copy.model_dump().keys()})
+                    continue
+
                 logger.debug(
                     "Registering resource for provider",
                     resource=rsrc.capitalize(),
@@ -487,7 +544,9 @@ def replace_env_vars(config: Any, path: str = "") -> Any:
         return result
 
     elif isinstance(config, list):
-        result = []
+        # result is assigned as list here but dict/str in other branches.
+        # Mypy cannot track that only one branch executes.
+        result = []  # type: ignore[assignment]
         for i, v in enumerate(config):
             try:
                 # Special handling for providers: first resolve the provider_id to check if provider
@@ -535,7 +594,8 @@ def replace_env_vars(config: Any, path: str = "") -> Any:
                         continue
 
                 # Normal processing
-                result.append(replace_env_vars(v, f"{path}[{i}]"))
+                # result is a list here, but mypy sees it could be dict/str
+                result.append(replace_env_vars(v, f"{path}[{i}]"))  # type: ignore[attr-defined]
             except EnvVarError as e:
                 raise EnvVarError(e.var_name, e.path) from None
         return result
@@ -587,10 +647,12 @@ def replace_env_vars(config: Any, path: str = "") -> Any:
             return os.path.expanduser(value)
 
         try:
-            result = re.sub(pattern, get_env_var, config)
+            # re.sub returns str, but result could be dict/list in other branches
+            result = re.sub(pattern, get_env_var, config)  # type: ignore[assignment]
             # Only apply type conversion if substitution actually happened
             if result != config:
-                return _convert_string_to_proper_type(result)
+                # result is str here but mypy sees it could be dict/list
+                return _convert_string_to_proper_type(result)  # type: ignore[arg-type]
             return result
         except EnvVarError as e:
             raise EnvVarError(e.var_name, e.path) from None
@@ -635,21 +697,23 @@ def cast_distro_name_to_string(config_dict: dict[str, Any]) -> dict[str, Any]:
 
 def add_internal_implementations(impls: dict[Api, Any], config: StackConfig, policy: list) -> None:
     """Add internal implementations (inspect, providers, admin, etc.) to the implementations dictionary."""
+    # deps expects dict[str, Any] but receives dict[Api, Any].
+    # Api is an enum, runtime compatible as dict key.
     inspect_impl = DistributionInspectImpl(
         DistributionInspectConfig(config=config),
-        deps=impls,
+        deps=impls,  # type: ignore[arg-type]
     )
     impls[Api.inspect] = inspect_impl
 
     providers_impl = ProviderImpl(
         ProviderImplConfig(config=config),
-        deps=impls,
+        deps=impls,  # type: ignore[arg-type]
     )
     impls[Api.providers] = providers_impl
 
     admin_impl = AdminImpl(
         AdminImplConfig(config=config),
-        deps=impls,
+        deps=impls,  # type: ignore[arg-type]
     )
     impls[Api.admin] = admin_impl
 
@@ -747,7 +811,8 @@ class Stack:
         assert self.impls is not None, "Must call initialize() before starting"
 
         global REGISTRY_REFRESH_TASK
-        REGISTRY_REFRESH_TASK = asyncio.create_task(refresh_registry_task(self.impls))
+        interval = self.run_config.server.registry_refresh_interval_seconds
+        REGISTRY_REFRESH_TASK = asyncio.create_task(refresh_registry_task(self.impls, interval))
 
         def cb(task):
             import traceback
@@ -810,13 +875,13 @@ async def refresh_registry_once(impls: dict[Api, Any]):
         await routing_table.refresh()
 
 
-async def refresh_registry_task(impls: dict[Api, Any]):
+async def refresh_registry_task(impls: dict[Api, Any], interval_seconds: int = REGISTRY_REFRESH_INTERVAL_SECONDS):
     """Background task that periodically refreshes routing table registries."""
-    logger.info("starting registry refresh task")
+    logger.info("starting registry refresh task", interval_seconds=interval_seconds)
     while True:
         await refresh_registry_once(impls)
 
-        await asyncio.sleep(REGISTRY_REFRESH_INTERVAL_SECONDS)
+        await asyncio.sleep(interval_seconds)
 
 
 def get_stack_run_config_from_distro(distro: str) -> StackConfig:
@@ -851,7 +916,8 @@ def run_config_from_dynamic_config_spec(
     provider_registry = get_provider_registry() if provider_registry is None else provider_registry
 
     distro_dir = distro_dir or Path(tempfile.mkdtemp())
-    provider_configs_by_api = {}
+    # Explicit type annotation for better type inference in the loop below
+    provider_configs_by_api: dict[str, Any] = {}
     for api_provider in api_providers:
         if "=" not in api_provider:
             raise ValueError(
