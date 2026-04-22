@@ -127,9 +127,9 @@
     },
     "conformance": {
       "score": 91.8,
-      "issues": 186,
+      "issues": 185,
       "missing_properties": 101,
-      "total_problems": 287,
+      "total_problems": 286,
       "total_properties": 3487
     }
   },
@@ -699,8 +699,8 @@
       ]
     },
     "Chat": {
-      "score": 98.2,
-      "issues": 7,
+      "score": 98.4,
+      "issues": 6,
       "missing_properties": 1,
       "total_properties": 449,
       "endpoints": [
@@ -786,16 +786,10 @@
                   "details": [
                     "Type added: ['object']"
                   ]
-                },
-                {
-                  "property": "GET.responses.200.content.application/json.properties.object",
-                  "details": [
-                    "Default changed: list -> None"
-                  ]
                 }
               ],
               "missing_count": 0,
-              "issues_count": 2
+              "issues_count": 1
             }
           ]
         }

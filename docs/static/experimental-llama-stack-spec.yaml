@@ -7197,6 +7197,7 @@ components:
           description: The object type.
           enum:
           - list
+          default: list
       type: object
       required:
       - data
