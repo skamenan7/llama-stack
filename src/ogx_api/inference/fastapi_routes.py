@@ -208,7 +208,7 @@ def create_router(impl: Inference) -> APIRouter:
         return await impl.get_chat_completion(request)
 
     @router.get(
-        f"/{LLAMA_STACK_API_V1}/chat/completions/{{completion_id}}/messages",
+        f"/{OGX_API_V1}/chat/completions/{{completion_id}}/messages",
         response_model=ChatCompletionMessageList,
         summary="List chat completion messages.",
         description="Get the messages in a stored chat completion.",
