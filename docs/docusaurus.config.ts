@@ -208,7 +208,7 @@ const config: Config = {
           items: [
             {
               label: 'Discord',
-              href: 'https://join.slack.com/t/ogx-ai',
+              href: 'https://discord.gg/ZAFjsrcw',
             },
             {
               label: 'Issues',
@@ -223,6 +223,10 @@ const config: Config = {
         {
           title: 'Resources',
           items: [
+            {
+              label: 'Brand',
+              to: '/brand',
+            },
             {
               label: 'GitHub',
               href: 'https://github.com/ogx-ai/ogx',
