@@ -10,7 +10,7 @@ All data below is derived from:
 
 ## CI Lanes (Default)
 
-These 16 jobs run on every PR via `ci_matrix.json`:
+These 16 default jobs are defined in `ci_matrix.json`. They all run in merge queue, while PR-triggered execution depends on which files changed:
 
 | Suite | Setup | Notes |
 |-------|-------|-------|
