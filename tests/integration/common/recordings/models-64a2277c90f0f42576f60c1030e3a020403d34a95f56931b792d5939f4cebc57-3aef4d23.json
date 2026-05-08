@@ -17,7 +17,7 @@
         "__type__": "openai.types.model.Model",
         "__data__": {
           "id": "deepseek-r1:1.5b",
-          "created": 1778258554,
+          "created": 1778259326,
           "object": "model",
           "owned_by": "library"
         }
