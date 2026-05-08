@@ -58,7 +58,7 @@ Weekly scheduled jobs (Sunday 00:01 UTC):
 | `vllm` | `vllm/Qwen/Qwen3-0.6B` | — | `sentence-transformers/nomic-embed-text-v1.5` |
 | `ollama` | `ollama/llama3.2:3b-instruct-fp16` | — | `ollama/nomic-embed-text:v1.5` |
 | `ollama-vision` | — | `ollama/llama3.2-vision:11b` | `ollama/nomic-embed-text:v1.5` |
-| `ollama-reasoning` | `ollama/gpt-oss:20b` | — | — |
+| `ollama-reasoning` | `ollama/deepseek-r1:1.5b` | — | — |
 
 ### Tier 3 — Supplementary
 
