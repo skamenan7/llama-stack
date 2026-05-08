@@ -27,7 +27,7 @@ These 16 default jobs are defined in `ci_matrix.json`. They all run in merge que
 | `base-vllm-subset` | `vllm` | Inference tests only |
 | `vllm-reasoning` | `vllm` | `test_reasoning.py` only |
 | `ollama-reasoning` | `ollama-reasoning` | |
-| `messages` | `ollama-reasoning` | Messages API translation path |
+| `messages` | `ollama` | Messages API native passthrough path |
 | `messages-openai` | `gpt` | Messages API via OpenAI (translation codepath) |
 | `interactions` | `gemini` | Gemini Interactions API |
 
