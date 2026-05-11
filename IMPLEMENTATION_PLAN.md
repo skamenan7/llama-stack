@@ -30,8 +30,8 @@ This document outlines the step-by-step implementation plan for adding GPU-enabl
 
 **Actions**:
 
-- [ ] Create or identify VPC in us-east-2 and us-east-1
-- [ ] Create subnets (3 AZs per region = 6 total)
+- [ ] Create or identify VPC in us-east-2
+- [ ] Create subnets in us-east-2 (3 AZs total)
 - [ ] Configure security groups (SSH, HTTPS, HTTP)
 - [ ] Set up IAM role for OIDC authentication
 - [ ] Document all IDs and add to GitHub repo variables
@@ -39,16 +39,11 @@ This document outlines the step-by-step implementation plan for adding GPU-enabl
 **Repository Variables** (add via Settings > Secrets and variables > Actions):
 
 ```text
-SUBNET_US_EAST_2A=subnet-xxxxx
-SUBNET_US_EAST_2B=subnet-xxxxx
-SUBNET_US_EAST_2C=subnet-xxxxx
-SUBNET_US_EAST_1A=subnet-xxxxx
-SUBNET_US_EAST_1B=subnet-xxxxx
-SUBNET_US_EAST_1C=subnet-xxxxx
+SUBNET_US_EAST_2A=subnet-02d230cffd9385bd4
+SUBNET_US_EAST_2B=subnet-0d64189301640b8bd
+SUBNET_US_EAST_2C=subnet-03064660effeacdb5
 AWS_EC2_AMI_US_EAST_2=ami-xxxxx
-AWS_EC2_AMI_US_EAST_1=ami-xxxxx
-SECURITY_GROUP_ID_US_EAST_2=sg-xxxxx
-SECURITY_GROUP_ID_US_EAST_1=sg-xxxxx
+SECURITY_GROUP_ID_US_EAST_2=sg-06bd19db0fd957ed1
 ```
 
 **Repository Secrets**:
@@ -76,7 +71,7 @@ RELEASE_PAT=ghp_xxxxx (GitHub PAT with 'repo' scope)
 - [ ] Install system packages (gcc, g++, make, git, python3.12, python3.12-devel)
 - [ ] Configure CUDA environment variables
 - [ ] Verify with `nvidia-smi`
-- [ ] Create AMI in both us-east-2 and us-east-1
+- [ ] Create AMI in us-east-2
 - [ ] Document AMI IDs
 
 **Alternative**: Use AWS Deep Learning AMI and customize
@@ -103,8 +98,7 @@ docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi
 
 **Key Features**:
 
-- Multi-region fallback (us-east-2 → us-east-1)
-- Multi-AZ fallback (3 AZs per region)
+- Multi-AZ fallback within us-east-2
 - Dynamic runner label generation
 - Resource tagging for cost tracking
 - Error handling and retries
@@ -266,7 +260,7 @@ Add GPU matrix:
 
 2. **Failure Scenarios**:
    - [ ] Capacity issue → verify fallback to us-east-2b
-   - [ ] Region capacity issue → verify fallback to us-east-1
+   - [ ] Capacity issue → verify fallback to another us-east-2 subnet/AZ
    - [ ] Test failure → verify cleanup still happens
    - [ ] Manual cancellation → verify cleanup
 
@@ -465,7 +459,7 @@ Add GPU matrix:
 
 ### Risk 1: EC2 Capacity Issues
 
-**Mitigation**: Multi-region, multi-AZ fallback (9 AZs total)
+**Mitigation**: Multi-AZ fallback within us-east-2
 **Probability**: Low (<5% with fallback)
 
 ### Risk 2: Cost Overruns
@@ -507,7 +501,7 @@ Add GPU matrix:
 
 ### Reliability
 
-- [ ] Multi-region fallback prevents <2% of failures
+- [ ] Multi-AZ fallback prevents <2% of failures
 - [ ] 100% runner cleanup rate
 - [ ] Zero orphaned instances over 30 days
 

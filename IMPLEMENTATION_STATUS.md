@@ -13,7 +13,7 @@
 
 - ✅ Manual workflow_dispatch trigger
 - ✅ OIDC authentication for AWS (no long-lived credentials!)
-- ✅ Multi-region/AZ fallback strategy
+- ✅ Multi-AZ fallback strategy within us-east-2
 - ✅ Three-job pattern (launch → test → cleanup)
 - ✅ Security hardening (`permissions: {}` on test job)
 - ✅ Always-cleanup guarantee (`if: always()`)
@@ -102,13 +102,6 @@
 - [ ] Configure internet gateway and routing
 - [ ] Create security group
 
-**us-east-1 (Fallback)**:
-
-- [ ] Create or identify VPC
-- [ ] Create 3 subnets (us-east-1a, 1b, 1c)
-- [ ] Configure internet gateway and routing
-- [ ] Create security group
-
 **Guide**: `AWS_SETUP_GUIDE.md` Step 2
 
 #### 3. Create GPU-Enabled AMI ⏳
@@ -124,11 +117,6 @@
 - [ ] Install Docker with NVIDIA Container Toolkit
 - [ ] Install Python 3.12
 - [ ] Create AMI
-
-**us-east-1**:
-
-- [ ] Copy AMI from us-east-2
-- [ ] Verify AMI works
 
 **Guide**: `AWS_SETUP_GUIDE.md` Step 3
 
@@ -154,12 +142,11 @@
 
 **Variables** (Settings > Secrets and variables > Actions > Variables):
 
-- [ ] `SUBNET_US_EAST_2A`, `SUBNET_US_EAST_2B`, `SUBNET_US_EAST_2C`
-- [ ] `SUBNET_US_EAST_1A`, `SUBNET_US_EAST_1B`, `SUBNET_US_EAST_1C`
+- [ ] `SUBNET_US_EAST_2A`: `subnet-02d230cffd9385bd4`
+- [ ] `SUBNET_US_EAST_2B`: `subnet-0d64189301640b8bd`
+- [ ] `SUBNET_US_EAST_2C`: `subnet-03064660effeacdb5`
 - [ ] `AWS_EC2_AMI_US_EAST_2`
-- [ ] `AWS_EC2_AMI_US_EAST_1`
-- [ ] `SECURITY_GROUP_ID_US_EAST_2`
-- [ ] `SECURITY_GROUP_ID_US_EAST_1`
+- [ ] `SECURITY_GROUP_ID_US_EAST_2`: `sg-06bd19db0fd957ed1`
 
 **Guide**: `AWS_SETUP_GUIDE.md` Step 5
 
@@ -192,7 +179,7 @@
 
 - [ ] Test manual cancellation (verify cleanup)
 - [ ] Test job failure (verify cleanup)
-- [ ] Verify multi-region fallback (if capacity issue)
+- [ ] Verify alternate us-east-2 subnet/AZ fallback (if capacity issue)
 
 #### 3. Performance Validation ⏳
 

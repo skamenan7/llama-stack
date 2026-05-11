@@ -98,7 +98,7 @@ Create a file `permissions-policy.json`:
       "Resource": "*",
       "Condition": {
         "StringEquals": {
-          "aws:RequestedRegion": ["us-east-1", "us-east-2"]
+          "aws:RequestedRegion": ["us-east-2"]
         }
       }
     },
@@ -213,7 +213,8 @@ aws ec2 create-subnet \
   --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=llama-stack-gpu-2c}]'
 ```
 
-Repeat for us-east-1 with appropriate CIDR blocks.
+This first version is scoped to `us-east-2` only. If a second region is added later,
+repeat the same subnet pattern there.
 
 ### 2.4 Configure Route Table
 
@@ -355,12 +356,6 @@ aws ec2 create-image \
   --description "Ubuntu 22.04 with NVIDIA drivers, CUDA 12.4, Docker, Python 3.12" \
   --tag-specifications 'ResourceType=image,Tags=[{Key=Name,Value=llama-stack-gpu-ami}]'
 
-# Copy AMI to us-east-1
-aws ec2 copy-image \
-  --region us-east-1 \
-  --source-region us-east-2 \
-  --source-image-id ami-xxxxx \
-  --name "llama-stack-gpu-ubuntu-2204-cuda-12.4-$(date +%Y%m%d)"
 ```
 
 ### 3.4 Test AMI
@@ -413,19 +408,11 @@ Click **New repository variable** for each:
 
 **us-east-2**:
 
-- `SUBNET_US_EAST_2A`: `subnet-xxxxx`
-- `SUBNET_US_EAST_2B`: `subnet-xxxxx`
-- `SUBNET_US_EAST_2C`: `subnet-xxxxx`
+- `SUBNET_US_EAST_2A`: `subnet-02d230cffd9385bd4`
+- `SUBNET_US_EAST_2B`: `subnet-0d64189301640b8bd`
+- `SUBNET_US_EAST_2C`: `subnet-03064660effeacdb5`
 - `AWS_EC2_AMI_US_EAST_2`: `ami-xxxxx`
-- `SECURITY_GROUP_ID_US_EAST_2`: `sg-xxxxx`
-
-**us-east-1**:
-
-- `SUBNET_US_EAST_1A`: `subnet-xxxxx`
-- `SUBNET_US_EAST_1B`: `subnet-xxxxx`
-- `SUBNET_US_EAST_1C`: `subnet-xxxxx`
-- `AWS_EC2_AMI_US_EAST_1`: `ami-xxxxx`
-- `SECURITY_GROUP_ID_US_EAST_1`: `sg-xxxxx`
+- `SECURITY_GROUP_ID_US_EAST_2`: `sg-06bd19db0fd957ed1`
 
 ## Step 6: Test the Setup
 
@@ -562,7 +549,7 @@ aws budgets create-budget \
 The IAM role only has permissions to:
 
 - Launch/terminate EC2 instances
-- Only in us-east-1 and us-east-2 regions
+- Only in us-east-2 for the first version
 - Only for llama-stack repository
 
 ### 2. No Long-Lived Credentials

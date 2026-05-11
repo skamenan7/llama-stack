@@ -55,7 +55,7 @@ The workflow will:
 ┌─────────────────────────────────────────────────┐
 │  Job 1: Start GPU EC2 Runner                    │
 │  - AWS OIDC authentication (no long-lived keys!)│
-│  - Multi-region/AZ fallback                     │
+│  - Multi-AZ fallback in us-east-2               │
 │  - Launch g6.2xlarge with GPU AMI               │
 │  - Register as GitHub Actions runner            │
 └────────────────┬────────────────────────────────┘
@@ -131,7 +131,7 @@ Attach this policy to the role:
       "Resource": "*",
       "Condition": {
         "StringEquals": {
-          "aws:RequestedRegion": ["us-east-1", "us-east-2"]
+          "aws:RequestedRegion": ["us-east-2"]
         }
       }
     }
@@ -141,23 +141,17 @@ Attach this policy to the role:
 
 #### 2. VPC and Subnets
 
-You need subnets in two regions for fallback:
+You need subnets in `us-east-2` for the first version:
 
 **us-east-2 (Primary)**:
 
-- us-east-2a: subnet-xxxxx
-- us-east-2b: subnet-xxxxx
-- us-east-2c: subnet-xxxxx
-
-**us-east-1 (Fallback)**:
-
-- us-east-1a: subnet-xxxxx
-- us-east-1b: subnet-xxxxx
-- us-east-1c: subnet-xxxxx
+- us-east-2a: `subnet-02d230cffd9385bd4`
+- us-east-2b: `subnet-0d64189301640b8bd`
+- us-east-2c: `subnet-03064660effeacdb5`
 
 #### 3. Security Groups
 
-Create security groups in both regions with:
+Create a security group in `us-east-2` with:
 
 **Inbound Rules**:
 
@@ -170,7 +164,7 @@ Create security groups in both regions with:
 
 #### 4. GPU-Enabled AMI
 
-Create AMIs in both regions with:
+Create an AMI in `us-east-2` with:
 
 - Base OS: Amazon Linux 2023 or Ubuntu 22.04
 - NVIDIA drivers
@@ -195,19 +189,11 @@ Add these to **Settings > Secrets and variables > Actions > Variables**:
 
 **us-east-2**:
 
-- `SUBNET_US_EAST_2A`: subnet-xxxxx
-- `SUBNET_US_EAST_2B`: subnet-xxxxx
-- `SUBNET_US_EAST_2C`: subnet-xxxxx
+- `SUBNET_US_EAST_2A`: `subnet-02d230cffd9385bd4`
+- `SUBNET_US_EAST_2B`: `subnet-0d64189301640b8bd`
+- `SUBNET_US_EAST_2C`: `subnet-03064660effeacdb5`
 - `AWS_EC2_AMI_US_EAST_2`: ami-xxxxx
-- `SECURITY_GROUP_ID_US_EAST_2`: sg-xxxxx
-
-**us-east-1**:
-
-- `SUBNET_US_EAST_1A`: subnet-xxxxx
-- `SUBNET_US_EAST_1B`: subnet-xxxxx
-- `SUBNET_US_EAST_1C`: subnet-xxxxx
-- `AWS_EC2_AMI_US_EAST_1`: ami-xxxxx
-- `SECURITY_GROUP_ID_US_EAST_1`: sg-xxxxx
+- `SECURITY_GROUP_ID_US_EAST_2`: `sg-06bd19db0fd957ed1`
 
 ## Security
 
@@ -268,7 +254,7 @@ The cleanup job always runs (`if: always()`):
 
 **Problem**: "InsufficientInstanceCapacity" error
 
-**Solution**: The workflow automatically tries fallback regions/AZs. If all fail:
+**Solution**: The workflow automatically tries fallback subnet/AZ placements in `us-east-2`. If all fail:
 
 1. Check AWS Service Health Dashboard for capacity issues
 2. Try a different instance type (g5.2xlarge instead of g6.2xlarge)
