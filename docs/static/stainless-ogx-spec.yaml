@@ -2087,7 +2087,7 @@ paths:
           title: Identifier
         description: The identifier of the shield to unregister.
       deprecated: true
-  /v1/tools:
+  /v1/admin/tools:
     get:
       responses:
         '200':
@@ -2112,7 +2112,7 @@ paths:
       - Tools
       summary: List tools with optional tool group filter.
       description: List tools with optional tool group filter.
-      operationId: list_tools_v1_tools_get
+      operationId: list_tools_v1_admin_tools_get
       parameters:
       - name: toolgroup_id
         in: query
@@ -11847,6 +11847,11 @@ components:
             type: array
           - type: 'null'
           description: Tools (function declarations) available to the model.
+        previous_interaction_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: ID of a previous interaction to continue the conversation from.
         stream:
           anyOf:
           - type: boolean
