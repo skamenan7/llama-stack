@@ -1,4 +1,4 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
+# Copyright (c) The OGX Contributors.
 # All rights reserved.
 #
 # This source code is licensed under the terms described in the LICENSE file in
@@ -6,17 +6,18 @@
 
 """Unit tests for tool runtime metrics."""
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from llama_stack.core.routers.tool_runtime import ToolRuntimeRouter
-from llama_stack.telemetry.tool_runtime_metrics import (
+from ogx.core.routers.tool_runtime import ToolRuntimeRouter
+from ogx.telemetry.tool_runtime_metrics import (
     create_tool_metric_attributes,
     tool_duration,
     tool_invocations_total,
 )
-from llama_stack_api import ToolInvocationResult
+from ogx_api import ToolInvocationResult
 
 
 class TestToolMetricAttributes:
@@ -105,14 +106,14 @@ class TestToolMetricsConstants:
 
     def test_metric_names_follow_convention(self):
         """Test that metric names follow OpenTelemetry naming conventions."""
-        from llama_stack.telemetry.constants import (
+        from ogx.telemetry.constants import (
             TOOL_DURATION,
             TOOL_INVOCATIONS_TOTAL,
         )
 
-        # Should start with llama_stack prefix
-        assert TOOL_INVOCATIONS_TOTAL.startswith("llama_stack.")
-        assert TOOL_DURATION.startswith("llama_stack.")
+        # Should start with ogx prefix
+        assert TOOL_INVOCATIONS_TOTAL.startswith("ogx.")
+        assert TOOL_DURATION.startswith("ogx.")
 
         # Should include tool_runtime in the name
         assert "tool_runtime" in TOOL_INVOCATIONS_TOTAL
@@ -190,3 +191,25 @@ class TestToolRuntimeIntegration:
         mock_provider.invoke_tool.assert_called_once()
 
         # Note: Error metrics (status="error") would be recorded and exported
+
+    async def test_tool_runtime_metrics_cancelled_error(self):
+        """Test that cancelled tool invocations record error metrics correctly."""
+        mock_routing_table = MagicMock()
+
+        mock_provider = AsyncMock()
+        mock_provider.__provider_id__ = "brave-search::impl"
+        mock_provider.invoke_tool.side_effect = asyncio.CancelledError()
+
+        mock_routing_table.get_provider_impl = AsyncMock(return_value=mock_provider)
+        mock_routing_table.tool_to_toolgroup = {"web_search": "websearch"}
+
+        router = ToolRuntimeRouter(routing_table=mock_routing_table)
+
+        with pytest.raises(asyncio.CancelledError):
+            await router.invoke_tool(
+                tool_name="web_search",
+                kwargs={"query": "test query"},
+                authorization=None,
+            )
+
+        mock_provider.invoke_tool.assert_called_once()

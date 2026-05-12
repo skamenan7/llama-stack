@@ -1,4 +1,4 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
+# Copyright (c) The OGX Contributors.
 # All rights reserved.
 #
 # This source code is licensed under the terms described in the LICENSE file in
@@ -49,13 +49,14 @@ def _extract_and_fix_defs(schema: dict[str, Any], openapi_schema: dict[str, Any]
 def _ensure_json_schema_types_included(openapi_schema: dict[str, Any]) -> dict[str, Any]:
     """
     Ensure all registered schemas (decorated, explicit, and dynamic) are included in the OpenAPI schema.
-    Relies on llama_stack_api's registry instead of recursively importing every module.
+    Relies on ogx_api's registry instead of recursively importing every module.
     """
     _ensure_components_schemas(openapi_schema)
 
     from pydantic import TypeAdapter
 
-    from llama_stack_api.schema_utils import (
+    from ogx_api.schema_utils import (
+        get_json_schema_type_info,
         iter_dynamic_schema_types,
         iter_json_schema_types,
         iter_registered_schema_types,
@@ -80,7 +81,8 @@ def _ensure_json_schema_types_included(openapi_schema: dict[str, Any]) -> dict[s
 
     # Add @json_schema_type decorated models
     for model in iter_json_schema_types():
-        schema_name = getattr(model, "_llama_stack_schema_name", None) or getattr(model, "__name__", None)
+        schema_info = get_json_schema_type_info(model)
+        schema_name = schema_info.name if schema_info else getattr(model, "__name__", None)
         if not schema_name:
             continue
         if schema_name not in openapi_schema["components"]["schemas"]:

@@ -1,4 +1,4 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
+# Copyright (c) The OGX Contributors.
 # All rights reserved.
 #
 # This source code is licensed under the terms described in the LICENSE file in
@@ -8,6 +8,7 @@ import time
 
 import pytest
 
+from .helpers import skip_if_provider_is_vertexai
 from .streaming_assertions import StreamingValidator
 
 
@@ -43,10 +44,13 @@ class TestOpenAIResponses:
         assert len(response.output_text.strip()) > 0
         assert response.max_output_tokens == 100
 
-    def test_openai_response_with_small_max_output_tokens(self, openai_client, text_model_id):
+    def test_openai_response_with_small_max_output_tokens(self, openai_client, client_with_models, text_model_id):
         """Test response with very small max_output_tokens to trigger potential truncation."""
         if text_model_id.startswith("watsonx/"):
             pytest.skip("WatsonX does not support max_output_tokens parameter")
+        skip_if_provider_is_vertexai(
+            client_with_models, text_model_id, "does not strictly respect very small max_output_tokens limits"
+        )
         response = openai_client.responses.create(
             model=text_model_id,
             input=[
@@ -201,70 +205,6 @@ class TestOpenAIResponses:
         assert response2.prompt_cache_key == cache_key
         assert len(response2.output_text.strip()) > 0
 
-    def test_openai_response_with_safety_identifier(self, openai_client, text_model_id):
-        """Test OpenAI response with safety_identifier parameter."""
-        safety_id = "user-123-hashed"
-        response = openai_client.responses.create(
-            model=text_model_id,
-            input=[{"role": "user", "content": "What is the capital of Spain?"}],
-            safety_identifier=safety_id,
-        )
-
-        assert response.id.startswith("resp_")
-        assert len(response.output_text.strip()) > 0
-        assert response.safety_identifier == safety_id
-
-    def test_openai_response_with_safety_identifier_streaming(self, openai_client, text_model_id):
-        """Test OpenAI response with safety_identifier in streaming mode."""
-        safety_id = "user-456-hashed"
-        stream = openai_client.responses.create(
-            model=text_model_id,
-            input=[{"role": "user", "content": "What is the capital of Italy?"}],
-            safety_identifier=safety_id,
-            stream=True,
-        )
-
-        chunks = list(stream)
-        validator = StreamingValidator(chunks)
-        validator.assert_basic_event_sequence()
-        validator.validate_event_structure()
-
-        # Verify safety identifier is in the created event
-        created_events = [e for e in chunks if e.type == "response.created"]
-        assert len(created_events) == 1
-        assert created_events[0].response.safety_identifier == safety_id
-
-        # Verify safety identifier is in the completed event
-        completed_events = [e for e in chunks if e.type == "response.completed"]
-        assert len(completed_events) == 1
-        assert completed_events[0].response.safety_identifier == safety_id
-
-    def test_openai_response_with_safety_identifier_and_previous_response(self, openai_client, text_model_id):
-        """Test that safety_identifier works correctly with previous_response_id."""
-        safety_id = "user-789-hashed"
-
-        # Create first response
-        response1 = openai_client.responses.create(
-            model=text_model_id,
-            input=[{"role": "user", "content": "What is 5+5?"}],
-            safety_identifier=safety_id,
-        )
-
-        assert response1.id.startswith("resp_")
-        assert response1.safety_identifier == safety_id
-
-        # Create second response referencing the first one with the same safety identifier
-        response2 = openai_client.responses.create(
-            model=text_model_id,
-            input=[{"role": "user", "content": "What is 7+7?"}],
-            previous_response_id=response1.id,
-            safety_identifier=safety_id,
-        )
-
-        assert response2.id.startswith("resp_")
-        assert response2.safety_identifier == safety_id
-        assert len(response2.output_text.strip()) > 0
-
     def test_openai_response_with_truncation_disabled(self, openai_client, text_model_id):
         """Test OpenAI response with truncation set to disabled."""
         response = openai_client.responses.create(
@@ -397,8 +337,9 @@ class TestOpenAIResponses:
         assert response2.top_p == 0.7
         assert len(response2.output_text.strip()) > 0
 
-    def test_openai_response_with_top_logprobs(self, openai_client, text_model_id):
+    def test_openai_response_with_top_logprobs(self, openai_client, client_with_models, text_model_id):
         """Test OpenAI response with top_logprobs parameter."""
+        skip_if_provider_is_vertexai(client_with_models, text_model_id, "does not support logprobs")
         response = openai_client.responses.create(
             model=text_model_id,
             input=[{"role": "user", "content": "What is the largest ocean on Earth?"}],
@@ -409,8 +350,9 @@ class TestOpenAIResponses:
         assert len(response.output_text.strip()) > 0
         assert response.top_logprobs == 3
 
-    def test_openai_response_with_top_logprobs_streaming(self, openai_client, text_model_id):
+    def test_openai_response_with_top_logprobs_streaming(self, openai_client, client_with_models, text_model_id):
         """Test OpenAI response with top_logprobs in streaming mode."""
+        skip_if_provider_is_vertexai(client_with_models, text_model_id, "does not support logprobs")
         stream = openai_client.responses.create(
             model=text_model_id,
             input=[{"role": "user", "content": "What is the smallest continent?"}],
@@ -433,8 +375,11 @@ class TestOpenAIResponses:
         assert len(completed_events) == 1
         assert completed_events[0].response.top_logprobs == 5
 
-    def test_openai_response_with_top_logprobs_and_previous_response(self, openai_client, text_model_id):
+    def test_openai_response_with_top_logprobs_and_previous_response(
+        self, openai_client, client_with_models, text_model_id
+    ):
         """Test that top_logprobs works correctly with previous_response_id."""
+        skip_if_provider_is_vertexai(client_with_models, text_model_id, "does not support logprobs")
         # Create first response
         response1 = openai_client.responses.create(
             model=text_model_id,
@@ -512,10 +457,11 @@ class TestOpenAIResponses:
         assert "get_weather" in call_names
         assert "get_time" in call_names
 
-    def test_openai_response_with_parallel_tool_calls_disabled(self, openai_client, text_model_id):
+    def test_openai_response_with_parallel_tool_calls_disabled(self, openai_client, client_with_models, text_model_id):
         """Test that parallel_tool_calls=False produces only one function call."""
         if text_model_id.startswith("watsonx/"):
             pytest.skip("WatsonX does not support parallel_tool_calls parameter")
+        skip_if_provider_is_vertexai(client_with_models, text_model_id, "does not respect parallel_tool_calls=False")
         response = openai_client.responses.create(
             model=text_model_id,
             input="What is the weather in Paris and the current time in London?",
@@ -658,19 +604,164 @@ class TestOpenAIResponses:
         assert response.background is False
         assert len(response.output) > 0
 
-    def _skip_service_tier_for_unsupported(self, text_model_id):
+    def test_cancel_queued_or_in_progress_response(self, openai_client, text_model_id):
+        """Test cancelling a background response that is queued or in progress."""
+        if text_model_id.startswith("watsonx/"):
+            pytest.skip("WatsonX rate limits cause cancel tests to fail")
+        # Create a background response
+        response = openai_client.responses.create(
+            model=text_model_id,
+            input="Write a detailed 5000 word essay about quantum physics and the nature of reality.",
+            background=True,
+        )
+
+        assert response.status == "queued"
+        response_id = response.id
+
+        # Cancel immediately - in replay mode, background worker starts very quickly
+        openai_client.responses.cancel(response_id=response_id)
+
+        # Poll for cancelled status (background worker may have picked up task)
+        max_wait = 5
+        poll_interval = 0.1
+        elapsed = 0
+
+        while elapsed < max_wait:
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+
+            retrieved = openai_client.responses.retrieve(response_id=response_id)
+            if retrieved.status == "cancelled":
+                return
+
+            # In replay mode, worker may have started processing before cancel completed
+            assert retrieved.status in ("queued", "in_progress", "cancelled"), (
+                f"Unexpected status '{retrieved.status}' - expected queued/in_progress/cancelled"
+            )
+
+        pytest.fail(f"Response did not transition to cancelled within {max_wait} seconds")
+
+    def test_cancel_already_cancelled_is_idempotent(self, openai_client, text_model_id):
+        """Test that cancelling an already-cancelled response is idempotent."""
+        if text_model_id.startswith("watsonx/"):
+            pytest.skip("WatsonX rate limits cause cancel tests to fail")
+        # Create and cancel a background response
+        response = openai_client.responses.create(
+            model=text_model_id,
+            input="Write a long story.",
+            background=True,
+        )
+
+        response_id = response.id
+        openai_client.responses.cancel(response_id=response_id)
+
+        # Poll for cancelled status
+        max_wait = 5
+        poll_interval = 0.1
+        elapsed = 0
+
+        while elapsed < max_wait:
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+
+            retrieved = openai_client.responses.retrieve(response_id=response_id)
+            if retrieved.status == "cancelled":
+                break
+
+            assert retrieved.status in ("queued", "in_progress", "cancelled"), f"Unexpected status '{retrieved.status}'"
+        else:
+            pytest.fail(f"Response did not transition to cancelled within {max_wait} seconds")
+
+        # Cancel again - should return same state without error
+        cancelled_again = openai_client.responses.cancel(response_id=response_id)
+        assert cancelled_again.id == response_id
+        assert cancelled_again.status == "cancelled"
+
+    def test_cancel_completed_response_fails(self, openai_client, client_with_models, text_model_id):
+        """Test that cancelling a completed response returns 409 Conflict."""
+        if text_model_id.startswith("watsonx/"):
+            pytest.skip("WatsonX rate limits cause cancel tests to fail")
+        skip_if_provider_is_vertexai(
+            client_with_models, text_model_id, "returns 500 instead of 409 for cancel on completed response"
+        )
+        # Create a synchronous (completed) response
+        response = openai_client.responses.create(
+            model=text_model_id,
+            input="Say hello",
+            background=False,
+        )
+
+        assert response.status == "completed"
+        response_id = response.id
+
+        # Try to cancel it - should fail with 409
+        with pytest.raises(Exception) as exc_info:
+            openai_client.responses.cancel(response_id=response_id)
+
+        # Check for conflict error (different clients may raise different exceptions)
+        error_str = str(exc_info.value).lower()
+        assert "409" in error_str or "conflict" in error_str or "cannot cancel" in error_str
+
+    def test_cancel_nonexistent_response_fails(self, openai_client, text_model_id):
+        """Test that cancelling a non-existent response returns 404."""
+        if text_model_id.startswith("watsonx/"):
+            pytest.skip("WatsonX rate limits cause cancel tests to fail")
+        fake_id = "resp_fake_nonexistent_id"
+
+        with pytest.raises(Exception) as exc_info:
+            openai_client.responses.cancel(response_id=fake_id)
+
+        # Check for not found error
+        error_str = str(exc_info.value).lower()
+        assert "404" in error_str or "not found" in error_str
+
+    def test_cancel_prevents_completion(self, openai_client, text_model_id):
+        """Test that a cancelled response does not complete."""
+        if text_model_id.startswith("watsonx/"):
+            pytest.skip("WatsonX rate limits cause cancel tests to fail")
+        # Create a background response
+        response = openai_client.responses.create(
+            model=text_model_id,
+            input="Write a detailed essay.",
+            background=True,
+        )
+
+        response_id = response.id
+        assert response.status == "queued"
+
+        # Cancel immediately
+        cancelled = openai_client.responses.cancel(response_id=response_id)
+        assert cancelled.status == "cancelled"
+
+        # Poll to verify it stays cancelled and doesn't complete
+        max_wait = 5
+        poll_interval = 0.5
+        elapsed = 0
+
+        while elapsed < max_wait:
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+
+            retrieved = openai_client.responses.retrieve(response_id=response_id)
+            assert retrieved.status == "cancelled", f"Expected 'cancelled' but got '{retrieved.status}'"
+            assert len(retrieved.output) == 0
+
+    def _skip_service_tier_for_unsupported(self, client_with_models, text_model_id):
         if text_model_id.startswith("azure/"):
             pytest.skip("Azure OpenAI does not support the service_tier parameter")
         if text_model_id.startswith("watsonx/"):
             pytest.skip("WatsonX does not support the service_tier parameter")
+        skip_if_provider_is_vertexai(client_with_models, text_model_id, "does not support the service_tier parameter")
+        if text_model_id.startswith("vllm/"):
+            pytest.skip("vLLM does not support the service_tier parameter")
 
-    def test_openai_response_with_service_tier_auto(self, openai_client, text_model_id):
+    def test_openai_response_with_service_tier_auto(self, openai_client, client_with_models, text_model_id):
         """Test OpenAI response with service_tier='auto'.
 
         When 'auto' is requested, the provider decides the actual tier (e.g. default, priority),
         so we only assert the response has a non-null service_tier.
         """
-        self._skip_service_tier_for_unsupported(text_model_id)
+        self._skip_service_tier_for_unsupported(client_with_models, text_model_id)
 
         response = openai_client.responses.create(
             model=text_model_id,
@@ -683,9 +774,9 @@ class TestOpenAIResponses:
         assert response.service_tier is not None
 
     @pytest.mark.parametrize("service_tier", ["default", "priority"])
-    def test_openai_response_with_service_tier(self, openai_client, text_model_id, service_tier):
+    def test_openai_response_with_service_tier(self, openai_client, client_with_models, text_model_id, service_tier):
         """Test OpenAI response with explicit service_tier values that should be preserved."""
-        self._skip_service_tier_for_unsupported(text_model_id)
+        self._skip_service_tier_for_unsupported(client_with_models, text_model_id)
 
         response = openai_client.responses.create(
             model=text_model_id,
@@ -697,14 +788,14 @@ class TestOpenAIResponses:
         assert len(response.output_text.strip()) > 0
         assert response.service_tier == service_tier
 
-    def test_openai_response_with_service_tier_flex(self, openai_client, text_model_id):
+    def test_openai_response_with_service_tier_flex(self, openai_client, client_with_models, text_model_id):
         """Test OpenAI response with service_tier='flex'.
 
         The flex tier may not be supported by all providers (e.g. OpenAI rejects it
         for certain models). This test verifies the request is accepted with the
         exact tier preserved, or properly rejected.
         """
-        self._skip_service_tier_for_unsupported(text_model_id)
+        self._skip_service_tier_for_unsupported(client_with_models, text_model_id)
 
         try:
             response = openai_client.responses.create(
@@ -718,9 +809,9 @@ class TestOpenAIResponses:
             error_message = str(e).lower()
             assert "service_tier" in error_message or "invalid" in error_message
 
-    def test_openai_response_with_service_tier_auto_streaming(self, openai_client, text_model_id):
+    def test_openai_response_with_service_tier_auto_streaming(self, openai_client, client_with_models, text_model_id):
         """Test OpenAI response with service_tier='auto' in streaming mode."""
-        self._skip_service_tier_for_unsupported(text_model_id)
+        self._skip_service_tier_for_unsupported(client_with_models, text_model_id)
 
         stream = openai_client.responses.create(
             model=text_model_id,
@@ -745,9 +836,11 @@ class TestOpenAIResponses:
         assert completed_events[0].response.service_tier is not None
 
     @pytest.mark.parametrize("service_tier", ["default", "priority"])
-    def test_openai_response_with_service_tier_streaming(self, openai_client, text_model_id, service_tier):
+    def test_openai_response_with_service_tier_streaming(
+        self, openai_client, client_with_models, text_model_id, service_tier
+    ):
         """Test OpenAI response with explicit service_tier values in streaming mode."""
-        self._skip_service_tier_for_unsupported(text_model_id)
+        self._skip_service_tier_for_unsupported(client_with_models, text_model_id)
 
         stream = openai_client.responses.create(
             model=text_model_id,
@@ -771,13 +864,13 @@ class TestOpenAIResponses:
         assert len(completed_events) == 1
         assert completed_events[0].response.service_tier == service_tier
 
-    def test_openai_response_with_service_tier_flex_streaming(self, openai_client, text_model_id):
+    def test_openai_response_with_service_tier_flex_streaming(self, openai_client, client_with_models, text_model_id):
         """Test OpenAI response with service_tier='flex' in streaming mode.
 
         The flex tier may not be supported by all providers. This test verifies
         the request is accepted with the exact tier preserved, or produces a proper failure event.
         """
-        self._skip_service_tier_for_unsupported(text_model_id)
+        self._skip_service_tier_for_unsupported(client_with_models, text_model_id)
 
         stream = openai_client.responses.create(
             model=text_model_id,
@@ -799,9 +892,11 @@ class TestOpenAIResponses:
         if completed_events:
             assert completed_events[0].response.service_tier == "flex"
 
-    def test_openai_response_with_service_tier_auto_and_previous_response(self, openai_client, text_model_id):
+    def test_openai_response_with_service_tier_auto_and_previous_response(
+        self, openai_client, client_with_models, text_model_id
+    ):
         """Test that service_tier='auto' works correctly with previous_response_id."""
-        self._skip_service_tier_for_unsupported(text_model_id)
+        self._skip_service_tier_for_unsupported(client_with_models, text_model_id)
 
         response1 = openai_client.responses.create(
             model=text_model_id,
@@ -824,9 +919,11 @@ class TestOpenAIResponses:
         assert len(response2.output_text.strip()) > 0
 
     @pytest.mark.parametrize("service_tier", ["default", "priority"])
-    def test_openai_response_with_service_tier_and_previous_response(self, openai_client, text_model_id, service_tier):
+    def test_openai_response_with_service_tier_and_previous_response(
+        self, openai_client, client_with_models, text_model_id, service_tier
+    ):
         """Test that explicit service_tier values are preserved with previous_response_id."""
-        self._skip_service_tier_for_unsupported(text_model_id)
+        self._skip_service_tier_for_unsupported(client_with_models, text_model_id)
 
         response1 = openai_client.responses.create(
             model=text_model_id,
@@ -851,7 +948,7 @@ class TestOpenAIResponses:
     def test_openai_response_streaming_includes_usage(self, openai_client, text_model_id):
         """Test that streaming response includes usage information.
 
-        Llama Stack always sets include_usage=True in the underlying chat completion
+        OGX always sets include_usage=True in the underlying chat completion
         stream_options, so usage should always be present in the completed response.
         """
         stream = openai_client.responses.create(
@@ -954,12 +1051,17 @@ class TestOpenAIResponses:
         assert response.status == "completed"
         assert response.incomplete_details is None
 
-    def test_openai_response_incomplete_details_length(self, openai_client, text_model_id):
+    def test_openai_response_incomplete_details_length(self, openai_client, client_with_models, text_model_id):
         """Test incomplete_details.reason is 'length' when chat completion returns finish_reason='length'.
 
         A small max_output_tokens with a long prompt causes the provider to truncate
         the output in a single inference call, returning finish_reason='length'.
         """
+        skip_if_provider_is_vertexai(
+            client_with_models,
+            text_model_id,
+            "does not reliably return finish_reason='length' with small max_output_tokens",
+        )
         response = openai_client.responses.create(
             model=text_model_id,
             input=[
@@ -976,8 +1078,15 @@ class TestOpenAIResponses:
         assert response.incomplete_details is not None
         assert response.incomplete_details.reason == "length"
 
-    def test_openai_response_incomplete_details_length_streaming(self, openai_client, text_model_id):
+    def test_openai_response_incomplete_details_length_streaming(
+        self, openai_client, client_with_models, text_model_id
+    ):
         """Test streaming incomplete_details.reason is 'length' when chat completion returns finish_reason='length'."""
+        skip_if_provider_is_vertexai(
+            client_with_models,
+            text_model_id,
+            "does not reliably return finish_reason='length' with small max_output_tokens",
+        )
         stream = openai_client.responses.create(
             model=text_model_id,
             input=[

@@ -1,4 +1,4 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
+# Copyright (c) The OGX Contributors.
 # All rights reserved.
 #
 # This source code is licensed under the terms described in the LICENSE file in
@@ -15,9 +15,9 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from llama_stack.core.routers.vector_io import VectorIORouter
-from llama_stack.core.routing_tables.vector_stores import VectorStoresRoutingTable
-from llama_stack_api import (
+from ogx.core.routers.vector_io import VectorIORouter
+from ogx.core.routing_tables.vector_stores import VectorStoresRoutingTable
+from ogx_api import (
     ChunkMetadata,
     EmbeddedChunk,
     InsertChunksRequest,
@@ -63,6 +63,9 @@ def mock_provider():
         return_value=VectorStoreObject(
             id="vs_123",
             created_at=1234567890,
+            name="test",
+            usage_bytes=0,
+            status="completed",
             file_counts=VectorStoreFileCounts(completed=0, cancelled=0, failed=0, in_progress=0, total=0),
         )
     )
@@ -70,6 +73,9 @@ def mock_provider():
         return_value=VectorStoreObject(
             id="vs_123",
             created_at=1234567890,
+            name="test",
+            usage_bytes=0,
+            status="completed",
             file_counts=VectorStoreFileCounts(completed=0, cancelled=0, failed=0, in_progress=0, total=0),
         )
     )
@@ -85,11 +91,12 @@ def mock_provider():
             ),
             created_at=1234567890,
             status="completed",
+            usage_bytes=0,
             vector_store_id="vs_123",
         )
     )
     provider.openai_list_files_in_vector_store = AsyncMock(
-        return_value=VectorStoreListFilesResponse(data=[], has_more=False)
+        return_value=VectorStoreListFilesResponse(data=[], first_id="", last_id="", has_more=False)
     )
     provider.openai_retrieve_vector_store_file = AsyncMock(
         return_value=VectorStoreFileObject(
@@ -99,6 +106,7 @@ def mock_provider():
             ),
             created_at=1234567890,
             status="completed",
+            usage_bytes=0,
             vector_store_id="vs_123",
         )
     )
@@ -110,6 +118,7 @@ def mock_provider():
             ),
             created_at=1234567890,
             status="completed",
+            usage_bytes=0,
             vector_store_id="vs_123",
         )
     )
@@ -135,7 +144,7 @@ def mock_provider():
         )
     )
     provider.openai_list_files_in_vector_store_file_batch = AsyncMock(
-        return_value=VectorStoreFilesListInBatchResponse(data=[], has_more=False)
+        return_value=VectorStoreFilesListInBatchResponse(data=[], first_id="", last_id="", has_more=False)
     )
     provider.openai_cancel_vector_store_file_batch = AsyncMock(
         return_value=VectorStoreFileBatchObject(
@@ -166,8 +175,8 @@ def router_with_real_routing_table(mock_provider):
 
     # Mock get_object_by_identifier to return a mock vector store object
     # This is needed by assert_action_allowed to check permissions
-    from llama_stack.core.datatypes import VectorStoreWithOwner
-    from llama_stack_api import ResourceType
+    from ogx.core.datatypes import VectorStoreWithOwner
+    from ogx_api import ResourceType
 
     mock_vector_store = VectorStoreWithOwner(
         identifier="vs_123",

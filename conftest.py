@@ -1,4 +1,4 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
+# Copyright (c) The OGX Contributors.
 # All rights reserved.
 #
 # This source code is licensed under the terms described in the LICENSE file in
@@ -67,8 +67,6 @@ def pytest_configure(config):
     # Import plugins dynamically
     if running_unit:
         config.pluginmanager.import_plugin("tests.unit.fixtures")
-        # Load shared fixtures from openai_responses test file (used by conversations tests)
-        config.pluginmanager.import_plugin("tests.unit.providers.responses.builtin.test_openai_responses")
 
     if running_integration:
         config.pluginmanager.import_plugin("tests.integration.fixtures.common")
