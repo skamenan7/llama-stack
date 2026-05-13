@@ -14,15 +14,15 @@ These jobs come from the `default` section of `ci_matrix.json`. They all run in 
 | `bedrock` | `bedrock` | library client only; 3 roots |
 | `base` | `ollama-postgres` | server client only; Postgres store |
 | `vision` | `ollama-vision` | `test_vision_inference.py` only |
-| `responses` | `gpt` | `responses` only; Responses coverage: 133/133 (100%) |
-| `responses` | `azure` | `responses` only; Responses coverage: 114/133 (86%) |
-| `gpt-reasoning` | `gpt-reasoning` | 2 roots; Responses coverage: 133/133 (100%) |
-| `responses` | `watsonx` | `responses` only; Responses coverage: 56/133 (42%) |
-| `responses` | `vertexai` | `responses` only; Responses coverage: 73/133 (55%) |
-| `bedrock-responses` | `bedrock` | 6 roots; Responses coverage: 27/133 (20%) |
+| `responses` | `gpt` | `responses` only; Responses coverage: 130/130 (100%) |
+| `responses` | `azure` | `responses` only; Responses coverage: 111/130 (85%) |
+| `gpt-reasoning` | `gpt-reasoning` | 2 roots; Responses coverage: 130/130 (100%) |
+| `responses` | `watsonx` | `responses` only; Responses coverage: 53/130 (41%) |
+| `responses` | `vertexai` | `responses` only; Responses coverage: 70/130 (54%) |
+| `bedrock-responses` | `bedrock` | 6 roots; Responses coverage: 27/130 (21%) |
 | `base-vllm-subset` | `vllm` | `inference` only |
-| `vllm-reasoning` | `vllm` | `test_reasoning.py` only; Responses coverage: 3/133 (2%) |
-| `ollama-reasoning` | `ollama-reasoning` | 3 roots; Responses coverage: 2/133 (2%) |
+| `vllm-reasoning` | `vllm` | `test_reasoning.py` only; Responses coverage: 3/130 (2%) |
+| `ollama-reasoning` | `ollama-reasoning` | 3 roots; Responses coverage: 2/130 (2%) |
 | `messages` | `ollama` | `messages` only |
 | `messages-openai` | `gpt` | `messages` only |
 | `interactions` | `gemini` | `interactions` only |
@@ -45,8 +45,8 @@ Cron: `1 0 * * 0`
 | `gemini` | gemini/gemini-2.5-flash-lite | — | gemini/text-embedding-004 | — | `interactions` | — |
 | `gpt` | openai/gpt-4o | openai/gpt-4o | openai/text-embedding-3-small | — | `responses`, `messages-openai` | — |
 | `gpt-reasoning` | openai/o4-mini | — | — | — | `gpt-reasoning` | — |
-| `ollama` | ollama/llama3.2:3b-instruct-fp16 | — | ollama/nomic-embed-text:v1.5 | ollama/llama-guard3:1b | `base`, `messages` | — |
-| `ollama-postgres` | ollama/llama3.2:3b-instruct-fp16 | — | sentence-transformers/nomic-embed-text-v1.5 | ollama/llama-guard3:1b | `base` | — |
+| `ollama` | ollama/llama3.2:3b-instruct-fp16 | — | ollama/nomic-embed-text:v1.5 | — | `base`, `messages` | — |
+| `ollama-postgres` | ollama/llama3.2:3b-instruct-fp16 | — | sentence-transformers/nomic-embed-text-v1.5 | — | `base` | — |
 | `ollama-reasoning` | ollama/deepseek-r1:1.5b | — | — | — | `ollama-reasoning` | — |
 | `ollama-vision` | — | ollama/llama3.2-vision:11b | ollama/nomic-embed-text:v1.5 | — | `vision` | — |
 | `vertexai` | vertexai/publishers/google/models/gemini-2.0-flash | vertexai/publishers/google/models/gemini-2.0-flash | sentence-transformers/nomic-ai/nomic-embed-text-v1.5 | — | `responses` | — |
@@ -74,12 +74,12 @@ This section is derived from the same replay recordings used to generate `docs/d
 
 | Provider | Tested | Passing | Coverage |
 |----------|--------|---------|----------|
-| OpenAI | 133 | 133 | 100% |
-| Azure | 114 | 114 | 86% |
-| Vertex AI | 73 | 73 | 55% |
-| WatsonX | 56 | 56 | 42% |
-| Bedrock | 27 | 27 | 20% |
+| OpenAI | 130 | 130 | 100% |
+| Azure | 111 | 111 | 85% |
+| Vertex AI | 70 | 70 | 54% |
+| WatsonX | 53 | 53 | 41% |
+| Bedrock | 27 | 27 | 21% |
 | Ollama | 2 | 2 | 2% |
 | vLLM | 3 | 3 | 2% |
 
-Total Responses features counted: 133.
+Total Responses features counted: 130.
