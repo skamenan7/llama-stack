@@ -106,6 +106,16 @@ class SqlAlchemySqlStoreImpl(SqlStore):
                     await self._add_column_now(table_name, col_name, col_type, nullable)
             self._pending_columns.clear()
 
+    def reset_engine(self) -> None:
+        """Reset engine state so it will be recreated in the next event loop.
+
+        Called after Stack.initialize() completes in a temporary event loop,
+        before uvicorn's request-handling loop takes over. Does not dispose
+        the old engine because the temporary loop is already closed.
+        """
+        self._engine = None
+        self.async_session = None
+
     async def shutdown(self) -> None:
         """Dispose of the async engine and close all connections."""
         if self._engine:
@@ -449,7 +459,11 @@ class SqlAlchemySqlStoreImpl(SqlStore):
                 compiled_type = type_impl.compile(dialect=dialect)
 
                 nullable_clause = "" if nullable else " NOT NULL"
-                add_column_sql = text(f"ALTER TABLE {table} ADD COLUMN {column_name} {compiled_type}{nullable_clause}")
+                quoted_table = f'"{table}"' if not self._is_sqlite_backend else table
+                quoted_column = f'"{column_name}"' if not self._is_sqlite_backend else column_name
+                add_column_sql = text(
+                    f"ALTER TABLE {quoted_table} ADD COLUMN {quoted_column} {compiled_type}{nullable_clause}"
+                )
 
                 await conn.execute(add_column_sql)
         except Exception as e:
