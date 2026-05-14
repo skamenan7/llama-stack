@@ -39,7 +39,7 @@ PROVIDER_DISPLAY_NAMES = {
     "cerebras": "Cerebras",
     "tgi": "TGI",
     "llama-cpp-server": "llama.cpp server",
-    "llama-api": "Llama API",
+    "llama-openai-compat": "Llama API",
 }
 
 SETUP_PROVIDER_ALIASES = {
@@ -63,7 +63,17 @@ SETUP_PROVIDER_ALIASES = {
     "cerebras": "cerebras",
     "tgi": "tgi",
     "llama-cpp-server": "llama-cpp-server",
-    "llama-api": "llama-api",
+    "llama-api": "llama-openai-compat",
+}
+
+# These inference providers exist in the registry but do not have named
+# integration-test setups yet, so they are intentionally excluded from this doc.
+INTENTIONALLY_UNMAPPED_REGISTRY_PROVIDERS = {
+    "nvidia",
+    "oci",
+    "passthrough",
+    "runpod",
+    "sambanova",
 }
 
 
@@ -74,6 +84,26 @@ def _load_suite_data() -> tuple[dict[str, object], dict[str, object]]:
 
 def _load_ci_matrix() -> dict[str, object]:
     return json.loads(CI_MATRIX_JSON.read_text())
+
+
+def _load_registry_providers() -> set[str]:
+    from ogx.providers.registry.inference import available_providers
+
+    return {spec.adapter_type for spec in available_providers() if getattr(spec, "adapter_type", None)}
+
+
+def _validate_registry_provider_coverage() -> None:
+    registry_providers = _load_registry_providers()
+    mapped_providers = set(SETUP_PROVIDER_ALIASES.values())
+
+    missing_providers = sorted(registry_providers - mapped_providers - INTENTIONALLY_UNMAPPED_REGISTRY_PROVIDERS)
+    if missing_providers:
+        raise ValueError(
+            "Target model matrix provider mapping is out of sync with the inference registry, "
+            + "missing registry adapters: "
+            + ", ".join(f"`{provider}`" for provider in missing_providers)
+            + ". Update SETUP_PROVIDER_ALIASES or INTENTIONALLY_UNMAPPED_REGISTRY_PROVIDERS."
+        )
 
 
 def _collect_all_categories(provider_map: dict[str, object]) -> dict[str, list[str]]:
@@ -265,6 +295,7 @@ def _render_responses_summary(responses_total: int, responses_summary: dict[str,
 
 
 def generate_target_models_docs() -> str:
+    _validate_registry_provider_coverage()
     setup_definitions, suite_definitions = _load_suite_data()
     ci_matrix = _load_ci_matrix()
     responses_total, responses_summary = _responses_summary()
