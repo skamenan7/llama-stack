@@ -99,25 +99,26 @@ runs:
         python -c "import torch; print(f'CUDA device count: {torch.cuda.device_count()}')"
         vllm --version
 
-    - name: Pull model (if Ollama-style)
+    - name: Resolve model identifier
       shell: bash
       env:
         MODEL: ${{ inputs.model }}
       run: |
         source /tmp/vllm-env/bin/activate
 
-        # Check if model is in Ollama format (contains ":")
-        if [[ "$MODEL" == *":"* ]]; then
-          echo "Detected Ollama-style model: $MODEL"
-          echo "Note: vLLM will attempt to load from Ollama cache"
-          echo "Ensure Ollama has pulled this model or it exists in ~/.ollama/models"
+        LOAD_MODEL="$MODEL"
+        SERVED_MODEL_NAME="$MODEL"
 
-          # Optionally install ollama-python for model management
-          pip install ollama-python || true
-        else
-          echo "Detected HuggingFace-style model: $MODEL"
-          echo "vLLM will download from HuggingFace Hub if not cached"
-        fi
+        case "$MODEL" in
+          gpt-oss:20b)
+            LOAD_MODEL="openai/gpt-oss-20b"
+            ;;
+        esac
+
+        echo "VLLM_LOAD_MODEL=$LOAD_MODEL" >> $GITHUB_ENV
+        echo "VLLM_SERVED_MODEL_NAME=$SERVED_MODEL_NAME" >> $GITHUB_ENV
+        echo "Resolved load model: $LOAD_MODEL"
+        echo "Served model name: $SERVED_MODEL_NAME"
 
     - name: Start vLLM server
       shell: bash
@@ -127,11 +128,14 @@ runs:
         GPU_MEM: ${{ inputs.gpu-memory-utilization }}
         MAX_LEN: ${{ inputs.max-model-len }}
         QUANT: ${{ inputs.quantization }}
+        VLLM_LOAD_MODEL: ${{ env.VLLM_LOAD_MODEL }}
+        VLLM_SERVED_MODEL_NAME: ${{ env.VLLM_SERVED_MODEL_NAME }}
       run: |
         source /tmp/vllm-env/bin/activate
 
         echo "=== Starting vLLM server ==="
         echo "Model: $MODEL"
+        echo "Load Model: $VLLM_LOAD_MODEL"
         echo "Port: $PORT"
         echo "GPU Memory Utilization: $GPU_MEM"
         echo "Max Model Length: $MAX_LEN"
@@ -139,7 +143,7 @@ runs:
         echo ""
 
         # Build vLLM command
-        VLLM_CMD="vllm serve $MODEL \
+        VLLM_CMD="vllm serve $VLLM_LOAD_MODEL \
           --host 0.0.0.0 \
           --port $PORT \
           --tensor-parallel-size 1 \
@@ -147,6 +151,7 @@ runs:
           --max-model-len $MAX_LEN \
           --enable-auto-tool-choice \
           --tool-call-parser hermes \
+          --served-model-name $VLLM_SERVED_MODEL_NAME \
           --dtype auto"
 
         # Add quantization if specified
