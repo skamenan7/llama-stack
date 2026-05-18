@@ -1,4 +1,4 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
+# Copyright (c) The OGX Contributors.
 # All rights reserved.
 #
 # This source code is licensed under the terms described in the LICENSE file in
@@ -14,14 +14,15 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter, SpanExportResult
 
-from llama_stack.core.datatypes import User
-from llama_stack.core.request_headers import PROVIDER_DATA_VAR, get_authenticated_user
-from llama_stack.core.task import capture_request_context, create_detached_background_task
-from llama_stack.providers.inline.responses.builtin.responses.openai_responses import (
+from ogx.core.datatypes import User
+from ogx.core.request_headers import PROVIDER_DATA_VAR, get_authenticated_user
+from ogx.core.task import capture_request_context, create_detached_background_task
+from ogx.providers.inline.responses.builtin.responses.openai_responses import (
     OpenAIResponsesImpl,
     _BackgroundWorkItem,
 )
-from llama_stack_api import OpenAIResponseError, OpenAIResponseObject
+from ogx.providers.utils.responses.responses_store import _OpenAIResponseObjectWithInputAndMessages
+from ogx_api import ConflictError, OpenAIResponseError, OpenAIResponseObject
 
 
 class TestBackgroundFieldInResponseObject:
@@ -167,12 +168,56 @@ def _make_responses_impl():
         tool_runtime_api=AsyncMock(),
         responses_store=AsyncMock(),
         vector_io_api=AsyncMock(),
-        safety_api=None,
+        moderation_endpoint=None,
         conversations_api=AsyncMock(),
         prompts_api=AsyncMock(),
         files_api=AsyncMock(),
         connectors_api=AsyncMock(),
     )
+
+
+class TestBackgroundResponseCancellation:
+    """Test cancellation semantics for background responses."""
+
+    async def test_cancel_already_cancelled_is_idempotent_even_if_background_flag_is_false(self):
+        """Already-cancelled responses should be returned as-is before other validation."""
+        impl = _make_responses_impl()
+        stored_response = _OpenAIResponseObjectWithInputAndMessages(
+            id="resp_123",
+            created_at=1234567890,
+            model="test-model",
+            status="cancelled",
+            output=[],
+            background=False,
+            input=[],
+            store=True,
+        )
+        impl.responses_store.get_response_object = AsyncMock(return_value=stored_response)
+
+        result = await impl.cancel_openai_response("resp_123")
+
+        assert result.id == "resp_123"
+        assert result.status == "cancelled"
+        impl.responses_store.update_response_object.assert_not_called()
+
+    async def test_cancel_non_background_response_conflicts(self):
+        """Non-background responses should still fail cancellation."""
+        impl = _make_responses_impl()
+        stored_response = OpenAIResponseObject(
+            id="resp_123",
+            created_at=1234567890,
+            model="test-model",
+            status="completed",
+            output=[],
+            background=False,
+            store=True,
+        )
+        impl.responses_store.get_response_object = AsyncMock(return_value=stored_response)
+
+        with pytest.raises(ConflictError, match="only background responses can be cancelled"):
+            await impl.cancel_openai_response("resp_123")
+
+        impl.responses_store.update_response_object.assert_not_called()
 
 
 class _CollectingExporter(SpanExporter):

@@ -1,4 +1,4 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
+# Copyright (c) The OGX Contributors.
 # All rights reserved.
 #
 # This source code is licensed under the terms described in the LICENSE file in
@@ -13,10 +13,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from llama_stack.providers.remote.inference.vertexai.config import VertexAIConfig
-from llama_stack.providers.remote.inference.vertexai.vertexai import VertexAIInferenceAdapter
-from llama_stack_api import OpenAICompletion
-from llama_stack_api.inference.models import OpenAICompletionRequestWithExtraBody
+from ogx.providers.remote.inference.vertexai.config import VertexAIConfig
+from ogx.providers.remote.inference.vertexai.vertexai import VertexAIInferenceAdapter
+from ogx_api import OpenAICompletion
+from ogx_api.inference.models import OpenAICompletionRequestWithExtraBody
 
 
 async def _async_pager(items):
@@ -115,7 +115,7 @@ class TestOpenAICompletion:
             suffix="end",
             logit_bias={"50256": -100},
         )
-        with caplog.at_level(logging.WARNING, logger="llama_stack.providers.remote.inference.vertexai.vertexai"):
+        with caplog.at_level(logging.WARNING, logger="ogx.providers.remote.inference.vertexai.vertexai"):
             await adapter.openai_completion(params)
         messages = " ".join(r.message for r in caplog.records)
         assert "best_of" in messages
@@ -131,7 +131,7 @@ class TestOpenAICompletion:
             prompt="hi",
             user="alice",
         )
-        with caplog.at_level(logging.DEBUG, logger="llama_stack.providers.remote.inference.vertexai.vertexai"):
+        with caplog.at_level(logging.DEBUG, logger="ogx.providers.remote.inference.vertexai.vertexai"):
             await adapter.openai_completion(params)
         messages = " ".join(r.message for r in caplog.records)
         assert "user" in messages
@@ -164,25 +164,25 @@ class TestOpenAICompletion:
         params = OpenAICompletionRequestWithExtraBody(
             model="google/gemini-2.5-flash",
             prompt="hi",
-            logprobs=True,
+            logprobs=5,
         )
         await adapter.openai_completion(params)
         call_kwargs = fake_client.aio.models.generate_content.call_args.kwargs
         config = call_kwargs["config"]
         assert config.response_logprobs is True
 
-    async def test_logprobs_false_sets_response_logprobs_none(self, make_completion_adapter):
-        """Test that logprobs false sets response logprobs none."""
+    async def test_logprobs_zero_sets_response_logprobs_false(self, make_completion_adapter):
+        """Test that logprobs zero sets response logprobs false."""
         adapter, fake_client = make_completion_adapter()
         params = OpenAICompletionRequestWithExtraBody(
             model="google/gemini-2.5-flash",
             prompt="hi",
-            logprobs=False,
+            logprobs=0,
         )
         await adapter.openai_completion(params)
         call_kwargs = fake_client.aio.models.generate_content.call_args.kwargs
         config = call_kwargs["config"]
-        assert getattr(config, "response_logprobs", None) is None
+        assert config.response_logprobs is False
 
     async def test_stream_raises_not_implemented_removed(self, monkeypatch):
         """Test that stream raises not implemented removed."""
@@ -446,7 +446,7 @@ class TestCompletionStreamOptions:
         monkeypatch.setattr(adapter, "_validate_model_allowed", lambda _: None)
         monkeypatch.setattr(adapter, "_get_client", lambda: fake_client)
         monkeypatch.setattr(
-            "llama_stack.providers.remote.inference.vertexai.vertexai.converters.convert_completion_prompt_to_contents",
+            "ogx.providers.remote.inference.vertexai.vertexai.converters.convert_completion_prompt_to_contents",
             lambda _: [{"role": "user", "parts": [{"text": "ok"}]}],
         )
         monkeypatch.setattr(adapter, "_stream_completion", _stream_completion)

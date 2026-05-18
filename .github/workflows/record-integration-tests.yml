@@ -6,7 +6,7 @@
 # SECURITY NOTE: This workflow uses pull_request (not pull_request_target) for security.
 # Security measures:
 # 1. Runs with read-only permissions (no write access to repo or secrets exposure)
-# 2. Only ollama provider runs automatically on pull_request (no secrets)
+# 2. Only ollama variants run automatically on pull_request (no secrets needed)
 # 3. API key providers (gpt, azure, bedrock) only run via manual workflow_dispatch
 # 4. Fork PRs with API key providers are blocked (prevents secret theft)
 # 5. Recordings uploaded as artifacts; companion workflow handles commits
@@ -19,8 +19,12 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'tests/integration/**'
-      - 'src/llama_stack/**'
-      - '!src/llama_stack_ui/**'
+      - 'src/ogx/**'
+      - '!src/ogx_ui/**'
+      # Exclude recordings to prevent a feedback loop with commit-recordings.yml:
+      # that workflow pushes recordings back to the PR branch, which would
+      # otherwise re-trigger this workflow via pull_request: synchronize.
+      - '!tests/integration/**/recordings/**'
   workflow_dispatch:
     inputs:
       pr_number:
@@ -31,7 +35,7 @@ on:
         description: 'Comma-separated list of providers to record'
         type: string
         required: false
-        default: 'gpt,azure,watsonx'
+        default: 'gpt,azure,watsonx,vertexai'
       suite:
         description: 'Test suite override (default: per-provider from matrix)'
         type: string
@@ -53,9 +57,11 @@ concurrency:
   cancel-in-progress: true
 
 # Read-only permissions - no write access
+# id-token: write is required for GCP Workload Identity Federation (OIDC token exchange)
 permissions:
   contents: read
   pull-requests: read
+  id-token: write
 
 jobs:
   # Compute PR information for both pull_request and workflow_dispatch
@@ -118,21 +124,23 @@ jobs:
           fi
 
           # Determine which providers to run
-          # Security: For pull_request, only run ollama (no secrets)
+          # Security: For pull_request, only run ollama variants (no secrets needed)
           # Manual workflow_dispatch uses input providers (defaults to API providers)
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             PROVIDERS="$INPUT_PROVIDERS"
           else
             # Auto-trigger on PR: only ollama (no secrets exposed to any PR)
-            PROVIDERS="ollama"
+            PROVIDERS="ollama,ollama-reasoning"
           fi
 
-          echo "pr_number=${PR_NUMBER}" >> $GITHUB_OUTPUT
-          echo "pr_head_ref=${HEAD_REF}" >> $GITHUB_OUTPUT
-          echo "pr_head_sha=${HEAD_SHA}" >> $GITHUB_OUTPUT
-          echo "pr_head_repo=${HEAD_REPO}" >> $GITHUB_OUTPUT
-          echo "is_fork_pr=${IS_FORK_PR}" >> $GITHUB_OUTPUT
-          echo "providers_to_run=${PROVIDERS}" >> $GITHUB_OUTPUT
+          {
+            echo "pr_number=${PR_NUMBER}"
+            echo "pr_head_ref=${HEAD_REF}"
+            echo "pr_head_sha=${HEAD_SHA}"
+            echo "pr_head_repo=${HEAD_REPO}"
+            echo "is_fork_pr=${IS_FORK_PR}"
+            echo "providers_to_run=${PROVIDERS}"
+          } >> "$GITHUB_OUTPUT"
 
           echo "Recording for PR #${PR_NUMBER}"
           echo "  Branch: ${HEAD_REF}"
@@ -168,7 +176,7 @@ jobs:
           cat pr-metadata/pr-info.json
 
       - name: Upload PR metadata
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pr-metadata-${{ github.run_id }}
           path: pr-metadata/
@@ -178,6 +186,7 @@ jobs:
   record-providers:
     needs: compute-pr-info
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -185,14 +194,26 @@ jobs:
         provider:
           - setup: ollama
             suite: base
+          - setup: ollama-vision
+            suite: vision
+          - setup: ollama-reasoning
+            suite: ollama-reasoning
+          - setup: ollama
+            suite: messages
           - setup: gpt
             suite: responses
+          - setup: gpt
+            suite: messages-openai
           - setup: azure
             suite: responses
           - setup: bedrock
             suite: bedrock-responses
           - setup: watsonx
             suite: responses
+          - setup: vertexai
+            suite: responses
+          - setup: gemini
+            suite: interactions
     steps:
       - name: Check if provider should run
         id: should_run
@@ -205,10 +226,10 @@ jobs:
           CURRENT="$CURRENT_PROVIDER"
 
           if [[ ",$PROVIDERS," == *",$CURRENT,"* ]]; then
-            echo "run=true" >> $GITHUB_OUTPUT
+            echo "run=true" >> "$GITHUB_OUTPUT"
             echo "Recording for provider: $CURRENT"
           else
-            echo "run=false" >> $GITHUB_OUTPUT
+            echo "run=false" >> "$GITHUB_OUTPUT"
             echo "Skipping provider: $CURRENT"
           fi
 
@@ -220,11 +241,16 @@ jobs:
           ref: ${{ needs.compute-pr-info.outputs.pr_head_sha }}
           fetch-depth: 0
 
-      # Note: Using full repo path with pinned SHA ensures actions are loaded from
-      # a trusted commit, not from PR checkout. This is critical for security.
+      - name: Authenticate to Google Cloud (Vertex AI)
+        if: steps.should_run.outputs.run == 'true' && matrix.provider.setup == 'vertexai' && needs.compute-pr-info.outputs.is_fork_pr != 'true'
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ secrets.VERTEX_AI_PROJECT }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+
       - name: Setup test environment
         if: steps.should_run.outputs.run == 'true'
-        uses: llamastack/llama-stack/.github/actions/setup-test-environment@700b202df7e520c1b19977e97657b3aebc055e56
+        uses: ogx-ai/ogx/.github/actions/setup-test-environment@e1ba4f9f10fa45750f5b4f186a0c4ae59bc93e4d
         with:
           python-version: "3.12"
           client-version: "latest"
@@ -234,7 +260,7 @@ jobs:
 
       - name: Run and record tests
         if: steps.should_run.outputs.run == 'true'
-        uses: llamastack/llama-stack/.github/actions/run-and-record-tests@700b202df7e520c1b19977e97657b3aebc055e56
+        uses: ogx-ai/ogx/.github/actions/run-and-record-tests@e1ba4f9f10fa45750f5b4f186a0c4ae59bc93e4d
         env:
           OPENAI_API_KEY: ${{ matrix.provider.setup == 'gpt' && secrets.OPENAI_API_KEY || '' }}
           AZURE_API_KEY: ${{ matrix.provider.setup == 'azure' && secrets.AZURE_API_KEY || '' }}
@@ -242,7 +268,11 @@ jobs:
           WATSONX_API_KEY: ${{ matrix.provider.setup == 'watsonx' && secrets.WATSONX_API_KEY || '' }}
           WATSONX_BASE_URL: ${{ matrix.provider.setup == 'watsonx' && secrets.WATSONX_BASE_URL || '' }}
           WATSONX_PROJECT_ID: ${{ matrix.provider.setup == 'watsonx' && secrets.WATSONX_PROJECT_ID || '' }}
-          TAVILY_SEARCH_API_KEY: ${{ contains(fromJSON('["gpt","azure"]'), matrix.provider.setup) && secrets.TAVILY_SEARCH_API_KEY || '' }}
+          VERTEX_AI_PROJECT: ${{ matrix.provider.setup == 'vertexai' && secrets.VERTEX_AI_PROJECT || '' }}
+          VERTEX_AI_LOCATION: ${{ matrix.provider.setup == 'vertexai' && 'global' || '' }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ matrix.provider.setup == 'vertexai' && secrets.GOOGLE_APPLICATION_CREDENTIALS || '' }}
+          GEMINI_API_KEY: ${{ matrix.provider.setup == 'gemini' && secrets.GEMINI_API_KEY || '' }}
+          TAVILY_SEARCH_API_KEY: ${{ contains(fromJSON('["gpt","azure","vertexai"]'), matrix.provider.setup) && secrets.TAVILY_SEARCH_API_KEY || '' }}
           AWS_BEARER_TOKEN_BEDROCK: ${{ matrix.provider.setup == 'bedrock' && secrets.AWS_BEARER_TOKEN_BEDROCK || '' }}
           AWS_DEFAULT_REGION: ${{ matrix.provider.setup == 'bedrock' && 'us-west-2' || '' }}
         with:
@@ -258,9 +288,9 @@ jobs:
       # Upload recordings as artifacts for the companion workflow to commit
       - name: Upload recordings as artifacts
         if: steps.should_run.outputs.run == 'true'
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: recordings-${{ matrix.provider.setup }}-${{ github.run_id }}-${{ github.run_attempt || '1' }}
+          name: recordings-${{ matrix.provider.setup }}-${{ matrix.provider.suite }}-${{ github.run_id }}-${{ github.run_attempt || '1' }}
           path: |
             tests/integration/recordings/
             tests/integration/*/recordings/
@@ -276,7 +306,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Update PR comment
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           PROVIDERS_TO_RUN: ${{ needs.compute-pr-info.outputs.providers_to_run }}
           RECORD_STATUS: ${{ needs.record-providers.result }}

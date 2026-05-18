@@ -1,4 +1,4 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
+# Copyright (c) The OGX Contributors.
 # All rights reserved.
 #
 # This source code is licensed under the terms described in the LICENSE file in
@@ -10,11 +10,15 @@ Schema filtering and version filtering for OpenAPI generation.
 
 from typing import Any
 
-from llama_stack_api.schema_utils import iter_json_schema_types, iter_registered_schema_types
-from llama_stack_api.version import (
-    LLAMA_STACK_API_V1,
-    LLAMA_STACK_API_V1ALPHA,
-    LLAMA_STACK_API_V1BETA,
+from ogx_api.schema_utils import (
+    get_json_schema_type_info,
+    iter_json_schema_types,
+    iter_registered_schema_types,
+)
+from ogx_api.version import (
+    OGX_API_V1,
+    OGX_API_V1ALPHA,
+    OGX_API_V1BETA,
 )
 
 
@@ -22,7 +26,8 @@ def _get_all_json_schema_type_names() -> set[str]:
     """Collect schema names from @json_schema_type-decorated models."""
     schema_names = set()
     for model in iter_json_schema_types():
-        schema_name = getattr(model, "_llama_stack_schema_name", None) or getattr(model, "__name__", None)
+        schema_info = get_json_schema_type_info(model)
+        schema_name = schema_info.name if schema_info else getattr(model, "__name__", None)
         if schema_name:
             schema_names.add(schema_name)
     return schema_names
@@ -164,17 +169,15 @@ def _path_starts_with_version(path: str, version: str) -> bool:
 def _is_stable_path(path: str) -> bool:
     """Check if a path is a stable v1 path (not v1alpha or v1beta)."""
     return (
-        _path_starts_with_version(path, LLAMA_STACK_API_V1)
-        and not _path_starts_with_version(path, LLAMA_STACK_API_V1ALPHA)
-        and not _path_starts_with_version(path, LLAMA_STACK_API_V1BETA)
+        _path_starts_with_version(path, OGX_API_V1)
+        and not _path_starts_with_version(path, OGX_API_V1ALPHA)
+        and not _path_starts_with_version(path, OGX_API_V1BETA)
     )
 
 
 def _is_experimental_path(path: str) -> bool:
     """Check if a path is an experimental path (v1alpha or v1beta)."""
-    return _path_starts_with_version(path, LLAMA_STACK_API_V1ALPHA) or _path_starts_with_version(
-        path, LLAMA_STACK_API_V1BETA
-    )
+    return _path_starts_with_version(path, OGX_API_V1ALPHA) or _path_starts_with_version(path, OGX_API_V1BETA)
 
 
 def _is_path_deprecated(path_item: dict[str, Any]) -> bool:
@@ -239,23 +242,30 @@ def _filter_schema_by_version(
 
 def _filter_deprecated_schema(openapi_schema: dict[str, Any]) -> dict[str, Any]:
     """
-    Filter OpenAPI schema to include only deprecated endpoints.
-    Includes all deprecated endpoints regardless of version (v1, v1alpha, v1beta).
+    Filter OpenAPI schema to include only deprecated operations.
+    Filters at the operation level, not the path level, so non-deprecated
+    operations on the same path (e.g. GET /v1/models) are excluded.
     """
     filtered_schema = openapi_schema.copy()
 
     if "paths" not in filtered_schema:
         return filtered_schema
 
-    # Filter paths to only include deprecated ones
     filtered_paths = {}
     for path, path_item in filtered_schema["paths"].items():
-        if _is_path_deprecated(path_item):
-            filtered_paths[path] = path_item
+        if not isinstance(path_item, dict):
+            continue
+        deprecated_ops = {}
+        for method in ["get", "post", "put", "delete", "patch", "head", "options"]:
+            op = path_item.get(method)
+            if isinstance(op, dict) and op.get("deprecated", False):
+                deprecated_ops[method] = op
+        if deprecated_ops:
+            filtered_paths[path] = deprecated_ops
 
     filtered_schema["paths"] = filtered_paths
 
-    return filtered_schema
+    return _filter_schemas_by_references(filtered_schema, filtered_paths, openapi_schema)
 
 
 def _filter_combined_schema(openapi_schema: dict[str, Any]) -> dict[str, Any]:
