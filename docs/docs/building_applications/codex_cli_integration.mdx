@@ -8,7 +8,7 @@ This integration is in early development (alpha status). While core functionalit
 
 ## Quick Start
 
-### 1. Start OGX
+### 1. Start OGX with Codex support
 
 ```bash
 export OPENAI_API_KEY="your-key-here"
@@ -102,9 +102,11 @@ Key benefits:
 ### Model Compatibility
 
 Choose model IDs that OGX exposes and that Codex can use through the Responses API path configured above:
-- ✅ `openai/gpt-4o`, `openai/gpt-4o-mini`
+- ✅ `openai/gpt-4o`, `openai/gpt-4o-mini`, `openai/gpt-5.4`
 - ✅ `anthropic/claude-3-5-sonnet-20241022`
-- ❌ `gpt-5.4` (Responses-only, no Chat Completions support)
+- ✅ `ollama/llama3.2:3b`
+
+Use provider-prefixed model IDs (for example `openai/gpt-4o`), and keep `wire_api = "responses"` in your provider config.
 
 ## Known Limitations
 
