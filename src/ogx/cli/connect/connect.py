@@ -9,6 +9,7 @@ import argparse
 from ogx.cli.stack.utils import print_subcommand_description
 from ogx.cli.subcommand import Subcommand
 
+from .codex import ConnectCodex
 from .opencode import ConnectOpenCode
 
 
@@ -32,4 +33,5 @@ class ConnectParser(Subcommand):
         subparsers = self.parser.add_subparsers(title="connect_subcommands")
 
         ConnectOpenCode.create(subparsers)
+        ConnectCodex.create(subparsers)
         print_subcommand_description(self.parser, subparsers)
