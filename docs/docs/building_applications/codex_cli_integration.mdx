@@ -1,6 +1,6 @@
 # Codex CLI Integration (Alpha)
 
-OGX includes built-in support for connecting [Codex CLI](https://github.com/openai/codex) with a single command. You can launch Codex against a running OGX server without manually editing `~/.codex/config.toml` for the common case.
+OGX includes built-in support for connecting [Codex CLI](https://github.com/openai/codex) with a single command. You can launch Codex against a running OGX server without manually editing your existing `~/.codex/config.toml`.
 
 :::warning Alpha Feature
 This integration is in early development (alpha status). While core functionality works well, some features like memory persistence are not yet supported. Configuration may change in future releases.
@@ -21,7 +21,7 @@ ogx stack run starter
 ogx connect codex
 ```
 
-That launches Codex with temporary OGX-specific configuration overrides based on the models currently exposed by your running OGX server. Your existing `~/.codex/config.toml` is left unchanged.
+That launches Codex with an OGX-specific session config and model catalog generated from the models currently exposed by your running OGX server. Your existing `~/.codex/config.toml` is left unchanged.
 
 ## How It Works
 
@@ -30,7 +30,8 @@ The `ogx connect codex` command:
 1. Queries the running OGX server for available models
 2. Filters out embedding models
 3. Selects the requested model or defaults to the first available non-embedding model
-4. Launches Codex with temporary `--config key=value` overrides pointing at OGX
+4. Generates a temporary Codex session home with an OGX provider profile and model catalog
+5. Launches `codex -p ogx`
 
 ```text
 ogx connect codex
@@ -39,10 +40,10 @@ ogx connect codex
  GET /v1/models (discover available models)
       |
       v
- Select default model (or validate --model)
+Build OGX model catalog + select default model
       |
       v
- Launch codex with temporary --config overrides
+Launch codex -p ogx using a generated session config
       |
       v
  Codex TUI (connected to OGX)
@@ -51,14 +52,13 @@ ogx connect codex
 ## CLI Reference
 
 ```bash
-ogx connect codex [--model MODEL] [--host HOST] [--port PORT]
+ogx connect codex [--model MODEL] [--base-url URL]
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--model` | First available model | Model to pre-select for Codex |
-| `--host` | `localhost` | OGX server host |
-| `--port` | `8321` | OGX server port (also reads `OGX_PORT` env var) |
+| `--base-url` | `http://localhost:8321/v1` | Full OGX OpenAI-compatible base URL. Also reads `OGX_BASE_URL`. If the URL has no path, `ogx connect codex` appends `/v1`. |
 
 ## Configuration Examples
 
@@ -71,22 +71,44 @@ ogx connect codex --model openai/gpt-4o
 ### With a remote OGX server
 
 ```bash
-ogx connect codex --host 192.168.1.100 --port 9000
+ogx connect codex --base-url https://ogx.example.com/v1
 ```
+
+### With OGX bearer auth
+
+```bash
+export OGX_API_KEY="your-ogx-access-token"
+ogx connect codex --base-url https://ogx.example.com/v1
+```
+
+### With passthrough provider credentials
+
+If your OGX deployment expects per-request provider data, export it as JSON before launching Codex:
+
+```bash
+export OGX_PROVIDER_DATA='{"passthrough_api_key":"provider-token"}'
+ogx connect codex
+```
+
+The generated Codex profile forwards that value as `X-OGX-Provider-Data` on every request, which lets OGX reuse the existing passthrough / provider-data auth path.
 
 ## Manual Configuration
 
-If you prefer to manage Codex configuration yourself, add the following to your `~/.codex/config.toml`:
+If you prefer to manage Codex configuration yourself, add an OGX provider and model catalog to your Codex config:
 
 ```toml
-model = "openai/gpt-4o"
-model_provider = "ogx"
-
 [model_providers.ogx]
-name = "OpenAI"
+name = "OGX"
 base_url = "http://localhost:8321/v1"
 wire_api = "responses"
 supports_websockets = false
+env_key = "OGX_API_KEY"
+env_http_headers = { "X-OGX-Provider-Data" = "OGX_PROVIDER_DATA" }
+
+[profiles.ogx]
+model = "openai/gpt-4o"
+model_provider = "ogx"
+model_catalog_json = "/absolute/path/to/ogx-model-catalog.json"
 ```
 
 The integration works as a proxy chain: **Codex CLI → OGX → LLM Provider (OpenAI, etc.)**
@@ -100,6 +122,8 @@ Key benefits:
 ## Configuration
 
 ### Model Compatibility
+
+`ogx connect codex` only offers the non-embedding model IDs returned by `GET /v1/models`, then writes those exact IDs into the generated Codex model catalog. That keeps Codex `/model` choices in sync with the running OGX server and preserves OGX metadata such as context length, descriptions, and any available reasoning-effort hints.
 
 Choose model IDs that OGX exposes and that Codex can use through the Responses API path configured above:
 - ✅ `openai/gpt-4o`, `openai/gpt-4o-mini`, `openai/gpt-5.4`
@@ -126,7 +150,9 @@ Current limitations of this alpha integration:
 
 **"Failed to find 'codex' in PATH"**: Install Codex from the [Codex GitHub repository](https://github.com/openai/codex) and make sure the `codex` binary is available on your shell path.
 
-**"Failed to connect to OGX server"**: Start the OGX server first with `ogx stack run <config>` or point `--host` and `--port` at a reachable server.
+**"Failed to connect to OGX server"**: Start the OGX server first with `ogx stack run <config>` or point `--base-url` at a reachable server.
+
+**Authenticated deployments**: Set `OGX_API_KEY` when your OGX deployment requires bearer auth. Set `OGX_PROVIDER_DATA` when OGX expects request-scoped passthrough credentials.
 
 ## Future Development
 
