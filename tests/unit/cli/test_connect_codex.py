@@ -16,13 +16,34 @@ import httpx
 import pytest
 from openai import APIConnectionError, APIStatusError, APITimeoutError
 
-from ogx.cli.connect.codex import ConnectCodex, DiscoveredCodexModel
+from ogx.cli.connect.codex import (
+    CodexCatalogBuilder,
+    CodexServerDiscovery,
+    CodexSessionBuilder,
+    ConnectCodex,
+    DiscoveredCodexModel,
+)
 
 
 @pytest.fixture
 def connect_codex() -> ConnectCodex:
     subparsers = argparse.ArgumentParser().add_subparsers()
     return ConnectCodex(subparsers)
+
+
+@pytest.fixture
+def discovery(connect_codex: ConnectCodex) -> CodexServerDiscovery:
+    return connect_codex.discovery
+
+
+@pytest.fixture
+def session_builder(connect_codex: ConnectCodex) -> CodexSessionBuilder:
+    return connect_codex.session_builder
+
+
+@pytest.fixture
+def catalog_builder(session_builder: CodexSessionBuilder) -> CodexCatalogBuilder:
+    return session_builder.catalog_builder
 
 
 def _make_model(model_id: str, model_type: str = "llm", metadata: dict | None = None) -> MagicMock:
@@ -67,18 +88,15 @@ class TestArguments:
 
 
 class TestBaseUrlNormalization:
-    def test_appends_v1_when_path_missing(self, connect_codex: ConnectCodex) -> None:
-        assert connect_codex._normalize_base_url("https://ogx.example.com") == "https://ogx.example.com/v1"
+    def test_appends_v1_when_path_missing(self, discovery: CodexServerDiscovery) -> None:
+        assert discovery.normalize_base_url("https://ogx.example.com") == "https://ogx.example.com/v1"
 
-    def test_preserves_explicit_path(self, connect_codex: ConnectCodex) -> None:
-        assert (
-            connect_codex._normalize_base_url("https://ogx.example.com/prefix/v1")
-            == "https://ogx.example.com/prefix/v1"
-        )
+    def test_preserves_explicit_path(self, discovery: CodexServerDiscovery) -> None:
+        assert discovery.normalize_base_url("https://ogx.example.com/prefix/v1") == "https://ogx.example.com/prefix/v1"
 
-    def test_exits_when_base_url_invalid(self, connect_codex: ConnectCodex) -> None:
+    def test_exits_when_base_url_invalid(self, discovery: CodexServerDiscovery) -> None:
         with pytest.raises(SystemExit):
-            connect_codex._normalize_base_url("localhost:8321")
+            discovery.normalize_base_url("localhost:8321")
 
 
 class TestCodexDetection:
@@ -104,65 +122,67 @@ class TestCodexDetection:
 
 
 class TestServerProbe:
-    def test_uses_explicit_timeout(self, connect_codex: ConnectCodex) -> None:
+    def test_uses_explicit_timeout(self, connect_codex: ConnectCodex, discovery: CodexServerDiscovery) -> None:
         mock_client = _make_mock_client([_make_model("openai/gpt-4o")])
 
         with patch("ogx.cli.connect.codex.OpenAI", return_value=mock_client) as mock_openai:
-            connect_codex._fetch_models("http://localhost:8321/v1")
+            discovery.fetch_models("http://localhost:8321/v1")
 
         assert mock_openai.call_args.kwargs["timeout"] == connect_codex.MODEL_DISCOVERY_TIMEOUT_SECONDS
         assert mock_openai.call_args.kwargs["api_key"] == "unused"
         assert mock_openai.call_args.kwargs["default_headers"] is None
 
-    def test_forwards_auth_headers_to_probe(self, connect_codex: ConnectCodex, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_forwards_auth_headers_to_probe(
+        self, discovery: CodexServerDiscovery, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         mock_client = _make_mock_client([_make_model("openai/gpt-4o")])
         monkeypatch.setenv("OGX_API_KEY", "secret-token")
         monkeypatch.setenv("OGX_PROVIDER_DATA", '{"passthrough_api_key":"abc"}')
 
         with patch("ogx.cli.connect.codex.OpenAI", return_value=mock_client) as mock_openai:
-            connect_codex._fetch_models("https://ogx.example.com/v1")
+            discovery.fetch_models("https://ogx.example.com/v1")
 
         assert mock_openai.call_args.kwargs["api_key"] == "secret-token"
         assert mock_openai.call_args.kwargs["default_headers"] == {
             "X-OGX-Provider-Data": '{"passthrough_api_key":"abc"}'
         }
 
-    def test_exits_when_server_unreachable(self, connect_codex: ConnectCodex) -> None:
+    def test_exits_when_server_unreachable(self, discovery: CodexServerDiscovery) -> None:
         mock_client = MagicMock()
         mock_client.models.list.side_effect = APIConnectionError(request=httpx.Request("GET", "http://localhost"))
 
         with patch("ogx.cli.connect.codex.OpenAI", return_value=mock_client):
             with pytest.raises(SystemExit):
-                connect_codex._fetch_models("http://localhost:8321/v1")
+                discovery.fetch_models("http://localhost:8321/v1")
 
-    def test_exits_when_server_probe_times_out(self, connect_codex: ConnectCodex) -> None:
+    def test_exits_when_server_probe_times_out(self, discovery: CodexServerDiscovery) -> None:
         mock_client = MagicMock()
         mock_client.models.list.side_effect = APITimeoutError(request=httpx.Request("GET", "http://localhost"))
 
         with patch("ogx.cli.connect.codex.OpenAI", return_value=mock_client):
             with pytest.raises(SystemExit):
-                connect_codex._fetch_models("http://localhost:8321/v1")
+                discovery.fetch_models("http://localhost:8321/v1")
 
-    def test_exits_on_server_error(self, connect_codex: ConnectCodex) -> None:
+    def test_exits_on_server_error(self, discovery: CodexServerDiscovery) -> None:
         mock_client = MagicMock()
         mock_response = httpx.Response(500, request=httpx.Request("GET", "http://localhost"))
         mock_client.models.list.side_effect = APIStatusError("server error", response=mock_response, body=None)
 
         with patch("ogx.cli.connect.codex.OpenAI", return_value=mock_client):
             with pytest.raises(SystemExit):
-                connect_codex._fetch_models("http://localhost:8321/v1")
+                discovery.fetch_models("http://localhost:8321/v1")
 
-    def test_returns_models_on_success(self, connect_codex: ConnectCodex) -> None:
+    def test_returns_models_on_success(self, discovery: CodexServerDiscovery) -> None:
         mock_client = _make_mock_client([_make_model("openai/gpt-4o"), _make_model("meta/llama-3.1-8b")])
 
         with patch("ogx.cli.connect.codex.OpenAI", return_value=mock_client):
-            models = connect_codex._fetch_models("http://localhost:8321/v1")
+            models = discovery.fetch_models("http://localhost:8321/v1")
         assert [model.model_id for model in models] == ["openai/gpt-4o", "meta/llama-3.1-8b"]
 
 
 class TestModelSelection:
-    def test_uses_specified_model(self, connect_codex: ConnectCodex) -> None:
-        result = connect_codex._select_default_model(
+    def test_uses_specified_model(self, discovery: CodexServerDiscovery) -> None:
+        result = discovery.select_default_model(
             "openai/gpt-4o",
             [
                 DiscoveredCodexModel("openai/gpt-4o", {}),
@@ -171,9 +191,9 @@ class TestModelSelection:
         )
         assert result.model_id == "openai/gpt-4o"
 
-    def test_exits_when_specified_model_not_found(self, connect_codex: ConnectCodex) -> None:
+    def test_exits_when_specified_model_not_found(self, discovery: CodexServerDiscovery) -> None:
         with pytest.raises(SystemExit):
-            connect_codex._select_default_model(
+            discovery.select_default_model(
                 "nonexistent",
                 [
                     DiscoveredCodexModel("openai/gpt-4o", {}),
@@ -181,8 +201,8 @@ class TestModelSelection:
                 ],
             )
 
-    def test_defaults_to_first_model(self, connect_codex: ConnectCodex) -> None:
-        result = connect_codex._select_default_model(
+    def test_defaults_to_first_model(self, discovery: CodexServerDiscovery) -> None:
+        result = discovery.select_default_model(
             None,
             [
                 DiscoveredCodexModel("openai/gpt-4o", {}),
@@ -191,7 +211,7 @@ class TestModelSelection:
         )
         assert result.model_id == "openai/gpt-4o"
 
-    def test_filters_out_embedding_models(self, connect_codex: ConnectCodex) -> None:
+    def test_filters_out_embedding_models(self, discovery: CodexServerDiscovery) -> None:
         mock_client = _make_mock_client(
             [
                 _make_model("openai/gpt-4o"),
@@ -200,10 +220,10 @@ class TestModelSelection:
         )
 
         with patch("ogx.cli.connect.codex.OpenAI", return_value=mock_client):
-            models = connect_codex._fetch_models("http://localhost:8321/v1")
+            models = discovery.fetch_models("http://localhost:8321/v1")
         assert [model.model_id for model in models] == ["openai/gpt-4o"]
 
-    def test_exits_when_no_llm_models(self, connect_codex: ConnectCodex) -> None:
+    def test_exits_when_no_llm_models(self, discovery: CodexServerDiscovery) -> None:
         mock_client = _make_mock_client(
             [
                 _make_model("openai/text-embedding-3-small", model_type="embedding"),
@@ -211,7 +231,7 @@ class TestModelSelection:
         )
 
         with patch("ogx.cli.connect.codex.OpenAI", return_value=mock_client):
-            models = connect_codex._fetch_models("http://localhost:8321/v1")
+            models = discovery.fetch_models("http://localhost:8321/v1")
         assert models == []
 
 
@@ -219,7 +239,32 @@ class TestSessionConfigGeneration:
     def test_builds_codex_command(self, connect_codex: ConnectCodex) -> None:
         assert connect_codex._build_codex_command() == ["codex", "-p", "ogx"]
 
-    def test_writes_generated_config_and_model_catalog(self, connect_codex: ConnectCodex, tmp_path) -> None:
+    def test_builds_model_catalog_entry(self, catalog_builder: CodexCatalogBuilder) -> None:
+        entry = catalog_builder.build_model_catalog_entry(
+            DiscoveredCodexModel(
+                "openai/gpt-4o",
+                {
+                    "description": "Primary OGX model",
+                    "context_length": 256000,
+                    "supported_reasoning_levels": [
+                        {"effort": "medium", "description": "Balanced"},
+                        {"effort": "high", "description": "Deep reasoning"},
+                    ],
+                    "default_reasoning_level": "medium",
+                },
+            ),
+            index=0,
+            is_default=True,
+        )
+
+        assert entry["slug"] == "openai/gpt-4o"
+        assert entry["description"] == "Primary OGX model"
+        assert entry["context_window"] == 256000
+        assert entry["supported_reasoning_levels"][0]["effort"] == "medium"
+        assert entry["default_reasoning_level"] == "medium"
+        assert entry["priority"] == 0
+
+    def test_writes_generated_config_and_model_catalog(self, session_builder: CodexSessionBuilder, tmp_path) -> None:
         models = [
             DiscoveredCodexModel(
                 "openai/gpt-4o",
@@ -236,7 +281,7 @@ class TestSessionConfigGeneration:
             DiscoveredCodexModel("meta/llama-3.1-8b", {}),
         ]
 
-        connect_codex._write_codex_session_files(tmp_path, "https://ogx.example.com/v1", models, "openai/gpt-4o")
+        session_builder.write_session_files(tmp_path, "https://ogx.example.com/v1", models, "openai/gpt-4o")
 
         config = tomllib.loads((tmp_path / "config.toml").read_text())
         catalog = json.loads((tmp_path / "ogx-model-catalog.json").read_text())
@@ -258,10 +303,10 @@ class TestSessionConfigGeneration:
         assert catalog["models"][1]["supported_reasoning_levels"] == []
 
     def test_writes_env_key_when_ogx_api_key_is_set(
-        self, connect_codex: ConnectCodex, tmp_path, monkeypatch: pytest.MonkeyPatch
+        self, session_builder: CodexSessionBuilder, tmp_path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv("OGX_API_KEY", "secret-token")
-        connect_codex._write_codex_session_files(
+        session_builder.write_session_files(
             tmp_path,
             "https://ogx.example.com/v1",
             [DiscoveredCodexModel("openai/gpt-4o", {})],
