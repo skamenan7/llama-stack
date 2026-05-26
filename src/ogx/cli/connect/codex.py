@@ -231,7 +231,9 @@ class CodexCatalogBuilder:
         if isinstance(value, int) and value > 0:
             return value
         if isinstance(value, str) and value.isdigit():
-            return int(value)
+            parsed = int(value)
+            if parsed > 0:
+                return parsed
         return fallback
 
     @staticmethod
@@ -239,7 +241,9 @@ class CodexCatalogBuilder:
         if isinstance(value, int) and value > 0:
             return value
         if isinstance(value, str) and value.isdigit():
-            return int(value)
+            parsed = int(value)
+            if parsed > 0:
+                return parsed
         return None
 
     @staticmethod

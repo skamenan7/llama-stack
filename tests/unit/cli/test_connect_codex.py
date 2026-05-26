@@ -264,6 +264,23 @@ class TestSessionConfigGeneration:
         assert entry["default_reasoning_level"] == "medium"
         assert entry["priority"] == 0
 
+    def test_falls_back_when_zero_values_are_provided_as_strings(self, catalog_builder: CodexCatalogBuilder) -> None:
+        entry = catalog_builder.build_model_catalog_entry(
+            DiscoveredCodexModel(
+                "openai/gpt-4o",
+                {
+                    "context_length": "0",
+                    "auto_compact_token_limit": "0",
+                },
+            ),
+            index=0,
+            is_default=True,
+        )
+
+        assert entry["context_window"] == catalog_builder.DEFAULT_CONTEXT_WINDOW
+        assert entry["max_context_window"] == catalog_builder.DEFAULT_CONTEXT_WINDOW
+        assert entry["auto_compact_token_limit"] is None
+
     def test_writes_generated_config_and_model_catalog(self, session_builder: CodexSessionBuilder, tmp_path) -> None:
         models = [
             DiscoveredCodexModel(
