@@ -318,6 +318,36 @@ class TestSessionConfigGeneration:
 
 
 class TestConnect:
+    def test_forwards_auth_env_to_codex_process(
+        self, connect_codex: ConnectCodex, tmp_path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        args = connect_codex.parser.parse_args(["--model", "openai/gpt-4o"])
+        monkeypatch.setenv("OGX_API_KEY", "secret-token")
+        monkeypatch.setenv("OGX_PROVIDER_DATA", '{"passthrough_api_key":"abc"}')
+        mock_client = _make_mock_client([_make_model("openai/gpt-4o")])
+
+        with (
+            patch("ogx.cli.connect.codex.shutil.which", return_value="/usr/bin/codex"),
+            patch("ogx.cli.connect.codex.OpenAI", return_value=mock_client),
+            patch(
+                "ogx.cli.connect.codex.tempfile.TemporaryDirectory",
+                return_value=contextlib.nullcontext(str(tmp_path)),
+            ),
+            patch("ogx.cli.connect.codex.subprocess.run") as mock_run,
+        ):
+            mock_run.return_value = MagicMock(returncode=0)
+            with pytest.raises(SystemExit):
+                connect_codex._run_connect_codex_cmd(args)
+
+        launched_env = mock_run.call_args.kwargs["env"]
+        assert launched_env["CODEX_HOME"] == str(tmp_path)
+        assert launched_env["OGX_API_KEY"] == "secret-token"
+        assert launched_env["OGX_PROVIDER_DATA"] == '{"passthrough_api_key":"abc"}'
+
+        config = tomllib.loads((tmp_path / "config.toml").read_text())
+        assert config["model_providers"]["ogx"]["env_key"] == "OGX_API_KEY"
+        assert config["model_providers"]["ogx"]["env_http_headers"] == {"X-OGX-Provider-Data": "OGX_PROVIDER_DATA"}
+
     def test_launches_codex_with_generated_session_home(self, connect_codex: ConnectCodex, tmp_path) -> None:
         args = connect_codex.parser.parse_args(["--model", "openai/gpt-4o"])
         mock_client = _make_mock_client(
