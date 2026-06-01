@@ -34,7 +34,7 @@ inputs:
   runner-home-dir:
     description: 'Home directory for the runner'
     required: false
-    default: '/home/ec2-user/actions-runner'
+    default: ''
   iam-role-name:
     description: 'IAM role name to attach to the instance (optional, for enhanced security)'
     required: false
@@ -54,7 +54,7 @@ runs:
     - name: Start EC2 runner
       if: inputs.mode == 'start'
       id: ec2-runner
-      uses: machulav/ec2-github-runner@fcfb31a5760dad1314a64a0e172b78ec6fc8a17e # v2.3.6
+      uses: machulav/ec2-github-runner@343a1b2ae682e681c3cec9a235d882da17ff04ef # v2.6.1
       with:
         mode: start
         github-token: ${{ inputs.github-token }}
@@ -66,7 +66,7 @@ runs:
 
     - name: Stop EC2 runner
       if: inputs.mode == 'stop'
-      uses: machulav/ec2-github-runner@fcfb31a5760dad1314a64a0e172b78ec6fc8a17e # v2.3.6
+      uses: machulav/ec2-github-runner@343a1b2ae682e681c3cec9a235d882da17ff04ef # v2.6.1
       with:
         mode: stop
         github-token: ${{ inputs.github-token }}

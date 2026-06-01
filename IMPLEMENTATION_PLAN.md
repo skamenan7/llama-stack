@@ -66,7 +66,7 @@ RELEASE_PAT=ghp_xxxxx (GitHub PAT with 'repo' scope)
 **Actions**:
 
 - [ ] Launch base EC2 instance (g6.2xlarge with Amazon Linux 2023 or Ubuntu 22.04)
-- [ ] Install NVIDIA drivers and CUDA 12.4
+- [ ] Install NVIDIA drivers and CUDA 12.8
 - [ ] Install Docker with NVIDIA Container Toolkit
 - [ ] Install system packages (gcc, g++, make, git, python3.12, python3.12-devel)
 - [ ] Configure CUDA environment variables
@@ -80,8 +80,8 @@ RELEASE_PAT=ghp_xxxxx (GitHub PAT with 'repo' scope)
 
 ```bash
 nvidia-smi  # Should show GPU
-nvcc --version  # Should show CUDA 12.4
-docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi
+nvcc --version  # Should show CUDA 12.8
+docker run --rm --gpus all nvidia/cuda:12.8.0-base-ubuntu22.04 nvidia-smi
 ```
 
 **Dependencies**: Task #11
@@ -105,7 +105,7 @@ docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi
 
 **Implementation Options**:
 
-1. Use `machulav/ec2-github-runner@v2.3.6` with wrapper logic
+1. Use `machulav/ec2-github-runner@v2.6.1` with wrapper logic
 2. Fork and customize `instructlab/ci-actions` (if available)
 3. Build custom JavaScript action
 
@@ -128,25 +128,25 @@ docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi
 - Install vLLM with GPU support
 - Pull gpt-oss:20b model (or specified model)
 - Start vLLM server with optimal settings:
-  - AWQ quantization for 24GB GPUs
+  - Native GPT-OSS MXFP4 weights without an extra vLLM quantization flag
   - GPU memory utilization: 0.85
-  - Tool calling support (hermes parser)
+  - Tool calling support (OpenAI parser)
 - Health check with timeout
 - Support both Ollama and HuggingFace models
 
 **vLLM Server Command**:
 
 ```bash
-vllm serve gpt-oss:20b \
+vllm serve openai/gpt-oss-20b \
   --host 0.0.0.0 \
   --port 8000 \
   --tensor-parallel-size 1 \
   --gpu-memory-utilization 0.85 \
   --max-model-len 8192 \
   --enable-auto-tool-choice \
-  --tool-call-parser hermes \
-  --dtype auto \
-  --quantization awq
+  --tool-call-parser openai \
+  --served-model-name gpt-oss:20b \
+  --dtype auto
 ```
 
 **Dependencies**: Task #10
@@ -169,10 +169,7 @@ name: vLLM GPU Recording
 on:
   workflow_dispatch:
     inputs:
-      model: [gpt-oss:20b, gpt-oss:latest, Qwen/Qwen3-0.6B]
-      instance_type: [g6.2xlarge, g5.2xlarge, g6.8xlarge, g6e.12xlarge]
       suite: [base, responses, vllm-reasoning]
-      pr_number: (optional)
 
 jobs:
   start-gpu-runner:
@@ -301,7 +298,7 @@ Add GPU matrix:
 - Expected costs and runtime
 - AWS prerequisites
 - Troubleshooting guide
-- Architecture diagram (reference GPU_RUNNERS_DESIGN.md)
+- Architecture diagram
 
 **Dependencies**: Task #8
 **Estimated Time**: 2-3 hours
@@ -536,7 +533,6 @@ Add GPU matrix:
 
 ## Resources
 
-- **Design Document**: `GPU_RUNNERS_DESIGN.md`
 - **AWS Documentation**: [EC2 Instance Types](https://aws.amazon.com/ec2/instance-types/g6/)
 - **vLLM Documentation**: [docs.vllm.ai](https://docs.vllm.ai/)
 - **GitHub Actions Security**: [Security hardening](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions)

@@ -21,10 +21,8 @@
 
 **Features**:
 
-- Select model: gpt-oss:20b, gpt-oss:latest, Qwen/Qwen3-0.6B
-- Select instance type: g6.2xlarge, g5.2xlarge, g6.8xlarge, g6e.12xlarge
+- Runs `gpt-oss:20b` on `g6.2xlarge`
 - Select test suite: base, responses, vllm-reasoning
-- Optional PR number for tracking
 
 #### 2. Setup vLLM GPU Action ✅
 
@@ -38,7 +36,7 @@
 - ✅ Model pulling (Ollama and HuggingFace formats)
 - ✅ vLLM server startup with optimal settings
 - ✅ Health check with 10-minute timeout
-- ✅ AWQ quantization for 24GB GPUs
+- ✅ GPT-OSS MXFP4 weights without an extra vLLM quantization flag
 
 #### 3. Launch GPU Runner Action ✅
 
@@ -62,12 +60,11 @@
 
 #### 5. Documentation ✅
 
-**Files**: `docs/gpu-runners.md`, `AWS_SETUP_GUIDE.md`, `IMPLEMENTATION_PLAN.md`, `GPU_RUNNERS_DESIGN.md`
+**Files**: `docs/gpu-runners.md`, `AWS_SETUP_GUIDE.md`, `IMPLEMENTATION_PLAN.md`
 
 - ✅ User guide for triggering GPU workflows
 - ✅ Step-by-step AWS setup guide with OIDC
 - ✅ Detailed implementation plan
-- ✅ Architecture design document
 - ✅ Troubleshooting guides
 - ✅ Cost estimates and monitoring guidance
 
@@ -113,7 +110,7 @@
 
 - [ ] Launch g6.2xlarge instance
 - [ ] Install NVIDIA drivers
-- [ ] Install CUDA 12.4
+- [ ] Install CUDA 12.8
 - [ ] Install Docker with NVIDIA Container Toolkit
 - [ ] Install Python 3.12
 - [ ] Create AMI
@@ -304,7 +301,6 @@ llama-stack/
 │   ├── ci_matrix.json ✅ (updated)
 │   └── suites.py ✅ (updated)
 ├── AWS_SETUP_GUIDE.md ✅
-├── GPU_RUNNERS_DESIGN.md ✅
 ├── IMPLEMENTATION_PLAN.md ✅
 └── IMPLEMENTATION_STATUS.md ✅ (this file)
 ```
@@ -375,7 +371,7 @@ llama-stack/
 
 ### For General Questions
 
-- Review `GPU_RUNNERS_DESIGN.md` for architecture
+- Review `docs/gpu-runners.md` for architecture
 - Review `IMPLEMENTATION_PLAN.md` for roadmap
 - Contact: Charles Doern (@cdoern)
 

@@ -19,9 +19,9 @@ inputs:
     required: false
     default: '8192'
   quantization:
-    description: 'Quantization method (awq, gptq, or none)'
+    description: 'Optional vLLM quantization method (awq, gptq, or none)'
     required: false
-    default: 'awq'
+    default: 'none'
 
 outputs:
   vllm-url:
@@ -50,15 +50,20 @@ runs:
     - name: Configure CUDA environment
       shell: bash
       run: |
-        # Set CUDA environment variables if not already set
-        if [ -z "$CUDA_HOME" ]; then
-          export CUDA_HOME=/usr/local/cuda-12.4
-          echo "CUDA_HOME=/usr/local/cuda-12.4" >> $GITHUB_ENV
+        if [ -z "${CUDA_HOME:-}" ]; then
+          if [ -d /usr/local/cuda ]; then
+            export CUDA_HOME=/usr/local/cuda
+          elif [ -d /usr/local/cuda-12.8 ]; then
+            export CUDA_HOME=/usr/local/cuda-12.8
+          elif [ -d /usr/local/cuda-12.4 ]; then
+            export CUDA_HOME=/usr/local/cuda-12.4
+          else
+            export CUDA_HOME=/usr/local/cuda
+          fi
         fi
+        echo "CUDA_HOME=${CUDA_HOME}" >> $GITHUB_ENV
 
-        # Configure LD_LIBRARY_PATH with "sandwich" pattern
-        # (system libs first, then NVIDIA libs, then CUDA)
-        export LD_LIBRARY_PATH="/usr/lib64:${LD_LIBRARY_PATH:-}:/usr/local/cuda-12.4/lib64"
+        export LD_LIBRARY_PATH="/usr/lib64:${LD_LIBRARY_PATH:-}:${CUDA_HOME}/lib64"
         echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> $GITHUB_ENV
 
         export PATH="${CUDA_HOME}/bin:${PATH}"
@@ -72,6 +77,7 @@ runs:
           echo "Installing uv..."
           curl -LsSf https://astral.sh/uv/install.sh | sh
           source $HOME/.cargo/env
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
         fi
 
         # Create virtual environment
@@ -86,12 +92,8 @@ runs:
       run: |
         source /tmp/vllm-env/bin/activate
 
-        echo "=== Installing PyTorch with CUDA support ==="
-        pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
-
-        echo "=== Installing vLLM ==="
-        # Install vLLM with CUDA support
-        pip install vllm
+        echo "=== Installing vLLM with CUDA support ==="
+        uv pip install vllm --torch-backend=auto
 
         echo "=== Verifying installation ==="
         python -c "import torch; print(f'PyTorch version: {torch.__version__}')"
@@ -150,7 +152,7 @@ runs:
           --gpu-memory-utilization $GPU_MEM \
           --max-model-len $MAX_LEN \
           --enable-auto-tool-choice \
-          --tool-call-parser hermes \
+          --tool-call-parser openai \
           --served-model-name $VLLM_SERVED_MODEL_NAME \
           --dtype auto"
 

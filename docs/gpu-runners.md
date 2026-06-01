@@ -21,8 +21,6 @@ GPU runners allow us to:
 2. Select **vLLM GPU Recording** workflow
 3. Click **Run workflow**
 4. Configure:
-   - **Model**: `gpt-oss:20b` (default)
-   - **Instance Type**: `g6.2xlarge` (default)
    - **Suite**: `base` (default)
 5. Click **Run workflow**
 
@@ -65,7 +63,7 @@ The workflow will:
 │  Job 2: Run vLLM Recording Tests                │
 │  - Runs on GPU runner (permissions: {})         │
 │  - Install vLLM with CUDA support               │
-│  - Start vLLM server with AWQ quantization      │
+│  - Start vLLM server with gpt-oss:20b           │
 │  - Run integration tests in record mode         │
 │  - Upload recordings as artifacts               │
 └────────────────┬────────────────────────────────┘
@@ -168,11 +166,9 @@ Create an AMI in `us-east-2` with:
 
 - Base OS: Amazon Linux 2023 or Ubuntu 22.04
 - NVIDIA drivers
-- CUDA 12.4 runtime
+- CUDA 12.8 runtime
 - Docker with NVIDIA Container Toolkit
 - Python 3.12
-
-See `GPU_RUNNERS_DESIGN.md` Appendix C for AMI build script.
 
 ### GitHub Configuration
 
@@ -235,7 +231,7 @@ The cleanup job always runs (`if: always()`):
 | g6.8xlarge | 1x L4 (24GB) | 24 GB | 32 | $1.38 | More vCPUs if needed |
 | g6e.12xlarge | 4x L40S (192GB) | 192 GB | 48 | $5.44 | 70B+ models (future) |
 
-**Note**: gpt-oss:20b requires ~40GB in FP16, but we use AWQ quantization to fit in 24GB GPU memory.
+**Note**: `gpt-oss:20b` ships with MXFP4-quantized MoE weights and is served without an extra vLLM `--quantization` flag in this workflow.
 
 ## Cost Estimates
 
@@ -269,7 +265,7 @@ The cleanup job always runs (`if: always()`):
 1. Check vLLM logs in workflow output
 2. Verify GPU is detected: look for `nvidia-smi` output
 3. Check CUDA installation: `nvcc --version`
-4. Try different quantization: change `quantization: 'awq'` to `quantization: 'none'`
+4. Try a lower `max-model-len` or `gpu-memory-utilization` if startup fails due to memory pressure
 
 ### Tests fail but recordings not uploaded
 
@@ -326,19 +322,11 @@ See `IMPLEMENTATION_PLAN.md` Task #3 for implementation.
 
 ## Adding New Models
 
-To add a new model for GPU testing:
+To add a new model for GPU testing, first add a model input to
+`.github/workflows/record-vllm-gpu-tests.yml`, then wire that value through
+`setup-vllm-gpu`.
 
-1. **Update workflow input** (`.github/workflows/record-vllm-gpu-tests.yml`):
-
-   ```yaml
-   model:
-     options:
-       - gpt-oss:20b
-       - gpt-oss:latest
-       - your-new-model
-   ```
-
-2. **Add to test matrix** (`tests/integration/ci_matrix.json`):
+After that, add the new setup to the test matrix:
 
    ```json
    "gpu-vllm": [
@@ -347,7 +335,7 @@ To add a new model for GPU testing:
    ]
    ```
 
-3. **Create setup** (`tests/integration/suites.py`):
+Create the setup in `tests/integration/suites.py`:
 
    ```python
    "vllm-gpu-your-model": Setup(
@@ -356,10 +344,11 @@ To add a new model for GPU testing:
    )
    ```
 
-4. **Choose instance type**:
-   - < 20B params: `g6.2xlarge` (24GB)
-   - 20-70B params: `g6.8xlarge` or `g6e.12xlarge` (192GB)
-   - 70B+ params: `g6e.12xlarge` (192GB) or `g6e.48xlarge` (384GB)
+Choose an instance type:
+
+- < 20B params: `g6.2xlarge` (24GB)
+- 20-70B params: `g6.8xlarge` or `g6e.12xlarge` (192GB)
+- 70B+ params: `g6e.12xlarge` (192GB) or `g6e.48xlarge` (384GB)
 
 ## Monitoring
 
@@ -388,7 +377,6 @@ Enable cost allocation in **AWS Billing > Cost Allocation Tags** to track costs 
 
 ## References
 
-- **Design Document**: `GPU_RUNNERS_DESIGN.md`
 - **Implementation Plan**: `IMPLEMENTATION_PLAN.md`
 - **AWS EC2 Instance Types**: <https://aws.amazon.com/ec2/instance-types/g6/>
 - **vLLM Documentation**: <https://docs.vllm.ai/>

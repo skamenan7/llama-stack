@@ -99,7 +99,7 @@ SETUP_DEFINITIONS: dict[str, Setup] = {
     ),
     "vllm-gpu-gpt-oss": Setup(
         name="vllm-gpu",
-        description="vLLM GPU provider with gpt-oss:20b reasoning model (runs on GPU with quantization)",
+        description="vLLM GPU provider with gpt-oss:20b reasoning model",
         env={
             "VLLM_URL": "http://localhost:8000/v1",
         },
