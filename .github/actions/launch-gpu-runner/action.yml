@@ -55,6 +55,9 @@ runs:
       if: inputs.mode == 'start'
       id: ec2-runner
       uses: machulav/ec2-github-runner@343a1b2ae682e681c3cec9a235d882da17ff04ef # v2.6.1
+      env:
+        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
+        AWS_REGION: ${{ inputs.aws-region }}
       with:
         mode: start
         github-token: ${{ inputs.github-token }}
@@ -67,6 +70,9 @@ runs:
     - name: Stop EC2 runner
       if: inputs.mode == 'stop'
       uses: machulav/ec2-github-runner@343a1b2ae682e681c3cec9a235d882da17ff04ef # v2.6.1
+      env:
+        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
+        AWS_REGION: ${{ inputs.aws-region }}
       with:
         mode: stop
         github-token: ${{ inputs.github-token }}

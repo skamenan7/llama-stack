@@ -312,7 +312,7 @@ Add GPU matrix:
 
 - ✅ Working GPU runner infrastructure
 - ✅ Manual workflow_dispatch for re-recording
-- ✅ End-to-end tested with gpt-oss:20b
+- ✅ Post-merge AWS AMI smoke validation path for gpt-oss:20b
 - ✅ Documentation for team
 
 **Phase 1 Completion Criteria**:
