@@ -26,7 +26,7 @@ inputs:
 outputs:
   vllm-url:
     description: 'URL of the vLLM server'
-    value: 'http://0.0.0.0:${{ inputs.port }}/v1'
+    value: 'http://localhost:${{ inputs.port }}/v1'
   model-name:
     description: 'Name of the model being served'
     value: ${{ inputs.model }}
@@ -69,23 +69,17 @@ runs:
         export PATH="${CUDA_HOME}/bin:${PATH}"
         echo "PATH=${PATH}" >> $GITHUB_ENV
 
+    - name: Install uv
+      uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+      with:
+        enable-cache: ${{ env.UV_NO_CACHE != 'true' }}
+
     - name: Install Python dependencies
       shell: bash
       run: |
-        # Install uv if not present
-        if ! command -v uv &> /dev/null; then
-          echo "Installing uv..."
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          source $HOME/.cargo/env
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-        fi
-
         # Create virtual environment
-        python3.12 -m venv /tmp/vllm-env
+        uv venv --python 3.12 /tmp/vllm-env
         source /tmp/vllm-env/bin/activate
-
-        echo "VIRTUAL_ENV=/tmp/vllm-env" >> $GITHUB_ENV
-        echo "/tmp/vllm-env/bin" >> $GITHUB_PATH
 
     - name: Install vLLM with GPU support
       shell: bash

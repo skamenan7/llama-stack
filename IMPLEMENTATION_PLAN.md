@@ -211,7 +211,7 @@ SETUP_DEFINITIONS = {
         name="vllm-gpu",
         description="vLLM GPU provider with gpt-oss:20b model",
         env={
-            "VLLM_URL": "http://0.0.0.0:8000/v1",
+            "VLLM_URL": "http://localhost:8000/v1",
         },
         defaults={
             "text_model": "vllm/gpt-oss:20b",
