@@ -79,6 +79,10 @@ class TestArguments:
         args = connect_codex.parser.parse_args(["--model", "openai/gpt-4o"])
         assert args.model == "openai/gpt-4o"
 
+    def test_exec_prompt(self, connect_codex: ConnectCodex) -> None:
+        args = connect_codex.parser.parse_args(["--exec", "Reply with only Paris"])
+        assert args.exec_prompt == "Reply with only Paris"
+
     def test_base_url_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("OGX_BASE_URL", "https://ogx.example.com/custom/v1")
         subparsers = argparse.ArgumentParser().add_subparsers()
@@ -236,8 +240,17 @@ class TestModelSelection:
 
 
 class TestSessionConfigGeneration:
-    def test_builds_codex_command(self, connect_codex: ConnectCodex) -> None:
+    def test_builds_interactive_codex_command(self, connect_codex: ConnectCodex) -> None:
         assert connect_codex._build_codex_command() == ["codex", "-p", "ogx"]
+
+    def test_builds_exec_codex_command(self, connect_codex: ConnectCodex) -> None:
+        assert connect_codex._build_codex_command("Reply with only Paris") == [
+            "codex",
+            "exec",
+            "-p",
+            "ogx",
+            "Reply with only Paris",
+        ]
 
     def test_builds_model_catalog_entry(self, catalog_builder: CodexCatalogBuilder) -> None:
         entry = catalog_builder.build_model_catalog_entry(
@@ -398,6 +411,45 @@ class TestConnect:
         assert config["profiles"]["ogx"]["model"] == "openai/gpt-4o"
         assert config["model_providers"]["ogx"]["base_url"] == "http://localhost:8321/v1"
         assert catalog["models"][0]["context_window"] == 200000
+
+    def test_launches_codex_exec_with_generated_session_home(self, connect_codex: ConnectCodex, tmp_path) -> None:
+        args = connect_codex.parser.parse_args(["--model", "openai/gpt-4o", "--exec", "Reply with only Paris"])
+        mock_client = _make_mock_client([_make_model("openai/gpt-4o")])
+
+        with (
+            patch("ogx.cli.connect.codex.shutil.which", return_value="/usr/bin/codex"),
+            patch("ogx.cli.connect.codex.OpenAI", return_value=mock_client),
+            patch(
+                "ogx.cli.connect.codex.tempfile.TemporaryDirectory",
+                return_value=contextlib.nullcontext(str(tmp_path)),
+            ),
+            patch("ogx.cli.connect.codex.subprocess.run") as mock_run,
+        ):
+            mock_run.return_value = MagicMock(returncode=0)
+            with pytest.raises(SystemExit) as exc_info:
+                connect_codex._run_connect_codex_cmd(args)
+
+        assert exc_info.value.code == 0
+        assert mock_run.call_args.args[0] == ["codex", "exec", "-p", "ogx", "Reply with only Paris"]
+        assert mock_run.call_args.kwargs["env"]["CODEX_HOME"] == str(tmp_path)
+
+    def test_propagates_exec_exit_code(self, connect_codex: ConnectCodex, tmp_path) -> None:
+        args = connect_codex.parser.parse_args(["--model", "openai/gpt-4o", "--exec", "Reply with only Paris"])
+        mock_client = _make_mock_client([_make_model("openai/gpt-4o")])
+
+        with (
+            patch("ogx.cli.connect.codex.shutil.which", return_value="/usr/bin/codex"),
+            patch("ogx.cli.connect.codex.OpenAI", return_value=mock_client),
+            patch(
+                "ogx.cli.connect.codex.tempfile.TemporaryDirectory",
+                return_value=contextlib.nullcontext(str(tmp_path)),
+            ),
+            patch("ogx.cli.connect.codex.subprocess.run") as mock_run,
+        ):
+            mock_run.return_value = MagicMock(returncode=42)
+            with pytest.raises(SystemExit) as exc_info:
+                connect_codex._run_connect_codex_cmd(args)
+            assert exc_info.value.code == 42
 
     def test_propagates_exit_code(self, connect_codex: ConnectCodex, tmp_path) -> None:
         args = connect_codex.parser.parse_args(["--model", "openai/gpt-4o"])

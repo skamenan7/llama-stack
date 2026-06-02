@@ -31,7 +31,7 @@ The `ogx connect codex` command:
 2. Filters out embedding models
 3. Selects the requested model or defaults to the first available non-embedding model
 4. Generates a temporary Codex session home with an OGX provider profile and model catalog
-5. Launches `codex -p ogx`
+5. Launches `codex -p ogx`, or `codex exec -p ogx <prompt>` when `--exec` is provided
 
 ```text
 ogx connect codex
@@ -52,13 +52,14 @@ Launch codex -p ogx using a generated session config
 ## CLI Reference
 
 ```bash
-ogx connect codex [--model MODEL] [--base-url URL]
+ogx connect codex [--model MODEL] [--base-url URL] [--exec PROMPT]
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--model` | First available model | Model to pre-select for Codex |
 | `--base-url` | `http://localhost:8321/v1` | Full OGX OpenAI-compatible base URL. Also reads `OGX_BASE_URL`. If the URL has no path, `ogx connect codex` appends `/v1`. |
+| `--exec` | Interactive Codex | Run Codex non-interactively with the provided prompt. Uses the same generated OGX session config as the interactive command. |
 
 ## Configuration Examples
 
@@ -73,6 +74,14 @@ ogx connect codex --model openai/gpt-4o
 ```bash
 ogx connect codex --base-url https://ogx.example.com/v1
 ```
+
+### Non-interactive one-shot prompt
+
+```bash
+ogx connect codex --exec "Write a hello world function in Python"
+```
+
+That runs `codex exec -p ogx` with the generated temporary OGX profile instead of opening the Codex TUI.
 
 ### With OGX bearer auth
 

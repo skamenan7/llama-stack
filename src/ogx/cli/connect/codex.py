@@ -315,7 +315,7 @@ class CodexSessionBuilder:
 class ConnectCodex(Subcommand):
     """Connect Codex to the running OGX server."""
 
-    MODEL_DISCOVERY_TIMEOUT_SECONDS = 20.0
+    MODEL_DISCOVERY_TIMEOUT_SECONDS = 20
     DEFAULT_BASE_URL = "http://localhost:8321/v1"
 
     def __init__(self, subparsers: argparse._SubParsersAction) -> None:
@@ -344,6 +344,13 @@ class ConnectCodex(Subcommand):
             default=os.getenv("OGX_BASE_URL", self.DEFAULT_BASE_URL),
             help="OGX OpenAI-compatible base URL. If no path is provided, /v1 is appended.",
         )
+        self.parser.add_argument(
+            "--exec",
+            dest="exec_prompt",
+            type=str,
+            default=None,
+            help="Run Codex non-interactively with the provided prompt.",
+        )
 
     def _run_connect_codex_cmd(self, args: argparse.Namespace) -> None:
         if not shutil.which("codex"):
@@ -362,10 +369,12 @@ class ConnectCodex(Subcommand):
         with tempfile.TemporaryDirectory(prefix="ogx-codex-") as codex_home:
             codex_home_path = Path(codex_home)
             self.session_builder.write_session_files(codex_home_path, base_url, models, default_model.model_id)
-            command = self._build_codex_command()
+            command = self._build_codex_command(args.exec_prompt)
             env = {**os.environ, "CODEX_HOME": str(codex_home_path)}
             result = subprocess.run(command, env=env)
             sys.exit(result.returncode)
 
-    def _build_codex_command(self) -> list[str]:
+    def _build_codex_command(self, exec_prompt: str | None = None) -> list[str]:
+        if exec_prompt:
+            return ["codex", "exec", "-p", "ogx", exec_prompt]
         return ["codex", "-p", "ogx"]
