@@ -3,7 +3,7 @@ slug: ogx-bedrock-aws-auth
 title: "Use Amazon Bedrock with OGX Without Managing Bearer Tokens"
 authors: [skamenan7]
 tags: [ogx, aws, bedrock, sigv4, sts]
-date: 2026-04-30
+date: 2026-06-02
 ---
 
 OGX now signs Bedrock requests with standard AWS SigV4, so the server uses the same credential chain your platform already runs. No bearer tokens to manage, no custom auth plumbing in your application code.
