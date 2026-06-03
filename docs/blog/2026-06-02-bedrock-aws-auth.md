@@ -70,6 +70,7 @@ export AWS_DEFAULT_REGION=us-west-2
 # Pick the option that matches your environment:
 # export AWS_PROFILE=default
 # export AWS_ROLE_ARN=arn:aws:iam::<account-id>:role/<role-name>
+# For EKS IRSA:
 # export AWS_WEB_IDENTITY_TOKEN_FILE=/var/run/secrets/eks.amazonaws.com/serviceaccount/token
 ```
 
@@ -128,7 +129,7 @@ EOF
 ### 3. Start OGX
 
 ```bash
-uv run ogx stack run --port 8321 ./config.yaml
+uv run ogx run --port 8321 ./config.yaml
 ```
 
 Leave that terminal running. In a second terminal, use the steps below.
