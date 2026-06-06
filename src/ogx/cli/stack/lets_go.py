@@ -513,11 +513,13 @@ def _autodetect_providers(debug: bool = False) -> tuple[str, tuple[QualifiedMode
     inline_providers = [
         "files=inline::localfs",
         "vector_io=inline::faiss",
+        "batches=inline::reference",
         "file_processors=inline::auto",
         "messages=inline::builtin",
     ]
     cprint("  ✓ inline::localfs (built-in)", color="green")
     cprint("  ✓ inline::faiss (built-in)", color="green")
+    cprint("  ✓ inline::reference batches (built-in)", color="green")
     cprint("  ✓ inline::auto (built-in)", color="green")
     cprint("  ✓ inline::builtin messages (built-in)", color="green")
 
