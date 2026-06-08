@@ -93,6 +93,38 @@ async def test_conversation_lifecycle(service):
     assert deleted.id == conversation.id
 
 
+async def test_delete_conversation_cascades_to_items(service):
+    """Deleting a conversation must remove its items and block further item access."""
+    conversation = await service.create_conversation(CreateConversationRequest())
+    items = [
+        OpenAIResponseMessage(
+            type="message",
+            role="user",
+            content=[OpenAIResponseInputMessageContentText(type="input_text", text="Hello")],
+            id="msg_deletecascade123",
+            status="completed",
+        )
+    ]
+    await service.add_items(conversation.id, AddItemsRequest(items=items))
+
+    listed = await service.list_items(ListItemsRequest(conversation_id=conversation.id))
+    assert len(listed.data) == 1
+    item_id = listed.data[0].id
+
+    await service.openai_delete_conversation(DeleteConversationRequest(conversation_id=conversation.id))
+
+    with pytest.raises(ConversationNotFoundError):
+        await service.list_items(ListItemsRequest(conversation_id=conversation.id))
+
+    with pytest.raises(ConversationNotFoundError):
+        await service.retrieve(RetrieveItemRequest(conversation_id=conversation.id, item_id=item_id))
+
+    raw_items = await service.sql_store.fetch_all(
+        table="conversation_items", where={"conversation_id": conversation.id}
+    )
+    assert raw_items.data == []
+
+
 async def test_conversation_items(service):
     conversation = await service.create_conversation(CreateConversationRequest())
 
