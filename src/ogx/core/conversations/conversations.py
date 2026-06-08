@@ -37,7 +37,7 @@ from ogx_api.conversations import (
     RetrieveItemRequest,
     UpdateConversationRequest,
 )
-from ogx_api.internal.sqlstore import ColumnDefinition, ColumnType
+from ogx_api.internal.sqlstore import ColumnDefinition, ColumnType, DeleteOperation
 
 logger = get_logger(name=__name__, category="openai_conversations")
 
@@ -182,8 +182,18 @@ class ConversationServiceImpl(Conversations):
         if record is None:
             raise ConversationNotFoundError(request.conversation_id)
 
-        await self.sql_store.delete(table="conversation_items", where={"conversation_id": request.conversation_id})
-        await self.sql_store.delete(table="openai_conversations", where={"id": request.conversation_id})
+        await self.sql_store.delete_many(
+            [
+                DeleteOperation(
+                    table="conversation_items",
+                    where={"conversation_id": request.conversation_id},
+                ),
+                DeleteOperation(
+                    table="openai_conversations",
+                    where={"id": request.conversation_id},
+                ),
+            ]
+        )
 
         logger.debug("Deleted conversation", conversation_id=request.conversation_id)
         return ConversationDeletedResource(id=request.conversation_id)

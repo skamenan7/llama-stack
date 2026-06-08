@@ -18,6 +18,7 @@ import pytest
 from openai.types.conversations.conversation import Conversation as OpenAIConversation
 from openai.types.conversations.conversation_item import ConversationItem as OpenAIConversationItem
 from pydantic import TypeAdapter
+from sqlalchemy import event
 
 from ogx.core.conversations.conversations import (
     ConversationServiceConfig,
@@ -123,6 +124,53 @@ async def test_delete_conversation_cascades_to_items(service):
         table="conversation_items", where={"conversation_id": conversation.id}
     )
     assert raw_items.data == []
+
+
+async def test_delete_conversation_is_atomic_when_parent_delete_fails(service):
+    """A failed parent delete must roll back the child-row delete in the same operation."""
+    conversation = await service.create_conversation(CreateConversationRequest())
+    items = [
+        OpenAIResponseMessage(
+            type="message",
+            role="user",
+            content=[OpenAIResponseInputMessageContentText(type="input_text", text="Hello")],
+            id="msg_atomicdelete123",
+            status="completed",
+        )
+    ]
+    await service.add_items(conversation.id, AddItemsRequest(items=items))
+
+    listed_before_delete = await service.list_items(ListItemsRequest(conversation_id=conversation.id))
+    assert len(listed_before_delete.data) == 1
+
+    sql_store_impl = service.sql_store.sql_store
+    await sql_store_impl._ensure_engine()
+    assert sql_store_impl._engine is not None
+
+    failure_triggered = {"value": False}
+
+    def fail_parent_delete(
+        conn, cursor, statement, parameters, context, executemany
+    ):  # pragma: no cover - SQLAlchemy callback signature
+        if statement.startswith("DELETE FROM openai_conversations"):
+            failure_triggered["value"] = True
+            raise RuntimeError("Injected parent delete failure")
+
+    event.listen(sql_store_impl._engine.sync_engine, "before_cursor_execute", fail_parent_delete)
+    try:
+        with pytest.raises(RuntimeError, match="Injected parent delete failure"):
+            await service.openai_delete_conversation(DeleteConversationRequest(conversation_id=conversation.id))
+    finally:
+        event.remove(sql_store_impl._engine.sync_engine, "before_cursor_execute", fail_parent_delete)
+
+    assert failure_triggered["value"] is True
+
+    conversation_after_failure = await service.get_conversation(GetConversationRequest(conversation_id=conversation.id))
+    assert conversation_after_failure.id == conversation.id
+
+    listed_after_failure = await service.list_items(ListItemsRequest(conversation_id=conversation.id))
+    assert len(listed_after_failure.data) == 1
+    assert listed_after_failure.data[0].id == "msg_atomicdelete123"
 
 
 async def test_conversation_items(service):
