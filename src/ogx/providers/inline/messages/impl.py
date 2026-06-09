@@ -60,6 +60,7 @@ from ogx_api.messages.models import (
     ContentBlockStartEvent,
     ContentBlockStopEvent,
     CreateMessageBatchRequest,
+    ErrorStreamEvent,
     ListMessageBatchesRequest,
     ListMessageBatchesResponse,
     MessageBatch,
@@ -71,6 +72,7 @@ from ogx_api.messages.models import (
     MessageDeltaEvent,
     MessageStartEvent,
     MessageStopEvent,
+    PingEvent,
     RetrieveMessageBatchRequest,
     RetrieveMessageBatchResultsRequest,
     _AnthropicErrorDetail,
@@ -79,6 +81,7 @@ from ogx_api.messages.models import (
     _SignatureDelta,
     _TextDelta,
     _ThinkingDelta,
+    _ToolChoiceTool,
 )
 
 from .config import MessagesConfig
@@ -111,11 +114,13 @@ async def _list_to_async_iter(
 
 
 # Maps Anthropic stop_reason -> OpenAI finish_reason
+# Valid stop_reasons: end_turn, stop_sequence, tool_use, max_tokens, pause_turn, refusal
 _STOP_REASON_TO_FINISH = {
     "end_turn": "stop",
     "stop_sequence": "stop",
     "tool_use": "tool_calls",
     "max_tokens": "length",
+    "pause_turn": "stop",
 }
 
 # Maps OpenAI finish_reason -> Anthropic stop_reason
@@ -472,11 +477,21 @@ class BuiltinMessagesImpl(Messages):
         # Use the provider_resource_id (model name without provider prefix)
         provider_model = request.model
         router = self.inference_api
+        api_key = "no-key-required"
         if hasattr(router, "routing_table"):
             try:
                 obj = await router.routing_table.get_object_by_identifier("model", request.model)
                 if obj:
                     provider_model = obj.provider_resource_id
+                    provider_impl = await router.routing_table.get_provider_impl(obj.identifier)
+                    # TODO: this is a sever abstration violation. this all needs to be refactored
+                    #       to use a proper provider interface for messages
+                    if hasattr(provider_impl, "_get_api_key_from_config_or_provider_data"):
+                        key = provider_impl._get_api_key_from_config_or_provider_data()
+                    else:
+                        key = provider_impl.get_api_key() if hasattr(provider_impl, "get_api_key") else None
+                    if key:
+                        api_key = key
             except (KeyError, ValueError, AttributeError):
                 logger.debug("Failed to resolve provider model name, using original", model=request.model)
 
@@ -485,7 +500,7 @@ class BuiltinMessagesImpl(Messages):
         headers = {
             "content-type": "application/json",
             "anthropic-version": ANTHROPIC_VERSION,
-            "x-api-key": "no-key-required",
+            "x-api-key": api_key,
         }
 
         if request.stream:
@@ -502,19 +517,26 @@ class BuiltinMessagesImpl(Messages):
         body: dict[str, Any],
     ) -> AsyncIterator[AnthropicStreamEvent]:
         """Stream SSE events directly from the provider."""
-        async with self._client.stream("POST", url, json=body, headers=headers, timeout=300) as resp:
-            resp.raise_for_status()
-            event_type = None
-            async for line in resp.aiter_lines():
-                line = line.strip()
-                if line.startswith("event: "):
-                    event_type = line[7:]
-                elif line.startswith("data: ") and event_type:
-                    data = json.loads(line[6:])
-                    event = self._parse_sse_event(event_type, data)
-                    if event:
-                        yield event
-                    event_type = None
+        try:
+            async with self._client.stream("POST", url, json=body, headers=headers, timeout=300) as resp:
+                resp.raise_for_status()
+                event_type = None
+                async for line in resp.aiter_lines():
+                    line = line.strip()
+                    if line.startswith("event: "):
+                        event_type = line[7:]
+                    elif line.startswith("data: ") and event_type:
+                        data = json.loads(line[6:])
+                        event = self._parse_sse_event(event_type, data)
+                        if event:
+                            yield event
+                        event_type = None
+        except Exception:
+            logger.exception("Failed to stream passthrough response")
+            yield ErrorStreamEvent(
+                error=_AnthropicErrorDetail(type="api_error", message="Internal server error"),
+            )
+            return
 
     def _parse_sse_event(self, event_type: str, data: dict[str, Any]) -> AnthropicStreamEvent | None:
         """Parse an Anthropic SSE event from its type and data."""
@@ -559,6 +581,10 @@ class BuiltinMessagesImpl(Messages):
             )
         if event_type == "message_stop":
             return MessageStopEvent()
+        if event_type == "ping":
+            return PingEvent()
+        if event_type == "error":
+            return ErrorStreamEvent(error=_AnthropicErrorDetail(**data["error"]))
         return None
 
     async def _passthrough_count_tokens(
@@ -571,11 +597,21 @@ class BuiltinMessagesImpl(Messages):
         # Use the provider_resource_id (model name without provider prefix)
         provider_model = request.model
         router = self.inference_api
+        api_key = "no-key-required"
         if hasattr(router, "routing_table"):
             try:
                 obj = await router.routing_table.get_object_by_identifier("model", request.model)
                 if obj:
                     provider_model = obj.provider_resource_id
+                    provider_impl = await router.routing_table.get_provider_impl(obj.identifier)
+                    # TODO: this needs to be rafactored to avoid abstraction violations and remove
+                    #       duplicated logic with _passthrough_request
+                    if hasattr(provider_impl, "_get_api_key_from_config_or_provider_data"):
+                        key = provider_impl._get_api_key_from_config_or_provider_data()
+                    else:
+                        key = provider_impl.get_api_key() if hasattr(provider_impl, "get_api_key") else None
+                    if key:
+                        api_key = key
             except (KeyError, ValueError, AttributeError):
                 logger.debug("Failed to resolve provider model name, using original", model=request.model)
 
@@ -584,7 +620,7 @@ class BuiltinMessagesImpl(Messages):
         headers = {
             "content-type": "application/json",
             "anthropic-version": ANTHROPIC_VERSION,
-            "x-api-key": "no-key-required",
+            "x-api-key": api_key,
         }
 
         resp = await self._client.post(url, json=body, headers=headers, timeout=30)
@@ -608,6 +644,10 @@ class BuiltinMessagesImpl(Messages):
             self._convert_tool_choice_to_openai(request.tool_choice) if tools and request.tool_choice else None
         )
 
+        parallel_tool_calls: bool | None = None
+        if request.tool_choice and getattr(request.tool_choice, "disable_parallel_tool_use", False):
+            parallel_tool_calls = False
+
         extra_body: dict[str, Any] = {}
         if request.top_k is not None:
             extra_body["top_k"] = request.top_k
@@ -621,6 +661,7 @@ class BuiltinMessagesImpl(Messages):
             stop=request.stop_sequences,
             tools=tools,
             tool_choice=tool_choice,
+            parallel_tool_calls=parallel_tool_calls,
             stream=request.stream or False,
             service_tier=request.service_tier,  # type: ignore[arg-type]
             **(extra_body or {}),
@@ -657,6 +698,11 @@ class BuiltinMessagesImpl(Messages):
 
         if msg.role == "assistant":
             return [self._convert_assistant_message(msg.content)]
+
+        if msg.role == "system":
+            # System content blocks are text-only; concatenate to a single string.
+            system_text = "\n".join(block.text for block in msg.content if isinstance(block, AnthropicTextBlock))
+            return [{"role": "system", "content": system_text}]
 
         # User message: may contain text and/or tool_result blocks
         result: list[dict[str, Any]] = []
@@ -758,23 +804,14 @@ class BuiltinMessagesImpl(Messages):
         return result or None
 
     def _convert_tool_choice_to_openai(self, tool_choice: Any) -> Any:
-        if isinstance(tool_choice, str):
-            if tool_choice == "any":
-                return "required"
-            if tool_choice == "none":
-                return "none"
-            return "auto"
+        if isinstance(tool_choice, _ToolChoiceTool):
+            return {"type": "function", "function": {"name": tool_choice.name}}
 
-        if isinstance(tool_choice, dict):
-            tc_type = tool_choice.get("type")
-            if tc_type == "tool":
-                return {"type": "function", "function": {"name": tool_choice["name"]}}
-            if tc_type == "any":
-                return "required"
-            if tc_type == "none":
-                return "none"
-            return "auto"
-
+        tc_type = tool_choice.type if hasattr(tool_choice, "type") else str(tool_choice)
+        if tc_type == "any":
+            return "required"
+        if tc_type == "none":
+            return "none"
         return "auto"
 
     # -- Response translation --
@@ -850,6 +887,7 @@ class BuiltinMessagesImpl(Messages):
                 usage=AnthropicUsage(input_tokens=0, output_tokens=0),
             ),
         )
+        yield PingEvent()
 
         content_block_index = 0
         in_text_block = False
@@ -860,9 +898,71 @@ class BuiltinMessagesImpl(Messages):
         cache_read_tokens: int | None = None
         stop_reason = "end_turn"
 
-        async for chunk in openai_stream:
-            if not chunk.choices:
-                # Usage-only chunk
+        try:
+            async for chunk in openai_stream:
+                if not chunk.choices:
+                    # Usage-only chunk
+                    if chunk.usage:
+                        input_tokens = chunk.usage.prompt_tokens or 0
+                        output_tokens = chunk.usage.completion_tokens or 0
+                        if chunk.usage.prompt_tokens_details and hasattr(
+                            chunk.usage.prompt_tokens_details, "cached_tokens"
+                        ):
+                            cache_read_tokens = chunk.usage.prompt_tokens_details.cached_tokens
+                    continue
+
+                choice = chunk.choices[0]
+                delta = choice.delta
+
+                if delta and delta.content:
+                    if not in_text_block:
+                        yield ContentBlockStartEvent(
+                            index=content_block_index,
+                            content_block=AnthropicTextBlock(text=""),
+                        )
+                        in_text_block = True
+
+                    yield ContentBlockDeltaEvent(
+                        index=content_block_index,
+                        delta=_TextDelta(text=delta.content),
+                    )
+
+                if delta and delta.tool_calls:
+                    for tc_delta in delta.tool_calls:
+                        tc_idx = tc_delta.index if tc_delta.index is not None else 0
+
+                        if tc_idx not in in_tool_blocks:
+                            # Close text block if open
+                            if in_text_block:
+                                yield ContentBlockStopEvent(index=content_block_index)
+                                yield PingEvent()
+                                content_block_index += 1
+                                in_text_block = False
+
+                            # Start new tool_use block
+                            in_tool_blocks[tc_idx] = True
+                            tool_call_index_to_block_index[tc_idx] = content_block_index
+
+                            yield ContentBlockStartEvent(
+                                index=content_block_index,
+                                content_block=AnthropicToolUseBlock(
+                                    id=tc_delta.id or f"toolu_{uuid.uuid4().hex[:24]}",
+                                    name=tc_delta.function.name if tc_delta.function and tc_delta.function.name else "",
+                                    input={},
+                                ),
+                            )
+                            content_block_index += 1
+
+                        if tc_delta.function and tc_delta.function.arguments:
+                            block_idx = tool_call_index_to_block_index[tc_idx]
+                            yield ContentBlockDeltaEvent(
+                                index=block_idx,
+                                delta=_InputJsonDelta(partial_json=tc_delta.function.arguments),
+                            )
+
+                if choice.finish_reason:
+                    stop_reason = _FINISH_TO_STOP_REASON.get(choice.finish_reason, "end_turn")
+
                 if chunk.usage:
                     input_tokens = chunk.usage.prompt_tokens or 0
                     output_tokens = chunk.usage.completion_tokens or 0
@@ -870,71 +970,21 @@ class BuiltinMessagesImpl(Messages):
                         chunk.usage.prompt_tokens_details, "cached_tokens"
                     ):
                         cache_read_tokens = chunk.usage.prompt_tokens_details.cached_tokens
-                continue
-
-            choice = chunk.choices[0]
-            delta = choice.delta
-
-            if delta and delta.content:
-                if not in_text_block:
-                    yield ContentBlockStartEvent(
-                        index=content_block_index,
-                        content_block=AnthropicTextBlock(text=""),
-                    )
-                    in_text_block = True
-
-                yield ContentBlockDeltaEvent(
-                    index=content_block_index,
-                    delta=_TextDelta(text=delta.content),
-                )
-
-            if delta and delta.tool_calls:
-                for tc_delta in delta.tool_calls:
-                    tc_idx = tc_delta.index if tc_delta.index is not None else 0
-
-                    if tc_idx not in in_tool_blocks:
-                        # Close text block if open
-                        if in_text_block:
-                            yield ContentBlockStopEvent(index=content_block_index)
-                            content_block_index += 1
-                            in_text_block = False
-
-                        # Start new tool_use block
-                        in_tool_blocks[tc_idx] = True
-                        tool_call_index_to_block_index[tc_idx] = content_block_index
-
-                        yield ContentBlockStartEvent(
-                            index=content_block_index,
-                            content_block=AnthropicToolUseBlock(
-                                id=tc_delta.id or f"toolu_{uuid.uuid4().hex[:24]}",
-                                name=tc_delta.function.name if tc_delta.function and tc_delta.function.name else "",
-                                input={},
-                            ),
-                        )
-                        content_block_index += 1
-
-                    if tc_delta.function and tc_delta.function.arguments:
-                        block_idx = tool_call_index_to_block_index[tc_idx]
-                        yield ContentBlockDeltaEvent(
-                            index=block_idx,
-                            delta=_InputJsonDelta(partial_json=tc_delta.function.arguments),
-                        )
-
-            if choice.finish_reason:
-                stop_reason = _FINISH_TO_STOP_REASON.get(choice.finish_reason, "end_turn")
-
-            if chunk.usage:
-                input_tokens = chunk.usage.prompt_tokens or 0
-                output_tokens = chunk.usage.completion_tokens or 0
-                if chunk.usage.prompt_tokens_details and hasattr(chunk.usage.prompt_tokens_details, "cached_tokens"):
-                    cache_read_tokens = chunk.usage.prompt_tokens_details.cached_tokens
+        except Exception:
+            logger.exception("Failed to stream translation response")
+            yield ErrorStreamEvent(
+                error=_AnthropicErrorDetail(type="api_error", message="Internal server error"),
+            )
+            return
 
         # Close any open blocks
         if in_text_block:
             yield ContentBlockStopEvent(index=content_block_index)
+            yield PingEvent()
 
         for _tc_idx, block_idx in tool_call_index_to_block_index.items():
             yield ContentBlockStopEvent(index=block_idx)
+            yield PingEvent()
 
         # Final events
         yield MessageDeltaEvent(
