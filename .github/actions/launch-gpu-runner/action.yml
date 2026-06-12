@@ -1,6 +1,7 @@
 name: 'Launch GPU EC2 Runner'
 description: 'Launch GPU-enabled EC2 instance as GitHub Actions self-hosted runner (wrapper for machulav/ec2-github-runner)'
 
+on: push
 inputs:
   mode:
     description: 'Mode: start or stop'
