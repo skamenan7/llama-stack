@@ -69,7 +69,7 @@ def available_providers() -> list[ProviderSpec]:
             api=Api.safety,
             adapter_type="sambanova",
             provider_type="remote::sambanova",
-            pip_packages=["litellm", "requests"],
+            pip_packages=["litellm>=1.83.7", "requests"],
             module="llama_stack.providers.remote.safety.sambanova",
             config_class="llama_stack.providers.remote.safety.sambanova.SambaNovaSafetyConfig",
             provider_data_validator="llama_stack.providers.remote.safety.sambanova.config.SambaNovaProviderDataValidator",
