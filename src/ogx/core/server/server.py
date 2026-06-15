@@ -311,6 +311,7 @@ def create_app() -> StackApp:
     if config.server.auth:
         # Add route authorization middleware if route_policy is configured
         # This can work independently of authentication
+        # NOTE: Add this FIRST because middleware wraps in reverse order (last added runs first)
         # We want: Request → Auth → RouteAuth → App
         if config.server.auth.route_policy:
             logger.info("Enabling route-level authorization", rule_count=len(config.server.auth.route_policy))
