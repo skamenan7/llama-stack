@@ -147,6 +147,17 @@ class StackApp(FastAPI):
 
         reset_sqlstore_engines()
 
+        # Reset VertexAI provider clients that may have been created in the
+        # temporary event loop during model listing (refresh_registry_once).
+        # Like SQL engines, the Google genai Client eagerly binds an internal
+        # httpx.AsyncClient to the current event loop, and the cached client
+        # becomes unusable after the temporary loop is terminated.
+        if self.stack.impls:
+            for impl in self.stack.impls.values():
+                reset_fn = getattr(impl, "_reset_client", None)
+                if reset_fn is not None:
+                    reset_fn()
+
 
 @asynccontextmanager
 async def lifespan(app: StackApp) -> AsyncIterator[None]:
@@ -300,7 +311,6 @@ def create_app() -> StackApp:
     if config.server.auth:
         # Add route authorization middleware if route_policy is configured
         # This can work independently of authentication
-        # NOTE: Add this FIRST because middleware wraps in reverse order (last added runs first)
         # We want: Request → Auth → RouteAuth → App
         if config.server.auth.route_policy:
             logger.info("Enabling route-level authorization", rule_count=len(config.server.auth.route_policy))
