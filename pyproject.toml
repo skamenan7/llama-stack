@@ -47,7 +47,7 @@ dependencies = [
     "rich",
     "termcolor",
     "tiktoken",
-    "pillow",
+    "pillow>=12.2.0",
     "h11>=0.16.0",
     "python-multipart>=0.0.20",                       # For fastapi Form
     "uvicorn>=0.34.0",                                # server
