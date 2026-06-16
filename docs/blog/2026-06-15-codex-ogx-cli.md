@@ -3,7 +3,7 @@ slug: ogx-codex-cli
 title: "Connect Codex CLI to Local and Hosted Models with OGX"
 authors: [skamenan7]
 tags: [ogx, codex, responses-api, vllm, ollama, agents]
-date: 2026-06-15
+date: 2026-06-30
 ---
 
 Codex CLI brings an agent into the terminal, but teams often want that agent to use more than one model source. OGX gives Codex one OpenAI-compatible connection to local models, hosted models, and secured deployments.
@@ -35,7 +35,7 @@ Codex uses OGX through the Responses API, but the provider setup is useful beyon
 The command is intentionally small:
 
 ```bash
-ogx connect codex --url http://localhost:8321/v1
+ogx connect codex
 ```
 
 Behind that command, OGX does the mechanical work that is easy to get wrong by hand:
@@ -100,15 +100,13 @@ If you do want to use an OpenAI-backed model instead, set `OPENAI_API_KEY` befor
 Then launch Codex in another terminal:
 
 ```bash
-uv run ogx connect codex \
-  --url http://localhost:8321/v1
+uv run ogx connect codex
 ```
 
 If you want a specific model from the OGX model list:
 
 ```bash
 uv run ogx connect codex \
-  --url http://localhost:8321/v1 \
   --model ollama/llama3.2:3b
 ```
 
@@ -116,7 +114,6 @@ For a quick non-interactive run, use `--exec`:
 
 ```bash
 uv run ogx connect codex \
-  --url http://localhost:8321/v1 \
   --model ollama/llama3.2:3b \
   --exec "Explain in one sentence why OGX is useful with Codex CLI."
 ```
@@ -183,7 +180,6 @@ Now connect Codex through OGX:
 
 ```bash
 uv run ogx connect codex \
-  --url http://localhost:8321/v1 \
   --model vllm/Qwen/Qwen3-8B \
   --exec "Explain in one sentence how this Codex request is reaching the vLLM model."
 ```
