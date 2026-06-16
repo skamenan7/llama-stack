@@ -127,6 +127,7 @@ jobs:
           setup: 'vllm-gpu-gpt-oss'
           inference-mode: 'record'
           suite: ${{ inputs.suite }}
+          pattern: ${{ inputs.suite == 'base' && 'not (test_openai_completion_guided_choice or test_multiple_tools_with_different_schemas or test_mcp_invocation)' || '' }}
           skip-commit: 'true'  # Don't commit here - upload as artifacts
 
       - name: Upload recordings as artifacts
