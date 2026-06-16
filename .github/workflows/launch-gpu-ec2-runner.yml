@@ -119,6 +119,7 @@ jobs:
           setup: 'vllm-gpu-gpt-oss'
           suite: ${{ inputs.suite }}
           inference-mode: 'record'
+          enable-hf-cache: 'false'
 
       - name: Run integration tests (record mode)
         uses: ./.github/actions/run-and-record-tests
