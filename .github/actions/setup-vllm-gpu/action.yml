@@ -22,6 +22,10 @@ inputs:
     description: 'Optional vLLM quantization method (awq, gptq, or none)'
     required: false
     default: 'none'
+  vllm-version:
+    description: 'vLLM version to install, or latest for the newest available release'
+    required: false
+    default: '0.22.1'
 
 outputs:
   vllm-url:
@@ -51,7 +55,9 @@ runs:
       shell: bash
       run: |
         if [ -z "${CUDA_HOME:-}" ]; then
-          if [ -d /usr/local/cuda ]; then
+          if [ -d /usr/local/cuda-13.0 ]; then
+            export CUDA_HOME=/usr/local/cuda-13.0
+          elif [ -d /usr/local/cuda ]; then
             export CUDA_HOME=/usr/local/cuda
           elif [ -d /usr/local/cuda-12.8 ]; then
             export CUDA_HOME=/usr/local/cuda-12.8
@@ -83,11 +89,17 @@ runs:
 
     - name: Install vLLM with GPU support
       shell: bash
+      env:
+        VLLM_VERSION: ${{ inputs.vllm-version }}
       run: |
         source /tmp/vllm-env/bin/activate
 
         echo "=== Installing vLLM with CUDA support ==="
-        uv pip install vllm --torch-backend=auto
+        if [ "$VLLM_VERSION" = "latest" ]; then
+          uv pip install vllm --torch-backend=auto
+        else
+          uv pip install "vllm==$VLLM_VERSION" --torch-backend=auto
+        fi
 
         echo "=== Verifying installation ==="
         python -c "import torch; print(f'PyTorch version: {torch.__version__}')"

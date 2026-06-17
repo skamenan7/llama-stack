@@ -114,6 +114,7 @@ jobs:
           gpu-memory-utilization: '0.85'
           max-model-len: '8192'
           quantization: 'none'
+          vllm-version: '0.22.1'
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-environment

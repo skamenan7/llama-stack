@@ -66,7 +66,7 @@ RELEASE_PAT=ghp_xxxxx (GitHub PAT with 'repo' scope)
 **Actions**:
 
 - [ ] Launch base EC2 instance (g6.2xlarge with Amazon Linux 2023 or Ubuntu 22.04)
-- [ ] Install NVIDIA drivers and CUDA 12.8
+- [ ] Install NVIDIA drivers and CUDA 13.0
 - [ ] Install Docker with NVIDIA Container Toolkit
 - [ ] Install system packages (gcc, g++, make, git, python3.12, python3.12-devel)
 - [ ] Configure CUDA environment variables
@@ -80,8 +80,8 @@ RELEASE_PAT=ghp_xxxxx (GitHub PAT with 'repo' scope)
 
 ```bash
 nvidia-smi  # Should show GPU
-nvcc --version  # Should show CUDA 12.8
-docker run --rm --gpus all nvidia/cuda:12.8.0-base-ubuntu22.04 nvidia-smi
+nvcc --version  # Should show CUDA 13.0
+docker run --rm --gpus all nvidia/cuda:13.0.0-base-ubuntu22.04 nvidia-smi
 ```
 
 **Dependencies**: Task #11
@@ -126,6 +126,7 @@ docker run --rm --gpus all nvidia/cuda:12.8.0-base-ubuntu22.04 nvidia-smi
 **Key Features**:
 
 - Install vLLM with GPU support
+- Pin vLLM to 0.22.1 for the validated CUDA 13.0 AMI path
 - Pull gpt-oss:20b model (or specified model)
 - Start vLLM server with optimal settings:
   - Native GPT-OSS MXFP4 weights without an extra vLLM quantization flag

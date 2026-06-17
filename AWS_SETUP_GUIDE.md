@@ -303,14 +303,14 @@ sudo apt-get install -y \
 sudo apt-get install -y ubuntu-drivers-common
 sudo ubuntu-drivers autoinstall
 
-# Install CUDA 12.8
+# Install CUDA 13.0
 wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
 sudo dpkg -i cuda-keyring_1.1-1_all.deb
 sudo apt-get update
-sudo apt-get -y install cuda-12-8
+sudo apt-get -y install cuda-13-0
 
 # Configure CUDA environment
-echo 'export CUDA_HOME=/usr/local/cuda-12.8' | sudo tee -a /etc/profile.d/cuda.sh
+echo 'export CUDA_HOME=/usr/local/cuda-13.0' | sudo tee -a /etc/profile.d/cuda.sh
 echo 'export PATH=$PATH:$CUDA_HOME/bin' | sudo tee -a /etc/profile.d/cuda.sh
 echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_HOME/lib64' | sudo tee -a /etc/profile.d/cuda.sh
 
@@ -338,7 +338,7 @@ sudo apt-get install -y python3.12 python3.12-venv python3.12-dev
 # Verify installation
 nvidia-smi
 nvcc --version
-docker run --rm --gpus all nvidia/cuda:12.8.0-base-ubuntu22.04 nvidia-smi
+docker run --rm --gpus all nvidia/cuda:13.0.0-base-ubuntu22.04 nvidia-smi
 
 echo "Setup complete! Ready to create AMI."
 ```
@@ -352,8 +352,8 @@ After setup completes:
 aws ec2 create-image \
   --region us-east-2 \
   --instance-id i-xxxxx \
-  --name "llama-stack-gpu-ubuntu-2204-cuda-12.8-$(date +%Y%m%d)" \
-  --description "Ubuntu 22.04 with NVIDIA drivers, CUDA 12.8, Docker, Python 3.12" \
+  --name "llama-stack-gpu-ubuntu-2204-cuda-13.0-$(date +%Y%m%d)" \
+  --description "Ubuntu 22.04 with NVIDIA drivers, CUDA 13.0, Docker, Python 3.12" \
   --tag-specifications 'ResourceType=image,Tags=[{Key=Name,Value=llama-stack-gpu-ami}]'
 
 ```
@@ -374,7 +374,7 @@ aws ec2 run-instances \
 ssh ubuntu@<ip>
 nvidia-smi
 nvcc --version
-docker run --rm --gpus all nvidia/cuda:12.8.0-base-ubuntu22.04 nvidia-smi
+docker run --rm --gpus all nvidia/cuda:13.0.0-base-ubuntu22.04 nvidia-smi
 ```
 
 ## Step 4: Create GitHub Personal Access Token

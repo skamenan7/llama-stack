@@ -166,7 +166,8 @@ Create an AMI in `us-east-2` with:
 
 - Base OS: Amazon Linux 2023 or Ubuntu 22.04
 - NVIDIA drivers
-- CUDA 12.8 runtime
+- CUDA 13.0 runtime
+- vLLM 0.22.1
 - Docker with NVIDIA Container Toolkit
 - Python 3.12
 

@@ -110,7 +110,8 @@
 
 - [ ] Launch g6.2xlarge instance
 - [ ] Install NVIDIA drivers
-- [ ] Install CUDA 12.8
+- [ ] Install CUDA 13.0
+- [ ] Install/validate vLLM 0.22.1
 - [ ] Install Docker with NVIDIA Container Toolkit
 - [ ] Install Python 3.12
 - [ ] Create AMI
