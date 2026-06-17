@@ -144,8 +144,8 @@ You need subnets in `us-east-2` for the first version:
 **us-east-2 (Primary)**:
 
 - us-east-2a: `subnet-02d230cffd9385bd4`
-- us-east-2b: `subnet-0d64189301640b8bd`
-- us-east-2c: `subnet-03064660effeacdb5`
+- us-east-2b: `subnet-024298cefa3bedd61`
+- us-east-2c: `subnet-04701a08396b2ed01`
 
 #### 3. Security Groups
 
@@ -186,10 +186,10 @@ Add these to **Settings > Secrets and variables > Actions > Variables**:
 **us-east-2**:
 
 - `SUBNET_US_EAST_2A`: `subnet-02d230cffd9385bd4`
-- `SUBNET_US_EAST_2B`: `subnet-0d64189301640b8bd`
-- `SUBNET_US_EAST_2C`: `subnet-03064660effeacdb5`
-- `AWS_EC2_AMI_US_EAST_2`: ami-xxxxx
-- `SECURITY_GROUP_ID_US_EAST_2`: `sg-06bd19db0fd957ed1`
+- `SUBNET_US_EAST_2B`: `subnet-024298cefa3bedd61`
+- `SUBNET_US_EAST_2C`: `subnet-04701a08396b2ed01`
+- `AWS_EC2_AMI_US_EAST_2`: `ami-090a815de2a7461f2`
+- `SECURITY_GROUP_ID_US_EAST_2`: `sg-06300447c4a5fbef3`
 
 ## Security
 

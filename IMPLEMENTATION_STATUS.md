@@ -139,11 +139,11 @@
 
 **Variables** (Settings > Secrets and variables > Actions > Variables):
 
-- [ ] `SUBNET_US_EAST_2A`: `subnet-02d230cffd9385bd4`
-- [ ] `SUBNET_US_EAST_2B`: `subnet-0d64189301640b8bd`
-- [ ] `SUBNET_US_EAST_2C`: `subnet-03064660effeacdb5`
-- [ ] `AWS_EC2_AMI_US_EAST_2`
-- [ ] `SECURITY_GROUP_ID_US_EAST_2`: `sg-06bd19db0fd957ed1`
+- [x] `SUBNET_US_EAST_2A`: `subnet-02d230cffd9385bd4`
+- [x] `SUBNET_US_EAST_2B`: `subnet-024298cefa3bedd61`
+- [x] `SUBNET_US_EAST_2C`: `subnet-04701a08396b2ed01`
+- [x] `AWS_EC2_AMI_US_EAST_2`: `ami-090a815de2a7461f2`
+- [x] `SECURITY_GROUP_ID_US_EAST_2`: `sg-06300447c4a5fbef3`
 
 **Guide**: `AWS_SETUP_GUIDE.md` Step 5
 
