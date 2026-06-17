@@ -96,9 +96,9 @@ runs:
 
         echo "=== Installing vLLM with CUDA support ==="
         if [ "$VLLM_VERSION" = "latest" ]; then
-          uv pip install vllm --torch-backend=auto
+          uv pip install --no-config vllm --torch-backend=auto
         else
-          uv pip install "vllm==$VLLM_VERSION" --torch-backend=auto
+          uv pip install --no-config "vllm==$VLLM_VERSION" --torch-backend=auto
         fi
 
         echo "=== Verifying installation ==="
