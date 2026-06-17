@@ -126,6 +126,23 @@ jobs:
           inference-mode: 'record'
           enable-hf-cache: 'false'
 
+      - name: Select vLLM-compatible pytest pattern
+        id: test-pattern
+        shell: bash
+        run: |
+          case "${{ inputs.suite }}" in
+            base)
+              pattern="not (test_openai_completion_guided_choice or test_multiple_tools_with_different_schemas or test_mcp_invocation)"
+              ;;
+            responses)
+              pattern="not (file_search or mcp or tool or compact or conversation or test_include_logprobs_with_web_search or test_openai_response_with_small_max_output_tokens or test_openai_response_with_max_output_tokens or test_openai_response_streaming_invalid_base64_image_failure_code_is_spec_compliant or test_openai_response_with_parallel_tool_calls_enabled or test_openai_response_background_completes)"
+              ;;
+            *)
+              pattern=""
+              ;;
+          esac
+          echo "pattern=${pattern}" >> "$GITHUB_OUTPUT"
+
       - name: Run integration tests (record mode)
         uses: ./.github/actions/run-and-record-tests
         with:
@@ -133,7 +150,7 @@ jobs:
           setup: 'vllm-gpu-gpt-oss'
           inference-mode: 'record'
           suite: ${{ inputs.suite }}
-          pattern: ${{ inputs.suite == 'base' && 'not (test_openai_completion_guided_choice or test_multiple_tools_with_different_schemas or test_mcp_invocation)' || '' }}
+          pattern: ${{ steps.test-pattern.outputs.pattern }}
           skip-commit: 'true'  # Don't commit here - upload as artifacts
 
       - name: Upload recordings as artifacts
