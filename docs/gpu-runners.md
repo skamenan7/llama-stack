@@ -27,7 +27,7 @@ GPU runners allow us to:
 The workflow will:
 
 1. Launch a GPU EC2 instance (5 min)
-2. Setup vLLM with the model (5 min)
+2. Set up the CUDA environment and install the pinned vLLM runtime (5 min)
 3. Run tests in record mode (~20 min)
 4. Upload recordings as artifacts
 5. Terminate the EC2 instance
@@ -46,7 +46,7 @@ The workflow will:
 ```text
 ┌─────────────────────────────────────────────────┐
 │  Workflow Trigger (manual)                      │
-│  - Select model and instance type               │
+│  - Select test suite                            │
 └────────────────┬────────────────────────────────┘
                  │
                  ▼
@@ -71,7 +71,8 @@ The workflow will:
                  ▼
 ┌─────────────────────────────────────────────────┐
 │  Job 3: Stop GPU EC2 Runner                     │
-│  - Terminate instance (always runs!)            │
+│  - Wait for the GPU job or queued-job timeout   │
+│  - Terminate instance                           │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -162,14 +163,20 @@ Create a security group in `us-east-2` with:
 
 #### 4. GPU-Enabled AMI
 
-Create an AMI in `us-east-2` with:
+Use a GPU-capable AMI in `us-east-2` with:
 
-- Base OS: Amazon Linux 2023 or Ubuntu 22.04
+- Base OS: RHEL 9
 - NVIDIA drivers
 - CUDA 13.0 runtime
-- vLLM 0.22.1
 - Docker with NVIDIA Container Toolkit
 - Python 3.12
+
+The current DevOps AMI is `ami-090a815de2a7461f2`
+(`vllm-rhel9-nvidia-ami-1781031435`). It includes NVIDIA drivers, CUDA 13.0,
+and vLLM 0.22.1 from the image build. The workflow still creates `/tmp/vllm-env`
+and installs the pinned vLLM version there during each run, so the AMI supplies
+the GPU driver/CUDA base while the action controls the Python runtime used by
+the tests.
 
 ### GitHub Configuration
 
@@ -217,11 +224,16 @@ This is critical because the test job runs potentially untrusted code on PRs.
 
 ### Cleanup Guarantees
 
-The cleanup job always runs (`if: always()`):
+The cleanup job always runs on a hosted runner (`if: always()`):
 
 - ✅ EC2 instance terminated even on failure
 - ✅ EC2 instance terminated even on manual cancellation
+- ✅ EC2 instance terminated if the self-hosted test job never starts
 - ✅ Prevents orphaned instances and cost overruns
+
+The hosted cleanup job polls the GPU test job before termination. If the GPU job
+does not leave the queue within the configured wait period, cleanup proceeds so
+the EC2 runner is not left running indefinitely.
 
 ## Instance Types
 

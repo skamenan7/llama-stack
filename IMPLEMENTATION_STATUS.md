@@ -1,7 +1,7 @@
 # GPU Runners Implementation Status
 
-**Last Updated**: 2026-03-25
-**Status**: Phase 1 - Code Complete, AWS Setup Required
+**Last Updated**: 2026-06-17
+**Status**: Phase 1 - Code Complete, AWS Wiring Validated, AMI Smoke Test Pending
 
 ## ✅ Completed Tasks
 
@@ -14,9 +14,9 @@
 - ✅ Manual workflow_dispatch trigger
 - ✅ OIDC authentication for AWS (no long-lived credentials!)
 - ✅ Multi-AZ fallback strategy within us-east-2
-- ✅ Three-job pattern (launch → test → cleanup)
+- ✅ Hosted cleanup job waits for the GPU job and can terminate the EC2 runner if the self-hosted job never starts
 - ✅ Security hardening (`permissions: {}` on test job)
-- ✅ Always-cleanup guarantee (`if: always()`)
+- ✅ Cleanup guarantee (`if: always()`) with empty-output guards
 - ✅ Comprehensive error handling and logging
 
 **Features**:
@@ -29,10 +29,10 @@
 **File**: `.github/actions/setup-vllm-gpu/action.yml`
 
 - ✅ GPU verification (nvidia-smi)
-- ✅ CUDA environment configuration
+- ✅ CUDA environment detection from the AMI-provided NVIDIA/CUDA installation
 - ✅ Python virtual environment setup
 - ✅ PyTorch with CUDA installation
-- ✅ vLLM installation with GPU support
+- ✅ vLLM installation with GPU support in `/tmp/vllm-env`
 - ✅ Model pulling (Ollama and HuggingFace formats)
 - ✅ vLLM server startup with optimal settings
 - ✅ Health check with 10-minute timeout
@@ -68,53 +68,57 @@
 - ✅ Troubleshooting guides
 - ✅ Cost estimates and monitoring guidance
 
-## 🔧 AWS Setup Required (Manual Steps)
+## 🔧 AWS Setup Status
 
-**Priority**: CRITICAL - Required before testing
+**Priority**: HIGH - Required before future manual runs
 
 ### Infrastructure Tasks
 
-#### 1. Set up OIDC Provider ⏳
+#### 1. Set up OIDC Provider ✅
 
-**Owner**: DevOps/Charles
+**Owner**: DevOps
 **Time**: 30 minutes
 
-- [ ] Create OIDC provider in AWS IAM
-- [ ] Create IAM role `GitHubActionsLlamaStackGPU`
-- [ ] Configure trust policy for GitHub
-- [ ] Attach EC2 permissions policy
-- [ ] Save role ARN for GitHub secrets
+- [x] Create OIDC provider in AWS IAM
+- [x] Create IAM role scoped to `ogx-ai/ogx`
+- [x] Configure trust policy for GitHub
+- [x] Attach EC2 permissions policy
+- [x] Save role ARN for GitHub secrets
 
 **Guide**: `AWS_SETUP_GUIDE.md` Step 1
 
-#### 2. Set up VPC and Networking ⏳
+#### 2. Set up VPC and Networking ✅
 
-**Owner**: DevOps/Charles
+**Owner**: DevOps
 **Time**: 1-2 hours
 
 **us-east-2 (Primary)**:
 
-- [ ] Create or identify VPC
-- [ ] Create 3 subnets (us-east-2a, 2b, 2c)
-- [ ] Configure internet gateway and routing
-- [ ] Create security group
+- [x] Create or identify VPC
+- [x] Create 3 subnets (us-east-2a, 2b, 2c)
+- [x] Configure internet gateway and routing
+- [x] Create security group
 
 **Guide**: `AWS_SETUP_GUIDE.md` Step 2
 
-#### 3. Create GPU-Enabled AMI ⏳
+#### 3. Create GPU-Enabled AMI ✅
 
-**Owner**: DevOps/Charles
+**Owner**: DevOps
 **Time**: 3-4 hours (includes building time)
 
 **us-east-2**:
 
-- [ ] Launch g6.2xlarge instance
-- [ ] Install NVIDIA drivers
-- [ ] Install CUDA 13.0
-- [ ] Install/validate vLLM 0.22.1
-- [ ] Install Docker with NVIDIA Container Toolkit
-- [ ] Install Python 3.12
-- [ ] Create AMI
+- [x] Launch g6.2xlarge instance
+- [x] Install NVIDIA drivers
+- [x] Install CUDA 13.0
+- [x] Install/validate vLLM 0.22.1 in the AMI build
+- [x] Install Docker with NVIDIA Container Toolkit
+- [x] Install Python 3.12
+- [x] Create AMI: `ami-090a815de2a7461f2`
+
+The workflow still installs the pinned vLLM version into `/tmp/vllm-env` during
+each run so the test environment is reproducible even when the AMI already has
+vLLM available.
 
 **Guide**: `AWS_SETUP_GUIDE.md` Step 3
 
@@ -128,7 +132,7 @@
 
 **Guide**: `AWS_SETUP_GUIDE.md` Step 4
 
-#### 5. Configure GitHub Secrets and Variables ⏳
+#### 5. Configure GitHub Secrets and Variables ✅
 
 **Owner**: Charles
 **Time**: 10 minutes
@@ -148,25 +152,31 @@
 
 **Guide**: `AWS_SETUP_GUIDE.md` Step 5
 
-## 🧪 Testing Required
+## 🧪 Validation Status
 
-**Priority**: HIGH - Required for validation
+**Priority**: MEDIUM - AMI smoke test remains after merge
 
 ### Test Plan
 
-#### 1. Initial Test Run ⏳
+#### 1. Initial Test Run ✅
 
-**Owner**: Charles
+**Owner**: Charles / skamenan
 **Time**: 30 minutes
 
-- [ ] Trigger workflow via workflow_dispatch
-- [ ] Verify EC2 launches successfully
-- [ ] Verify runner registers
-- [ ] Verify GPU is detected
-- [ ] Verify vLLM starts
-- [ ] Verify tests run
-- [ ] Verify recordings uploaded
-- [ ] Verify EC2 cleanup
+- [x] Trigger workflow via workflow_dispatch
+- [x] Verify EC2 launches successfully
+- [x] Verify runner registers
+- [x] Verify GPU is detected
+- [x] Verify vLLM starts
+- [x] Verify tests run
+- [x] Verify recordings uploaded
+- [x] Verify EC2 cleanup
+
+Validated suites:
+
+- [x] `base`
+- [x] `responses`
+- [x] `vllm-reasoning`
 
 **Guide**: `AWS_SETUP_GUIDE.md` Step 6
 
@@ -178,6 +188,7 @@
 - [ ] Test manual cancellation (verify cleanup)
 - [ ] Test job failure (verify cleanup)
 - [ ] Verify alternate us-east-2 subnet/AZ fallback (if capacity issue)
+- [ ] Run the post-merge AMI smoke test and mark `gpt-oss:20b` end-to-end validation complete
 
 #### 3. Performance Validation ⏳
 

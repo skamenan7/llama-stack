@@ -22,6 +22,7 @@ concurrency:
 # OIDC authentication for AWS - no long-lived credentials!
 permissions:
   contents: read
+  actions: read  # Required for the hosted cleanup job to watch the GPU job state
   id-token: write  # Required for OIDC authentication to AWS
 
 jobs:
@@ -36,6 +37,35 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+
+      - name: Validate GPU runner configuration
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+          RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+          AWS_EC2_AMI_US_EAST_2: ${{ vars.AWS_EC2_AMI_US_EAST_2 }}
+          SUBNET_US_EAST_2A: ${{ vars.SUBNET_US_EAST_2A }}
+          SUBNET_US_EAST_2B: ${{ vars.SUBNET_US_EAST_2B }}
+          SUBNET_US_EAST_2C: ${{ vars.SUBNET_US_EAST_2C }}
+          SECURITY_GROUP_ID_US_EAST_2: ${{ vars.SECURITY_GROUP_ID_US_EAST_2 }}
+        run: |
+          missing=()
+          for name in \
+            AWS_ROLE_ARN \
+            RELEASE_PAT \
+            AWS_EC2_AMI_US_EAST_2 \
+            SUBNET_US_EAST_2A \
+            SUBNET_US_EAST_2B \
+            SUBNET_US_EAST_2C \
+            SECURITY_GROUP_ID_US_EAST_2; do
+            if [ -z "${!name}" ]; then
+              missing+=("$name")
+            fi
+          done
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing required GPU runner configuration: %s\n' "${missing[*]}"
+            exit 1
+          fi
 
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
@@ -72,6 +102,10 @@ jobs:
 
       - name: Runner launch summary
         run: |
+          if [ -z "${{ steps.start-ec2-runner.outputs.ec2-instance-id }}" ] || [ -z "${{ steps.start-ec2-runner.outputs.label }}" ]; then
+            echo "Failed to launch GPU runner with a usable instance id and runner label"
+            exit 1
+          fi
           echo "GPU runner launched successfully"
           echo "  Instance ID: ${{ steps.start-ec2-runner.outputs.ec2-instance-id }}"
           echo "  Runner Label: ${{ steps.start-ec2-runner.outputs.label }}"
@@ -179,7 +213,7 @@ jobs:
 
   # Job 3: Stop GPU EC2 instance (ALWAYS runs for cleanup)
   stop-gpu-runner:
-    needs: [start-gpu-runner, record-vllm-tests]
+    needs: start-gpu-runner
     runs-on: ubuntu-latest
     if: ${{ always() }}  # CRITICAL: Always cleanup, even on failure or cancellation
     steps:
@@ -189,13 +223,60 @@ jobs:
           persist-credentials: false
 
       - name: Configure AWS credentials via OIDC
+        if: needs.start-gpu-runner.outputs.instance-id != ''
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-2
           role-session-name: GitHubActions-vLLM-GPU-Cleanup-${{ github.run_id }}
 
+      - name: Wait for GPU test job before cleanup
+        if: needs.start-gpu-runner.outputs.instance-id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RECORD_JOB_NAME: record-vllm-tests
+          RUN_ID: ${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          queued_deadline=$((SECONDS + 1200))
+          absolute_deadline=$((SECONDS + 7200))
+
+          while true; do
+            job_status="$(
+              gh api "repos/${REPOSITORY}/actions/runs/${RUN_ID}/jobs" --paginate \
+                --jq ".jobs[] | select(.name == \"${RECORD_JOB_NAME}\") | [.status, (.conclusion // \"\")] | @tsv" \
+                | tail -n 1
+            )"
+
+            status="$(printf '%s' "$job_status" | cut -f1)"
+            conclusion="$(printf '%s' "$job_status" | cut -f2)"
+
+            if [ "$status" = "completed" ]; then
+              echo "GPU test job completed with conclusion: ${conclusion:-unknown}"
+              break
+            fi
+
+            if [ -z "$status" ]; then
+              echo "Waiting for GPU test job to be created..."
+            else
+              echo "GPU test job status: $status"
+            fi
+
+            if [ "$status" != "in_progress" ] && [ "$SECONDS" -ge "$queued_deadline" ]; then
+              echo "GPU test job did not start within 20 minutes; cleaning up the EC2 runner."
+              break
+            fi
+
+            if [ "$SECONDS" -ge "$absolute_deadline" ]; then
+              echo "GPU test job exceeded the 2 hour cleanup deadline; cleaning up the EC2 runner."
+              break
+            fi
+
+            sleep 30
+          done
+
       - name: Stop EC2 runner
+        if: needs.start-gpu-runner.outputs.instance-id != ''
         uses: ./.github/actions/launch-gpu-runner
         with:
           mode: stop
@@ -205,9 +286,15 @@ jobs:
           ec2-instance-id: ${{ needs.start-gpu-runner.outputs.instance-id }}
 
       - name: Cleanup summary
+        if: needs.start-gpu-runner.outputs.instance-id != ''
         run: |
           echo "GPU runner terminated successfully"
           echo "  Instance ID: ${{ needs.start-gpu-runner.outputs.instance-id }}"
+
+      - name: Cleanup skipped
+        if: needs.start-gpu-runner.outputs.instance-id == ''
+        run: |
+          echo "No EC2 instance id was produced by start-gpu-runner; nothing to terminate."
 
   # Job 4: Summary and next steps
   summary:

@@ -53,6 +53,7 @@ runs:
           hf-cache-${{ runner.os }}-
 
     - name: Pre-download HuggingFace assets for offline use
+      if: ${{ inputs.enable-hf-cache == 'true' }}
       shell: bash
       env:
         HF_HUB_ENABLE_HF_TRANSFER: "1"
