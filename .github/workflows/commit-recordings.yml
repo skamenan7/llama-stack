@@ -1,11 +1,11 @@
-# Commits recordings from the record-integration-tests.yml workflow back to PRs.
+# Commits recordings from recording workflows back to PRs.
 # This workflow runs with elevated permissions but only executes trusted code from the base repo.
-# Triggered via workflow_run after record-integration-tests.yml completes successfully.
+# Triggered via workflow_run after recording workflows complete successfully.
 name: Commit Recordings
 
 on:
   workflow_run:
-    workflows: ["Integration Tests (Record)"]
+    workflows: ["Integration Tests (Record)", "Launch GPU EC2 Runner", "vLLM GPU Recording"]
     types:
       - completed
 

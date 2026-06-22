@@ -14,6 +14,10 @@ on:
           - base
           - responses
           - vllm-reasoning
+      pr_number:
+        description: 'PR number to commit recordings back to. Leave empty to use the open PR for this branch.'
+        required: false
+        type: string
 
 concurrency:
   group: gpu-vllm-record-${{ github.run_id }}
@@ -22,10 +26,90 @@ concurrency:
 # OIDC authentication for AWS - no long-lived credentials!
 permissions:
   contents: read
+  pull-requests: read  # Required to locate the PR branch for the commit-recordings workflow
   actions: read  # Required for the hosted cleanup job to watch the GPU job state
   id-token: write  # Required for OIDC authentication to AWS
 
 jobs:
+  # Job 0: Publish PR metadata for the trusted follow-up commit workflow
+  compute-pr-info:
+    runs-on: ubuntu-latest
+    outputs:
+      pr_number: ${{ steps.pr-info.outputs.pr_number }}
+      pr_head_ref: ${{ steps.pr-info.outputs.pr_head_ref }}
+      pr_head_sha: ${{ steps.pr-info.outputs.pr_head_sha }}
+      pr_head_repo: ${{ steps.pr-info.outputs.pr_head_repo }}
+      is_fork_pr: ${{ steps.pr-info.outputs.is_fork_pr }}
+    steps:
+      - name: Locate PR branch
+        id: pr-info
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+        with:
+          script: |
+            const inputPrNumber = process.env.INPUT_PR_NUMBER;
+            let pr = null;
+
+            if (inputPrNumber) {
+              const response = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: Number(inputPrNumber),
+              });
+              pr = response.data;
+            } else {
+              const branch = context.ref.replace('refs/heads/', '');
+              const response = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                head: `${context.repo.owner}:${branch}`,
+                per_page: 1,
+              });
+              pr = response.data[0];
+            }
+
+            if (!pr) {
+              core.warning('No open PR found for this workflow run; recordings will stay as downloadable artifacts.');
+              return;
+            }
+
+            core.setOutput('pr_number', String(pr.number));
+            core.setOutput('pr_head_ref', pr.head.ref);
+            core.setOutput('pr_head_sha', pr.head.sha);
+            core.setOutput('pr_head_repo', pr.head.repo.full_name);
+            core.setOutput('is_fork_pr', String(pr.head.repo.full_name !== `${context.repo.owner}/${context.repo.repo}`));
+
+      - name: Create PR metadata artifact
+        if: steps.pr-info.outputs.pr_number != ''
+        env:
+          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
+          PR_HEAD_REF: ${{ steps.pr-info.outputs.pr_head_ref }}
+          PR_HEAD_SHA: ${{ steps.pr-info.outputs.pr_head_sha }}
+          PR_HEAD_REPO: ${{ steps.pr-info.outputs.pr_head_repo }}
+          IS_FORK_PR: ${{ steps.pr-info.outputs.is_fork_pr }}
+        run: |
+          mkdir -p pr-metadata
+          cat > pr-metadata/pr-info.json <<EOF
+          {
+            "pr_number": "${PR_NUMBER}",
+            "pr_head_ref": "${PR_HEAD_REF}",
+            "pr_head_sha": "${PR_HEAD_SHA}",
+            "pr_head_repo": "${PR_HEAD_REPO}",
+            "is_fork_pr": "${IS_FORK_PR}"
+          }
+          EOF
+          cat pr-metadata/pr-info.json
+
+      - name: Upload PR metadata
+        if: steps.pr-info.outputs.pr_number != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pr-metadata-${{ github.run_id }}
+          path: pr-metadata/
+          retention-days: 1
+
   # Job 1: Launch GPU EC2 instance with multi-AZ fallback
   start-gpu-runner:
     runs-on: ubuntu-latest
@@ -191,7 +275,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: vllm-gpu-recordings-${{ github.run_id }}
+          name: recordings-vllm-gpu-gpt-oss-${{ inputs.suite }}-${{ github.run_id }}-${{ github.run_attempt || '1' }}
           path: |
             tests/integration/recordings/
             tests/integration/*/recordings/
@@ -315,7 +399,7 @@ jobs:
             if [ "${{ needs.record-vllm-tests.result }}" == "success" ]; then
               echo "**Test Status**: Successful"
               echo ""
-              echo "Recordings have been uploaded as artifacts. Download them from the workflow run and commit manually."
+              echo "Recordings have been uploaded as artifacts. The trusted Commit Recordings workflow will commit them back to the PR branch when PR metadata is available."
             else
               echo "**Test Status**: Failed"
               echo ""
