@@ -71,7 +71,7 @@ jobs:
             }
 
             if (!pr) {
-              core.warning('No open PR found for this workflow run; recordings will stay as downloadable artifacts.');
+              core.setFailed('No open PR found for this workflow run. Pass pr_number when dispatching from a non-PR branch.');
               return;
             }
 
@@ -112,6 +112,7 @@ jobs:
 
   # Job 1: Launch GPU EC2 instance with multi-AZ fallback
   start-gpu-runner:
+    needs: compute-pr-info
     runs-on: ubuntu-latest
     outputs:
       label: ${{ steps.start-ec2-runner.outputs.label }}
@@ -198,7 +199,7 @@ jobs:
 
   # Job 2: Run vLLM tests on GPU runner
   record-vllm-tests:
-    needs: start-gpu-runner
+    needs: [start-gpu-runner, compute-pr-info]
     runs-on: ${{ needs.start-gpu-runner.outputs.label }}
     permissions: {}  # CRITICAL: No permissions - prevents secret theft from untrusted code
     env:
@@ -207,6 +208,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          repository: ${{ needs.compute-pr-info.outputs.pr_head_repo }}
+          ref: ${{ needs.compute-pr-info.outputs.pr_head_sha }}
           persist-credentials: false
 
       - name: Setup environment

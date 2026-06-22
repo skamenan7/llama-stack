@@ -148,6 +148,18 @@ jobs:
               }
             }
 
+            const prData = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            if (prData.data.head.sha !== headSha) {
+              core.warning(`PR #${prNumber} moved from ${headSha} to ${prData.data.head.sha}; skipping stale recording artifacts.`);
+              core.setOutput('skip', 'true');
+              return;
+            }
+
             core.setOutput('pr_number', prNumber);
             core.setOutput('head_repo', headRepo);
             core.setOutput('head_ref', headRef);
@@ -257,6 +269,7 @@ jobs:
 
           git commit -m "Recordings update from CI
 
+          Signed-off-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
           Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
 
           # Push to PR branch
