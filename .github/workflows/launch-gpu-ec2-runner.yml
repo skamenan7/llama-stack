@@ -75,6 +75,16 @@ jobs:
               return;
             }
 
+            if (pr.head.repo.full_name !== `${context.repo.owner}/${context.repo.repo}`) {
+              core.setFailed('GPU recording only supports same-repository PR branches.');
+              return;
+            }
+
+            if (pr.head.sha !== context.sha) {
+              core.setFailed(`Dispatch this workflow from the PR branch head. PR #${pr.number} is at ${pr.head.sha}, but this run is using ${context.sha}.`);
+              return;
+            }
+
             core.setOutput('pr_number', String(pr.number));
             core.setOutput('pr_head_ref', pr.head.ref);
             core.setOutput('pr_head_sha', pr.head.sha);
@@ -208,8 +218,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          repository: ${{ needs.compute-pr-info.outputs.pr_head_repo }}
-          ref: ${{ needs.compute-pr-info.outputs.pr_head_sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Setup environment
