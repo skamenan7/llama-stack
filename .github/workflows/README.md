@@ -34,10 +34,11 @@ OGX uses GitHub Actions for Continuous Integration (CI). Below is a table detail
 | vLLM GPU Recording | [record-vllm-gpu-tests.yml](record-vllm-gpu-tests.yml) | GPU recording for gpt-oss:20b (${{ inputs.suite }} suite) |
 | Release Branch Scheduled CI | [release-branch-scheduled-ci.yml](release-branch-scheduled-ci.yml) | Scheduled CI checks for active release branches |
 | Check semantic PR titles | [semantic-pr.yml](semantic-pr.yml) | Ensure that PR titles follow the conventional commit spec |
-| Stainless SDK Builds | [stainless-builds.yml](stainless-builds.yml) | Build Stainless SDK from OpenAPI spec changes |
 | Close stale issues and PRs | [stale_bot.yml](stale_bot.yml) | Run the Stale Bot action |
 | Test External Providers Installed via Module | [test-external-provider-module.yml](test-external-provider-module.yml) | Test External Provider installation via Python module |
 | Test External API and Providers | [test-external.yml](test-external.yml) | Test the External API and Provider mechanisms |
 | Trigger Docs Deploy | [trigger-docs-deploy.yml](trigger-docs-deploy.yml) | Trigger docs site rebuild after docs change |
+| Trivy Scheduled Security Scan | [trivy-scheduled.yml](trivy-scheduled.yml) | Trivy Scheduled Security Scan |
+| Trivy Security Scan | [trivy-security.yml](trivy-security.yml) | Trivy Security Scan |
 | UI Tests | [ui-unit-tests.yml](ui-unit-tests.yml) | Run the UI test suite |
 | Unit Tests | [unit-tests.yml](unit-tests.yml) | Run the unit test suite |
