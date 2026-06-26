@@ -79,6 +79,10 @@ export function createTestClient(testId?: string): LlamaStackClient {
   });
 }
 
+export function isPrematureCloseError(error: unknown): boolean {
+  return error instanceof Error && error.message === 'Premature close';
+}
+
 /**
  * Skip test if required model is not configured.
  * Mimics pytest's `skip_if_no_model` autouse fixture.

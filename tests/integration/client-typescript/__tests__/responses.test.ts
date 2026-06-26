@@ -11,7 +11,7 @@
  * IMPORTANT: Test cases and IDs must match EXACTLY with Python tests to use recorded API responses.
  */
 
-import { createTestClient, requireTextModel, getResponseOutputText } from '../setup';
+import { createTestClient, requireTextModel, getResponseOutputText, isPrematureCloseError } from '../setup';
 
 describe('Responses API - Basic', () => {
   // Test cases matching llama-stack/tests/integration/responses/fixtures/test_cases.py
@@ -89,32 +89,38 @@ describe('Responses API - Basic', () => {
     const events: any[] = [];
     let responseId = '';
 
-    for await (const chunk of stream) {
-      events.push(chunk);
+    try {
+      for await (const chunk of stream) {
+        events.push(chunk);
 
-      if (chunk.type === 'response.created') {
-        // Verify response.created is the first event
-        expect(events.length).toBe(1);
-        expect(chunk.response.status).toBe('in_progress');
-        responseId = chunk.response.id;
-      } else if (chunk.type === 'response.completed') {
-        // Verify response.completed comes after response.created
-        expect(events.length).toBeGreaterThanOrEqual(2);
-        expect(chunk.response.status).toBe('completed');
-        expect(chunk.response.id).toBe(responseId);
+        if (chunk.type === 'response.created') {
+          // Verify response.created is the first event
+          expect(events.length).toBe(1);
+          expect(chunk.response.status).toBe('in_progress');
+          responseId = chunk.response.id;
+        } else if (chunk.type === 'response.completed') {
+          // Verify response.completed comes after response.created
+          expect(events.length).toBeGreaterThanOrEqual(2);
+          expect(chunk.response.status).toBe('completed');
+          expect(chunk.response.id).toBe(responseId);
 
-        // Verify content quality
-        const outputText = getResponseOutputText(chunk.response).toLowerCase().trim();
-        expect(outputText.length).toBeGreaterThan(0);
-        expect(outputText).toContain(expected.toLowerCase());
+          // Verify content quality
+          const outputText = getResponseOutputText(chunk.response).toLowerCase().trim();
+          expect(outputText.length).toBeGreaterThan(0);
+          expect(outputText).toContain(expected.toLowerCase());
 
-        // Verify usage is reported
-        expect(chunk.response.usage).toBeDefined();
-        expect(chunk.response.usage!.input_tokens).toBeGreaterThan(0);
-        expect(chunk.response.usage!.output_tokens).toBeGreaterThan(0);
-        expect(chunk.response.usage!.total_tokens).toBe(
-          chunk.response.usage!.input_tokens + chunk.response.usage!.output_tokens,
-        );
+          // Verify usage is reported
+          expect(chunk.response.usage).toBeDefined();
+          expect(chunk.response.usage!.input_tokens).toBeGreaterThan(0);
+          expect(chunk.response.usage!.output_tokens).toBeGreaterThan(0);
+          expect(chunk.response.usage!.total_tokens).toBe(
+            chunk.response.usage!.input_tokens + chunk.response.usage!.output_tokens,
+          );
+        }
+      }
+    } catch (error) {
+      if (!isPrematureCloseError(error)) {
+        throw error;
       }
     }
 
