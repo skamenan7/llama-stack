@@ -5,12 +5,12 @@
 # the root directory of this source tree.
 
 import heapq
+import importlib
 import json
 from array import array
 from typing import Any
 
 import numpy as np
-import oracledb
 from numpy.typing import NDArray
 
 from llama_stack.core.storage.kvstore import kvstore_impl
@@ -48,6 +48,13 @@ VECTOR_INDEX_PREFIX = f"vector_index:oci26ai:{VERSION}::"
 OPENAI_VECTOR_STORES_PREFIX = f"openai_vector_stores:oci26ai:{OPENAIMIXINVERSION}::"
 OPENAI_VECTOR_STORES_FILES_PREFIX = f"openai_vector_stores_files:oci26ai:{OPENAIMIXINVERSION}::"
 OPENAI_VECTOR_STORES_FILES_CONTENTS_PREFIX = f"openai_vector_stores_files_contents:oci26ai:{VERSION}::"
+
+
+def _load_oracledb() -> Any:
+    try:
+        return importlib.import_module("oracledb")
+    except ImportError as e:
+        raise ImportError("Failed to import oracledb. Install the OCI extra to use the OCI vector IO provider.") from e
 
 
 def normalize_embedding(embedding: np.typing.NDArray) -> np.typing.NDArray:
@@ -417,7 +424,7 @@ class OCI26aiIndex(EmbeddingIndex):
             with self.connection.cursor() as cursor:
                 cursor.execute(f"DROP TABLE IF EXISTS {self.table_name}")
             logger.info("Dropped table: {self.table_name}")
-        except oracledb.DatabaseError as e:
+        except _load_oracledb().DatabaseError as e:
             logger.error(f"Error dropping table {self.table_name}: {e}")
             raise
 
@@ -459,6 +466,7 @@ class OCI26aiVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorStoresProto
         self.kvstore = await kvstore_impl(self.config.persistence)
         await self.initialize_openai_vector_stores()
 
+        oracledb = _load_oracledb()
         try:
             self.connection = oracledb.connect(
                 user=self.config.user,
