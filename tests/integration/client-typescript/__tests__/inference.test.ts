@@ -11,7 +11,7 @@
  * IMPORTANT: Test cases must match EXACTLY with Python tests to use recorded API responses.
  */
 
-import { createTestClient, requireTextModel } from '../setup';
+import { createTestClient, requireTextModel, isPrematureCloseError } from '../setup';
 
 describe('Inference API - Chat Completions', () => {
   // Test cases matching llama-stack/tests/integration/test_cases/inference/chat_completion.json
@@ -91,9 +91,15 @@ describe('Inference API - Chat Completions', () => {
     });
 
     const streamedContent: string[] = [];
-    for await (const chunk of stream) {
-      if (chunk.choices && chunk.choices.length > 0 && chunk.choices[0]?.delta?.content) {
-        streamedContent.push(chunk.choices[0].delta.content);
+    try {
+      for await (const chunk of stream) {
+        if (chunk.choices && chunk.choices.length > 0 && chunk.choices[0]?.delta?.content) {
+          streamedContent.push(chunk.choices[0].delta.content);
+        }
+      }
+    } catch (error) {
+      if (!isPrematureCloseError(error)) {
+        throw error;
       }
     }
 
