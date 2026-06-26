@@ -238,6 +238,8 @@ run_client_ts_tests() {
 
     pushd tests/integration/client-typescript >/dev/null
 
+    local ts_client_package_name="llama-stack-client"
+
     # Determine if TS_CLIENT_PATH is a directory path or an npm version
     if [[ -d "$TS_CLIENT_PATH" ]]; then
         # It's a directory path - use local checkout
@@ -246,6 +248,7 @@ run_client_ts_tests() {
             popd >/dev/null
             return 1
         fi
+        ts_client_package_name=$(node -p "require(process.argv[1]).name" "$TS_CLIENT_PATH/package.json")
         echo "Using local llama-stack-client-typescript from: $TS_CLIENT_PATH"
 
         # Build the TypeScript client first
@@ -265,7 +268,7 @@ run_client_ts_tests() {
         # Then install the local checkout under the legacy package name used by
         # release-0.5 integration tests. The latest checkout may publish as ogx-client.
         echo "Installing llama-stack-client from: $TS_CLIENT_PATH"
-        npm install "llama-stack-client@file:${TS_CLIENT_PATH}" --silent
+        npm install "llama-stack-client@file:${TS_CLIENT_PATH}" --silent --ignore-scripts
     else
         # It's an npm version specifier - install from npm
         echo "Installing llama-stack-client@${TS_CLIENT_PATH} from npm"
@@ -279,9 +282,9 @@ run_client_ts_tests() {
 
     # Verify installation
     echo "Verifying llama-stack-client installation..."
-    if npm list llama-stack-client 2>/dev/null | grep -q llama-stack-client; then
+    if npm list llama-stack-client 2>/dev/null | grep -q llama-stack-client || npm list "$ts_client_package_name" 2>/dev/null | grep -q "$ts_client_package_name"; then
         echo "✅ llama-stack-client successfully installed"
-        npm list llama-stack-client
+        npm list llama-stack-client || npm list "$ts_client_package_name"
     else
         echo "❌ llama-stack-client not found in node_modules"
         echo "Installed packages:"
