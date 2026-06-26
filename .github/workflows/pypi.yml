@@ -514,7 +514,7 @@ jobs:
           fi
 
           if [ -d "dist-client-python" ] && ls dist-client-python/*.whl 1>/dev/null 2>&1; then
-            python -c "import llama_stack_client; print(f'llama_stack_client imported successfully from {llama_stack_client.__file__}')"
+            python -c "import importlib, importlib.util; modules = ('llama_stack_client', 'ogx_client'); imported = next((importlib.import_module(name) for name in modules if importlib.util.find_spec(name)), None); assert imported is not None, 'No supported Python client module found'; print(f'{imported.__name__} imported successfully from {imported.__file__}')"
           fi
 
       - name: Verify TypeScript package
