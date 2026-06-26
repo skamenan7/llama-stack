@@ -2073,13 +2073,10 @@ dependencies = [
     { name = "jsonschema" },
     { name = "llama-stack-api" },
     { name = "mcp" },
-    { name = "numpy" },
-    { name = "oci" },
     { name = "openai" },
     { name = "opentelemetry-distro" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-sdk" },
-    { name = "oracledb" },
     { name = "pillow" },
     { name = "prompt-toolkit" },
     { name = "psycopg2-binary" },
@@ -2101,6 +2098,11 @@ dependencies = [
 [package.optional-dependencies]
 client = [
     { name = "llama-stack-client" },
+]
+oci = [
+    { name = "numpy" },
+    { name = "oci" },
+    { name = "oracledb" },
 ]
 
 [package.dev-dependencies]
@@ -2232,15 +2234,15 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "jsonschema" },
     { name = "llama-stack-api", editable = "src/llama_stack_api" },
-    { name = "llama-stack-client", marker = "extra == 'client'", specifier = "==0.5.1" },
+    { name = "llama-stack-client", marker = "extra == 'client'", specifier = "==0.5.2" },
     { name = "mcp", specifier = ">=1.23.0" },
-    { name = "numpy", specifier = ">=2.3.2" },
-    { name = "oci", specifier = ">=2.165.0" },
+    { name = "numpy", marker = "extra == 'oci'", specifier = ">=2.3.2" },
+    { name = "oci", marker = "extra == 'oci'", specifier = ">=2.165.0" },
     { name = "openai", specifier = ">=2.5.0" },
     { name = "opentelemetry-distro", specifier = ">=0.60b1" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.30.0" },
     { name = "opentelemetry-sdk", specifier = ">=1.30.0" },
-    { name = "oracledb", specifier = ">=3.4.1" },
+    { name = "oracledb", marker = "extra == 'oci'", specifier = ">=3.4.1" },
     { name = "pillow" },
     { name = "prompt-toolkit" },
     { name = "psycopg2-binary" },
@@ -2258,7 +2260,7 @@ requires-dist = [
     { name = "urllib3", specifier = ">=2.6.3" },
     { name = "uvicorn", specifier = ">=0.34.0" },
 ]
-provides-extras = ["client"]
+provides-extras = ["client", "oci"]
 
 [package.metadata.requires-dev]
 benchmark = [{ name = "locust", specifier = ">=2.39.1" }]
@@ -2331,7 +2333,7 @@ type-checking = [
     { name = "datasets" },
     { name = "fairscale" },
     { name = "faiss-cpu" },
-    { name = "llama-stack-client", specifier = "==0.5.1" },
+    { name = "llama-stack-client", specifier = "==0.5.2" },
     { name = "lm-format-enforcer" },
     { name = "mcp", specifier = ">=1.23.0" },
     { name = "nest-asyncio" },
@@ -2398,7 +2400,7 @@ requires-dist = [
 
 [[package]]
 name = "llama-stack-client"
-version = "0.5.1"
+version = "0.5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -2417,9 +2419,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1a/7c/41e4c21efb52d564539b23475b102727cb920ac07390641ffa09e380855a/llama_stack_client-0.5.1.tar.gz", hash = "sha256:213abd8872b08ef63cc9809aa96862da55826c4d9397742a4d4eb8f43f550c97", size = 368620, upload-time = "2026-02-19T19:04:18.542Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/99/8a/8742475db7cedc2d452a3a7677da7f24aa84bdd262bc97543029c62df772/llama_stack_client-0.5.2.tar.gz", hash = "sha256:17c1bbad90f7699da4eb3cae256e8823caa4d2be945512a45c8c6f89ab899f28", size = 368612, upload-time = "2026-03-06T13:24:22.252Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b0/6c/51d88b15a4e17b208ead5f938ddf2dd6da10378f7cad7884a4e57a18e976/llama_stack_client-0.5.1-py3-none-any.whl", hash = "sha256:ef2c03cd4a62a0e943a052493f89161c0d3ac14566ffcc575281e095b9f586e8", size = 391951, upload-time = "2026-02-19T19:04:17.004Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/f9/f6224b8819748358a573e3a2b8e299c0b6ba5f9cedf2942188c361c8e555/llama_stack_client-0.5.2-py3-none-any.whl", hash = "sha256:473f4d67ac0b243b0fc29555a0203a742615d31bea606b4332d9e2f193f73d6a", size = 391951, upload-time = "2026-03-06T13:24:20.559Z" },
 ]
 
 [[package]]
