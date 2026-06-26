@@ -1421,7 +1421,8 @@
                 {
                   "property": "GET.responses.200.content.application/json.properties.data.items",
                   "details": [
-                    "Type added: ['object']"
+                    "Type added: ['object']",
+                    "Default changed: None -> {'format': {'type': 'text'}}"
                   ]
                 },
                 {

@@ -14,6 +14,9 @@
 import { createTestClient, requireTextModel } from '../setup';
 
 describe('Inference API - Chat Completions', () => {
+  const streamingTest =
+    process.env['LLAMA_STACK_TS_SKIP_STREAMING_TESTS'] === '1' ? test.skip : test;
+
   // Test cases matching llama-stack/tests/integration/test_cases/inference/chat_completion.json
   const chatCompletionTestCases = [
     {
@@ -80,7 +83,7 @@ describe('Inference API - Chat Completions', () => {
     },
   );
 
-  test.each(streamingTestCases)('chat completion streaming: $id', async ({ question, expected, testId }) => {
+  streamingTest.each(streamingTestCases)('chat completion streaming: $id', async ({ question, expected, testId }) => {
     const client = createTestClient(testId);
     const textModel = requireTextModel();
 

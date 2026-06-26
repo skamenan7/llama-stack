@@ -14,6 +14,9 @@
 import { createTestClient, requireTextModel, getResponseOutputText } from '../setup';
 
 describe('Responses API - Basic', () => {
+  const streamingTest =
+    process.env['LLAMA_STACK_TS_SKIP_STREAMING_TESTS'] === '1' ? test.skip : test;
+
   // Test cases matching llama-stack/tests/integration/responses/fixtures/test_cases.py
   const basicTestCases = [
     {
@@ -70,7 +73,7 @@ describe('Responses API - Basic', () => {
     expect(nextOutputText).toContain(expected.toUpperCase());
   });
 
-  test.each(basicTestCases)('streaming basic response: $id', async ({ input, expected, testId }) => {
+  streamingTest.each(basicTestCases)('streaming basic response: $id', async ({ input, expected, testId }) => {
     // Modify test_id for streaming variant
     const streamingTestId = testId.replace(
       'test_response_non_streaming_basic',

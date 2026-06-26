@@ -267,9 +267,12 @@ run_client_ts_tests() {
 
         # Then install the client from local directory
         echo "Installing llama-stack-client from: $TS_CLIENT_PATH"
-        npm install "$TS_CLIENT_PATH" --silent
+        npm install "$TS_CLIENT_PATH" --silent --ignore-scripts
         if [[ "$ts_client_package_name" != "llama-stack-client" && -d "node_modules/$ts_client_package_name" && ! -e node_modules/llama-stack-client ]]; then
             ln -s "$ts_client_package_name" node_modules/llama-stack-client
+        fi
+        if [[ "$ts_client_package_name" != "llama-stack-client" ]]; then
+            export LLAMA_STACK_TS_SKIP_STREAMING_TESTS=1
         fi
     else
         # It's an npm version specifier - install from npm

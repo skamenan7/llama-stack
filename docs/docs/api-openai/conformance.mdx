@@ -986,7 +986,7 @@ Below is a detailed breakdown of conformance issues and missing properties for e
 | `responses.200.content.application/json.properties.parallel_tool_calls` | Type removed: ['boolean']; Nullable added (OpenAI non-nullable); Union variants added: 2; Default changed: None -> True |
 | `responses.200.content.application/json.properties.reasoning` | Union variants added: 1; Union variants removed: 1 |
 | `responses.200.content.application/json.properties.temperature` | Type removed: ['number']; Nullable added (OpenAI non-nullable); Union variants added: 2 |
-| `responses.200.content.application/json.properties.text` | Type added: ['object'] |
+| `responses.200.content.application/json.properties.text` | Type added: ['object']; Default changed: None -> {'format': {'type': 'text'}} |
 | `responses.200.content.application/json.properties.tool_choice` | Union variants added: 3 |
 | `responses.200.content.application/json.properties.tools` | Type removed: ['array']; Nullable added (OpenAI non-nullable); Union variants added: 2 |
 | `responses.200.content.application/json.properties.top_p` | Type removed: ['number']; Nullable added (OpenAI non-nullable); Union variants added: 2 |
