@@ -34,9 +34,11 @@ from ogx_api import (
     OpenAIChatCompletionContentPartTextParam,
     OpenAIChatCompletionRequestWithExtraBody,
     OpenAIChatCompletionWithReasoning,
+    OpenAIDeveloperMessageParam,
     OpenAIResponseObject,
     OpenAIResponseObjectStream,
     OpenAIResponseRequestLike,
+    OpenAISystemMessageParam,
     RerankData,
     RerankResponse,
 )
@@ -65,6 +67,20 @@ def _models_dev_index() -> dict[str, _models_dev.Model]:
 
 def _lookup_models_dev(identifier: str) -> _models_dev.Model | None:
     return _models_dev_index().get(identifier)
+
+
+def _convert_developer_messages(messages: list[Any]) -> list[Any]:
+    converted_messages: list[Any] = []
+    for message in messages:
+        if isinstance(message, OpenAIDeveloperMessageParam):
+            converted_messages.append(OpenAISystemMessageParam(content=message.content, name=message.name))
+        elif isinstance(message, dict) and message.get("role") == "developer":
+            converted_message = message.copy()
+            converted_message["role"] = "system"
+            converted_messages.append(converted_message)
+        else:
+            converted_messages.append(message)
+    return converted_messages
 
 
 class VLLMInferenceAdapter(OpenAIMixin):
@@ -277,6 +293,8 @@ class VLLMInferenceAdapter(OpenAIMixin):
         # Apply vLLM-specific defaults
         if params.max_tokens is None and self.config.max_tokens:
             params.max_tokens = self.config.max_tokens
+
+        params.messages = _convert_developer_messages(params.messages)
 
         return await super().openai_chat_completion(params)
 
