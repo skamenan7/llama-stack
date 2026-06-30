@@ -42,6 +42,9 @@ from ogx_api import (
     OpenAIEmbeddingsResponse,
     OpenAIEmbeddingUsage,
     OpenAIMessageParam,
+    OpenAIResponseObject,
+    OpenAIResponseObjectStream,
+    OpenAIResponseRequestLike,
     validate_embeddings_input_is_text,
 )
 
@@ -468,6 +471,12 @@ class OpenAIMixin(NeedsRequestProviderData, ABC, BaseModel):
         resp = await self.client.chat.completions.create(**request_params)
 
         return await self._postprocess_chunk(resp, params.stream)  # type: ignore[no-any-return]
+
+    async def openai_response(
+        self,
+        params: OpenAIResponseRequestLike,
+    ) -> OpenAIResponseObject | AsyncIterator[OpenAIResponseObjectStream]:
+        raise NotImplementedError(f"{self.__class__.__name__} does not support native OpenAI responses")
 
     async def openai_embeddings(
         self,

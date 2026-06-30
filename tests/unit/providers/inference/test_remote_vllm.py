@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
-from pydantic import SecretStr
+from pydantic import SecretStr, TypeAdapter
 
 from ogx.core.datatypes import User
 from ogx.core.routers.inference import InferenceRouter
@@ -19,6 +19,7 @@ from ogx.core.routing_tables.models import ModelsRoutingTable
 from ogx.providers.remote.inference.vllm.config import VLLMInferenceAdapterConfig
 from ogx.providers.remote.inference.vllm.vllm import VLLMInferenceAdapter
 from ogx_api import (
+    CreateResponseRequest,
     HealthStatus,
     Model,
     ModelType,
@@ -29,6 +30,7 @@ from ogx_api import (
     OpenAICompletion,
     OpenAICompletionChoice,
     OpenAICompletionRequestWithExtraBody,
+    OpenAIResponseObject,
 )
 
 # These are unit test for the remote vllm provider
@@ -171,6 +173,47 @@ async def test_openai_chat_completion_is_async(vllm_inference_adapter):
 
         assert mock_create_client.call_count == 4  # no cheating
         assert total_time < (sleep_time * 3), f"Total time taken: {total_time}s exceeded expected max"
+
+
+async def test_native_responses_disabled_by_default(vllm_inference_adapter):
+    request = CreateResponseRequest(input="hello", model="mock-model", store=False)
+
+    with pytest.raises(NotImplementedError):
+        await vllm_inference_adapter.openai_response(request)
+
+
+async def test_native_responses_missing_store_defaults_to_false(vllm_inference_adapter):
+    response_data = {
+        "id": "resp_native",
+        "created_at": 123,
+        "model": "mock-model",
+        "output": [],
+        "status": "completed",
+    }
+
+    vllm_inference_adapter._normalize_native_response_data(response_data)
+    response = TypeAdapter(OpenAIResponseObject).validate_python(response_data)
+
+    assert response.store is False
+
+
+async def test_native_response_stream_event_missing_response_id_is_filled(vllm_inference_adapter):
+    event_data = {
+        "type": "response.output_item.added",
+        "output_index": 0,
+        "item": {
+            "id": "msg_native",
+            "type": "message",
+            "role": "assistant",
+            "status": "in_progress",
+            "content": [],
+        },
+    }
+
+    response_id = vllm_inference_adapter._normalize_native_stream_event_data(event_data, "resp_native")
+
+    assert response_id == "resp_native"
+    assert event_data["response_id"] == "resp_native"
 
 
 async def test_vllm_completion_extra_body():

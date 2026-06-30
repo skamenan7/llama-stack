@@ -22,7 +22,9 @@ import pytest
 
 from ogx.core.routers.inference import InferenceRouter
 from ogx_api import (
+    CreateResponseRequest,
     ModelType,
+    OpenAIResponseObject,
     RerankData,
     RerankResponse,
     RoutingTable,
@@ -91,3 +93,59 @@ async def test_rerank_calls_provider_correctly(mock_routing_table):
     assert called_request.max_num_results == 1
 
     assert result == expected_response
+
+
+async def test_openai_response_calls_provider_with_llm_model():
+    routing_table = MagicMock(spec=RoutingTable)
+
+    mock_model = MagicMock()
+    mock_model.identifier = "test-llm"
+    mock_model.model_type = ModelType.llm
+    mock_model.provider_resource_id = "provider-llm-123"
+
+    mock_provider = MagicMock()
+    mock_provider.__provider_id__ = "test_provider"
+    expected_response = OpenAIResponseObject(
+        id="resp_native",
+        created_at=123,
+        model="provider-llm-123",
+        output=[],
+        status="completed",
+        store=False,
+    )
+    mock_provider.openai_response = AsyncMock(return_value=expected_response)
+
+    routing_table.get_object_by_identifier = AsyncMock(return_value=mock_model)
+    routing_table.get_provider_impl = AsyncMock(return_value=mock_provider)
+
+    router = InferenceRouter(routing_table=routing_table)
+    request = CreateResponseRequest(input="hello", model="test-llm", store=False)
+
+    result = await router.openai_response(request)
+
+    mock_provider.openai_response.assert_called_once()
+    called_request = mock_provider.openai_response.call_args.args[0]
+    assert called_request.model == "provider-llm-123"
+    assert result.model == "test-llm"
+
+
+async def test_openai_response_missing_provider_method_raises_not_implemented():
+    routing_table = MagicMock(spec=RoutingTable)
+
+    mock_model = MagicMock()
+    mock_model.identifier = "test-llm"
+    mock_model.model_type = ModelType.llm
+    mock_model.provider_resource_id = "provider-llm-123"
+
+    mock_provider = MagicMock()
+    mock_provider.__provider_id__ = "test_provider"
+    del mock_provider.openai_response
+
+    routing_table.get_object_by_identifier = AsyncMock(return_value=mock_model)
+    routing_table.get_provider_impl = AsyncMock(return_value=mock_provider)
+
+    router = InferenceRouter(routing_table=routing_table)
+    request = CreateResponseRequest(input="hello", model="test-llm", store=False)
+
+    with pytest.raises(NotImplementedError):
+        await router.openai_response(request)

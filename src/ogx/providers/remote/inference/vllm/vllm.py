@@ -3,13 +3,15 @@
 #
 # This source code is licensed under the terms described in the LICENSE file in
 # the root directory of this source tree.
+import json
 from collections.abc import AsyncIterator
 from functools import cache
+from typing import Any
 from urllib.parse import urljoin
 
 import httpx
 import models_dev as _models_dev
-from pydantic import ConfigDict
+from pydantic import ConfigDict, TypeAdapter
 
 from ogx.core.request_headers import get_authenticated_user
 from ogx.log import get_logger
@@ -32,6 +34,9 @@ from ogx_api import (
     OpenAIChatCompletionContentPartTextParam,
     OpenAIChatCompletionRequestWithExtraBody,
     OpenAIChatCompletionWithReasoning,
+    OpenAIResponseObject,
+    OpenAIResponseObjectStream,
+    OpenAIResponseRequestLike,
     RerankData,
     RerankResponse,
 )
@@ -81,6 +86,18 @@ class VLLMInferenceAdapter(OpenAIMixin):
         if not self.config.base_url:
             raise ValueError("No base URL configured")
         return str(self.config.base_url)
+
+    def _get_responses_url(self) -> str:
+        return f"{self.get_base_url().rstrip('/')}/responses"
+
+    def _get_native_request_headers(self) -> dict[str, str]:
+        headers: dict[str, str] = {}
+        api_key = self._get_api_key_from_config_or_provider_data()
+        if api_key and api_key != "NO KEY REQUIRED":
+            headers["Authorization"] = f"Bearer {api_key}"
+        if extra_headers := self._get_extra_request_headers():
+            headers.update(extra_headers)
+        return headers
 
     def _get_extra_request_headers(self) -> dict[str, str] | None:
         if not self.config.fairness_header_attribute:
@@ -139,6 +156,117 @@ class VLLMInferenceAdapter(OpenAIMixin):
             raise ValueError(f"Model '{model}' not found. Available models: {model_ids}")
         log.warning(f"Not checking model availability for {model} as API token may trigger OAuth workflow")
         return True
+
+    async def openai_response(
+        self,
+        params: OpenAIResponseRequestLike,
+    ) -> OpenAIResponseObject | AsyncIterator[OpenAIResponseObjectStream]:
+        if not self.config.native_responses:
+            raise NotImplementedError("Native responses are not enabled for vLLM")
+
+        payload = params.model_dump(mode="json", exclude_none=True)
+        payload["store"] = False
+        endpoint = self._get_responses_url()
+        headers = self._get_native_request_headers()
+
+        if payload.get("stream"):
+            return self._stream_native_response(endpoint, headers, payload)
+        return await self._fetch_native_response(endpoint, headers, payload)
+
+    async def _fetch_native_response(
+        self,
+        endpoint: str,
+        headers: dict[str, str],
+        payload: dict[str, Any],
+    ) -> OpenAIResponseObject:
+        async with httpx.AsyncClient(**self._build_httpx_client_kwargs()) as client:
+            response = await client.post(endpoint, headers=headers, json=payload)
+        if response.status_code == 400:
+            raise ValueError("Failed to create native response because the request was rejected by the model endpoint.")
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Failed to create native response; model endpoint returned HTTP {response.status_code}."
+            )
+        try:
+            response_data = response.json()
+        except ValueError as e:
+            raise RuntimeError(
+                "Failed to create native response because the model endpoint returned invalid JSON."
+            ) from e
+        self._normalize_native_response_data(response_data)
+        return TypeAdapter(OpenAIResponseObject).validate_python(response_data)
+
+    def _normalize_native_response_data(self, response_data: object) -> None:
+        if not isinstance(response_data, dict):
+            return
+        if self._is_native_response_data(response_data) and "store" not in response_data:
+            response_data["store"] = False
+        response = response_data.get("response")
+        if isinstance(response, dict) and self._is_native_response_data(response) and "store" not in response:
+            response["store"] = False
+
+    def _is_native_response_data(self, response_data: dict) -> bool:
+        return response_data.get("object") == "response" or (
+            "id" in response_data and "status" in response_data and "output" in response_data
+        )
+
+    def _normalize_native_stream_event_data(self, event_data: object, response_id: str | None) -> str | None:
+        if not isinstance(event_data, dict):
+            return response_id
+        self._normalize_native_response_data(event_data)
+        response = event_data.get("response")
+        if isinstance(response, dict) and isinstance(response.get("id"), str):
+            response_id = response["id"]
+        event_type = event_data.get("type")
+        response_level_events = {
+            "response.created",
+            "response.in_progress",
+            "response.completed",
+            "response.incomplete",
+            "response.failed",
+        }
+        if (
+            response_id
+            and isinstance(event_type, str)
+            and event_type.startswith("response.")
+            and event_type not in response_level_events
+            and "response_id" not in event_data
+        ):
+            event_data["response_id"] = response_id
+        return response_id
+
+    async def _stream_native_response(
+        self,
+        endpoint: str,
+        headers: dict[str, str],
+        payload: dict[str, Any],
+    ) -> AsyncIterator[OpenAIResponseObjectStream]:
+        event_adapter: TypeAdapter[OpenAIResponseObjectStream] = TypeAdapter(OpenAIResponseObjectStream)
+        response_id: str | None = None
+        async with httpx.AsyncClient(**self._build_httpx_client_kwargs()) as client:
+            async with client.stream("POST", endpoint, headers=headers, json=payload) as response:
+                if response.status_code == 400:
+                    raise ValueError(
+                        "Failed to stream native response because the request was rejected by the model endpoint."
+                    )
+                if response.status_code != 200:
+                    raise RuntimeError(
+                        f"Failed to stream native response; model endpoint returned HTTP {response.status_code}."
+                    )
+                async for line in response.aiter_lines():
+                    if not line.startswith("data:"):
+                        continue
+                    data = line.removeprefix("data:").strip()
+                    if not data or data == "[DONE]":
+                        continue
+                    try:
+                        event_data = json.loads(data)
+                    except json.JSONDecodeError as e:
+                        raise RuntimeError(
+                            "Failed to stream native response because the model endpoint returned invalid JSON."
+                        ) from e
+                    response_id = self._normalize_native_stream_event_data(event_data, response_id)
+                    yield event_adapter.validate_python(event_data)
 
     async def openai_chat_completion(
         self,

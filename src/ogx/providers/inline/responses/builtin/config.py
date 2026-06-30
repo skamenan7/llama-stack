@@ -4,7 +4,7 @@
 # This source code is licensed under the terms described in the LICENSE file in
 # the root directory of this source tree.
 
-from typing import Any
+from typing import Any, Literal
 
 import tiktoken
 from pydantic import BaseModel, Field, field_validator
@@ -116,6 +116,16 @@ class BuiltinResponsesImplConfig(BaseModel):
     """Configuration for the built-in responses with persistence and vector store settings."""
 
     persistence: ResponsesPersistenceConfig
+
+    native_responses_passthrough: Literal["disabled", "auto", "required"] = Field(
+        default="disabled",
+        description=(
+            "Controls whether simple eligible /v1/responses requests may be sent directly to a "
+            "provider-native /responses endpoint. 'disabled' always uses the OGX-managed loop, "
+            "'auto' uses native responses when eligible and falls back otherwise, and 'required' "
+            "fails if native responses cannot be used."
+        ),
+    )
 
     vector_stores_config: VectorStoresConfig = Field(
         default_factory=VectorStoresConfig,

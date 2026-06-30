@@ -10,6 +10,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from typing import Literal
 
 import tiktoken
 from pydantic import TypeAdapter
@@ -35,6 +36,7 @@ from ogx_api import (
     Connectors,
     ConversationItem,
     Conversations,
+    CreateResponseRequest,
     Files,
     GetPromptRequest,
     Inference,
@@ -94,6 +96,18 @@ BACKGROUND_RESPONSE_TIMEOUT_SECONDS = 300  # 5 minutes
 BACKGROUND_QUEUE_MAX_SIZE = 100
 BACKGROUND_NUM_WORKERS = 10
 
+NativeResponsesPassthroughMode = Literal["disabled", "auto", "required"]
+_OGX_EXECUTION_METADATA_KEY = "_ogx_execution"
+_OGX_NATIVE_FALLBACK_REASON_METADATA_KEY = "_ogx_native_fallback_reason"
+_NATIVE_EXECUTION = "provider_native"
+_MANAGED_EXECUTION = "ogx_managed"
+
+
+@dataclass(frozen=True)
+class _NativeEligibility:
+    eligible: bool
+    reason: str | None = None
+
 
 @dataclass
 class _BackgroundWorkItem:
@@ -121,6 +135,7 @@ class OpenAIResponsesImpl:
         moderation_headers: dict[str, str] | None = None,
         vector_stores_config: VectorStoresConfig | None = None,
         compaction_config=None,
+        native_responses_passthrough: NativeResponsesPassthroughMode = "disabled",
     ):
         self.inference_api = inference_api
         self.tool_groups_api = tool_groups_api
@@ -141,10 +156,136 @@ class OpenAIResponsesImpl:
         self.connectors_api = connectors_api
 
         self.compaction_config = compaction_config or CompactionConfig()
+        self.native_responses_passthrough = native_responses_passthrough
         self._background_queue: asyncio.Queue[_BackgroundWorkItem] = asyncio.Queue(maxsize=BACKGROUND_QUEUE_MAX_SIZE)
         self._background_worker_tasks: set[asyncio.Task] = set()
         self._background_response_tasks: dict[str, asyncio.Task] = {}
         self._background_response_tasks_lock = asyncio.Lock()
+
+    def _metadata_with_execution(
+        self,
+        metadata: dict[str, str] | None,
+        execution: str,
+        fallback_reason: str | None = None,
+    ) -> dict[str, str]:
+        updated = dict(metadata or {})
+        updated[_OGX_EXECUTION_METADATA_KEY] = execution
+        updated[_OGX_NATIVE_FALLBACK_REASON_METADATA_KEY] = fallback_reason or ""
+        return updated
+
+    def _metadata_for_native_request(self, metadata: dict[str, str] | None) -> dict[str, str] | None:
+        if metadata is None:
+            return None
+        cleaned = {
+            key: value
+            for key, value in metadata.items()
+            if key not in {_OGX_EXECUTION_METADATA_KEY, _OGX_NATIVE_FALLBACK_REASON_METADATA_KEY}
+        }
+        return cleaned or None
+
+    def _mark_response_execution(
+        self,
+        response: OpenAIResponseObject,
+        execution: str,
+        fallback_reason: str | None = None,
+    ) -> OpenAIResponseObject:
+        response.metadata = self._metadata_with_execution(response.metadata, execution, fallback_reason)
+        return response
+
+    def _mark_stream_event_execution(
+        self,
+        event: OpenAIResponseObjectStream,
+        execution: str,
+        fallback_reason: str | None = None,
+    ) -> OpenAIResponseObjectStream:
+        response = getattr(event, "response", None)
+        if isinstance(response, OpenAIResponseObject):
+            self._mark_response_execution(response, execution, fallback_reason)
+        return event
+
+    def _check_native_response_eligibility(
+        self,
+        *,
+        background: bool,
+        prompt: OpenAIResponsePrompt | None,
+        previous_response_id: str | None,
+        conversation: str | None,
+        store: bool | None,
+        tool_choice: OpenAIResponseInputToolChoice | None,
+        tools: list[OpenAIResponseInputTool] | None,
+        include: list[ResponseItemInclude] | None,
+        guardrails: bool | None,
+        context_management: list | None,
+        extra_body: dict | None,
+        explicit_request_fields: set[str],
+    ) -> _NativeEligibility:
+        if background:
+            return _NativeEligibility(False, "requires_background")
+        if prompt is not None:
+            return _NativeEligibility(False, "requires_prompt")
+        if previous_response_id is not None:
+            return _NativeEligibility(False, "requires_previous_response")
+        if conversation is not None:
+            return _NativeEligibility(False, "requires_conversation")
+        if "store" in explicit_request_fields and store is True:
+            return _NativeEligibility(False, "requires_storage")
+        if tools:
+            return _NativeEligibility(False, "requires_tools")
+        if tool_choice is not None:
+            return _NativeEligibility(False, "requires_tool_choice")
+        if include:
+            return _NativeEligibility(False, "unsupported_field")
+        if guardrails:
+            return _NativeEligibility(False, "requires_guardrails")
+        if context_management:
+            return _NativeEligibility(False, "requires_context_management")
+        if extra_body:
+            return _NativeEligibility(False, "unsupported_field")
+        return _NativeEligibility(True)
+
+    def _build_native_response_request(
+        self,
+        *,
+        input: str | list[OpenAIResponseInput],
+        model: str,
+        instructions: str | None,
+        store: bool | None,
+        stream: bool,
+        temperature: float | None,
+        top_p: float | None,
+        frequency_penalty: float | None,
+        text: OpenAIResponseText | None,
+        max_output_tokens: int | None,
+        reasoning: OpenAIResponseReasoning | None,
+        service_tier: ServiceTier | None,
+        metadata: dict[str, str] | None,
+        safety_identifier: str | None,
+        truncation: ResponseTruncation | None,
+        top_logprobs: int | None,
+        presence_penalty: float | None,
+        stream_options: ResponseStreamOptions | None,
+        explicit_request_fields: set[str],
+    ) -> CreateResponseRequest:
+        return CreateResponseRequest(
+            input=input,
+            model=model,
+            instructions=instructions,
+            store=False if "store" not in explicit_request_fields else store,
+            stream=stream,
+            temperature=temperature,
+            top_p=top_p,
+            frequency_penalty=frequency_penalty,
+            text=text,
+            max_output_tokens=max_output_tokens,
+            reasoning=reasoning,
+            service_tier=service_tier,
+            metadata=self._metadata_for_native_request(metadata),
+            safety_identifier=safety_identifier,
+            truncation=truncation,
+            top_logprobs=top_logprobs,
+            presence_penalty=presence_penalty,
+            stream_options=stream_options,
+        )
 
     async def initialize(self) -> None:
         """No-op: background workers are started lazily on first use.
@@ -650,9 +791,11 @@ class OpenAIResponsesImpl:
         extra_body: dict | None = None,
         stream_options: ResponseStreamOptions | None = None,
         context_management: list | None = None,
+        explicit_request_fields: set[str] | None = None,
     ) -> OpenAIResponseObject | AsyncIterator[OpenAIResponseObjectStream]:
         stream = bool(stream)
         background = bool(background)
+        explicit_request_fields = explicit_request_fields or set()
         text = OpenAIResponseText(format=OpenAIResponseTextFormat(type="text")) if text is None else text
 
         # Validate that stream and background are mutually exclusive
@@ -705,6 +848,78 @@ class OpenAIResponsesImpl:
 
         if max_tool_calls is not None and max_tool_calls < 1:
             raise ValueError(f"Invalid {max_tool_calls=}; should be >= 1")
+
+        native_mode = self.native_responses_passthrough
+        native_fallback_reason: str | None = None
+        if native_mode != "disabled":
+            eligibility = self._check_native_response_eligibility(
+                background=background,
+                prompt=prompt,
+                previous_response_id=previous_response_id,
+                conversation=conversation,
+                store=store,
+                tool_choice=tool_choice,
+                tools=tools,
+                include=include,
+                guardrails=guardrails,
+                context_management=context_management,
+                extra_body=extra_body,
+                explicit_request_fields=explicit_request_fields,
+            )
+            if eligibility.eligible:
+                native_request = self._build_native_response_request(
+                    input=input,
+                    model=model,
+                    instructions=instructions,
+                    store=store,
+                    stream=stream,
+                    temperature=temperature,
+                    top_p=top_p,
+                    frequency_penalty=frequency_penalty,
+                    text=text,
+                    max_output_tokens=max_output_tokens,
+                    reasoning=reasoning,
+                    service_tier=service_tier,
+                    metadata=metadata,
+                    safety_identifier=safety_identifier,
+                    truncation=truncation,
+                    top_logprobs=top_logprobs,
+                    presence_penalty=presence_penalty,
+                    stream_options=stream_options,
+                    explicit_request_fields=explicit_request_fields,
+                )
+                try:
+                    native_result = await self.inference_api.openai_response(native_request)
+                    if stream:
+                        if not isinstance(native_result, AsyncIterator):
+                            raise RuntimeError(
+                                "Failed to stream native response; provider returned a non-streaming response."
+                            )
+
+                        async def _native_stream() -> AsyncIterator[OpenAIResponseObjectStream]:
+                            async for event in native_result:
+                                yield self._mark_stream_event_execution(event, _NATIVE_EXECUTION)
+
+                        return _native_stream()
+                    if isinstance(native_result, AsyncIterator):
+                        raise RuntimeError("Failed to create native response; provider returned a streaming response.")
+                    return self._mark_response_execution(native_result, _NATIVE_EXECUTION)
+                except NotImplementedError:
+                    native_fallback_reason = "provider_unsupported"
+                    if native_mode == "required":
+                        raise RuntimeError(
+                            "Failed to use native responses because the selected model provider does not support provider-native /responses."
+                        ) from None
+                except Exception:
+                    raise
+            else:
+                native_fallback_reason = eligibility.reason
+                if native_mode == "required":
+                    raise ValueError(
+                        "Failed to use native responses because the request is not eligible for native pass-through: "
+                        f"{eligibility.reason}."
+                    )
+            metadata = self._metadata_with_execution(metadata, _MANAGED_EXECUTION, native_fallback_reason)
 
         # Handle background mode
         if background:

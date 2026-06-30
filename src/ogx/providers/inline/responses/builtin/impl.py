@@ -107,6 +107,7 @@ class BuiltinResponsesImpl(Responses):
             vector_stores_config=self.config.vector_stores_config,
             connectors_api=self.connectors_api,
             compaction_config=self.config.compaction_config,
+            native_responses_passthrough=self.config.native_responses_passthrough,
         )
         await self.openai_responses_impl.initialize()
 
@@ -166,6 +167,7 @@ class BuiltinResponsesImpl(Responses):
             extra_body=request.model_extra,
             stream_options=request.stream_options,
             context_management=request.context_management,
+            explicit_request_fields=request.model_fields_set,
         )
         return result
 

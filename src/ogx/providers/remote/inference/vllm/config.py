@@ -42,6 +42,10 @@ class VLLMInferenceAdapterConfig(RemoteInferenceProviderConfig):
             "Used by llm-d EPP Flow Control for per-tenant fair scheduling."
         ),
     )
+    native_responses: bool = Field(
+        default=False,
+        description="Whether to enable provider-native /v1/responses calls for eligible Responses API requests.",
+    )
     tls_verify: bool | str | None = Field(
         default=None,
         deprecated=True,
@@ -80,6 +84,7 @@ class VLLMInferenceAdapterConfig(RemoteInferenceProviderConfig):
             "base_url": base_url,
             "max_tokens": "${env.VLLM_MAX_TOKENS:=4096}",
             "api_token": "${env.VLLM_API_TOKEN:=fake}",
+            "native_responses": "${env.VLLM_NATIVE_RESPONSES:=false}",
             "network": {
                 "tls": {
                     "verify": "${env.VLLM_TLS_VERIFY:=true}",

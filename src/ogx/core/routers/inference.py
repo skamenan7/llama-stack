@@ -53,6 +53,9 @@ from ogx_api import (
     OpenAIEmbeddingsRequestWithExtraBody,
     OpenAIEmbeddingsResponse,
     OpenAIMessageParam,
+    OpenAIResponseObject,
+    OpenAIResponseObjectStream,
+    OpenAIResponseRequestLike,
     OpenAITokenLogProb,
     OpenAITopLogProb,
     Order,
@@ -294,6 +297,35 @@ class InferenceRouter(Inference):
         # the Responses layer catches them and falls back to regular CC
         # with a warning.
         return await provider.openai_chat_completions_with_reasoning(params)
+
+    async def openai_response(
+        self,
+        params: OpenAIResponseRequestLike,
+    ) -> OpenAIResponseObject | AsyncIterator[OpenAIResponseObjectStream]:
+        request_model_id = params.model
+        provider, provider_resource_id = await self._get_model_provider(params.model, ModelType.llm)
+        params.model = provider_resource_id
+        try:
+            openai_response = provider.openai_response
+        except AttributeError:
+            raise NotImplementedError(
+                f"{provider.__class__.__name__} does not support native OpenAI responses"
+            ) from None
+        result = await openai_response(params)
+
+        if isinstance(result, AsyncIterator):
+
+            async def _with_request_model_id() -> AsyncIterator[OpenAIResponseObjectStream]:
+                async for event in result:
+                    response = getattr(event, "response", None)
+                    if isinstance(response, OpenAIResponseObject):
+                        response.model = request_model_id
+                    yield event
+
+            return _with_request_model_id()
+
+        result.model = request_model_id
+        return result
 
     async def openai_embeddings(
         self,
