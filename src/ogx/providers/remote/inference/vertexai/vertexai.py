@@ -29,6 +29,7 @@ from ogx.providers.remote.inference.vertexai.utils import build_http_options as 
 from ogx.providers.utils.inference.openai_compat import get_stream_options_for_telemetry
 from ogx.providers.utils.inference.prompt_adapter import localize_image_content
 from ogx_api import (
+    CreateResponseRequest,
     Model,
     ModelType,
     OpenAIChatCompletion,
@@ -41,6 +42,8 @@ from ogx_api import (
     OpenAIEmbeddingsResponse,
     OpenAIEmbeddingUsage,
     OpenAIMessageParam,
+    OpenAIResponseObject,
+    OpenAIResponseObjectStream,
     RerankResponse,
     validate_embeddings_input_is_text,
 )
@@ -207,6 +210,12 @@ class VertexAIInferenceAdapter(NeedsRequestProviderData, BaseModel):
         self._http_options = None
         self._http_options_initialized = False
         self._default_client = None
+
+    async def openai_response(
+        self,
+        params: CreateResponseRequest,
+    ) -> OpenAIResponseObject | AsyncIterator[OpenAIResponseObjectStream]:
+        raise NotImplementedError(f"{self.__class__.__name__} does not support native OpenAI responses")
 
     async def register_model(self, model: Model) -> Model:
         provider_resource_id = model.provider_resource_id or model.identifier

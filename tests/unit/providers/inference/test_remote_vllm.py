@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
-from pydantic import SecretStr, TypeAdapter
+from pydantic import SecretStr
 
 from ogx.core.datatypes import User
 from ogx.core.routers.inference import InferenceRouter
@@ -31,7 +31,6 @@ from ogx_api import (
     OpenAICompletionChoice,
     OpenAICompletionRequestWithExtraBody,
     OpenAIDeveloperMessageParam,
-    OpenAIResponseObject,
 )
 
 # These are unit test for the remote vllm provider
@@ -259,38 +258,29 @@ async def test_native_responses_disabled_by_default(vllm_inference_adapter):
         await vllm_inference_adapter.openai_response(request)
 
 
-async def test_native_responses_missing_store_defaults_to_false(vllm_inference_adapter):
-    response_data = {
+async def test_native_responses_uses_openai_client(vllm_inference_adapter):
+    vllm_inference_adapter.config.native_responses = True
+    response = MagicMock()
+    response.model_dump.return_value = {
         "id": "resp_native",
         "created_at": 123,
         "model": "mock-model",
         "output": [],
         "status": "completed",
     }
+    mock_client = MagicMock()
+    mock_client.responses.create = AsyncMock(return_value=response)
 
-    vllm_inference_adapter._normalize_native_response_data(response_data)
-    response = TypeAdapter(OpenAIResponseObject).validate_python(response_data)
+    with patch.object(VLLMInferenceAdapter, "client", new_callable=PropertyMock) as mock_client_property:
+        mock_client_property.return_value = mock_client
+        result = await vllm_inference_adapter.openai_response(
+            CreateResponseRequest(input="hello", model="mock-model", store=False)
+        )
 
-    assert response.store is False
-
-
-async def test_native_response_stream_event_missing_response_id_is_filled(vllm_inference_adapter):
-    event_data = {
-        "type": "response.output_item.added",
-        "output_index": 0,
-        "item": {
-            "id": "msg_native",
-            "type": "message",
-            "role": "assistant",
-            "status": "in_progress",
-            "content": [],
-        },
-    }
-
-    response_id = vllm_inference_adapter._normalize_native_stream_event_data(event_data, "resp_native")
-
-    assert response_id == "resp_native"
-    assert event_data["response_id"] == "resp_native"
+    assert result.store is False
+    call_kwargs = mock_client.responses.create.call_args.kwargs
+    assert call_kwargs["store"] is False
+    assert "max_infer_iters" not in call_kwargs
 
 
 async def test_vllm_completion_extra_body():

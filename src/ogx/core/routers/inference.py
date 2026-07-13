@@ -28,6 +28,7 @@ from ogx.telemetry.inference_metrics import (
 )
 from ogx_api import (
     ChatCompletionMessageList,
+    CreateResponseRequest,
     GetChatCompletionRequest,
     HealthResponse,
     HealthStatus,
@@ -56,7 +57,11 @@ from ogx_api import (
     OpenAIMessageParam,
     OpenAIResponseObject,
     OpenAIResponseObjectStream,
-    OpenAIResponseRequestLike,
+    OpenAIResponseObjectStreamResponseCompleted,
+    OpenAIResponseObjectStreamResponseCreated,
+    OpenAIResponseObjectStreamResponseFailed,
+    OpenAIResponseObjectStreamResponseIncomplete,
+    OpenAIResponseObjectStreamResponseInProgress,
     OpenAITokenLogProb,
     OpenAITopLogProb,
     Order,
@@ -322,30 +327,34 @@ class InferenceRouter(Inference):
 
     async def openai_response(
         self,
-        params: OpenAIResponseRequestLike,
+        params: CreateResponseRequest,
     ) -> OpenAIResponseObject | AsyncIterator[OpenAIResponseObjectStream]:
         request_model_id = params.model
         provider, provider_resource_id = await self._get_model_provider(params.model, ModelType.llm)
         params.model = provider_resource_id
-        try:
-            openai_response = provider.openai_response
-        except AttributeError:
-            raise NotImplementedError(
-                f"{provider.__class__.__name__} does not support native OpenAI responses"
-            ) from None
-        result = await openai_response(params)
+        result = await provider.openai_response(params)
 
-        if isinstance(result, AsyncIterator):
+        if params.stream:
+            if not isinstance(result, AsyncIterator):
+                raise RuntimeError("Failed to stream native response; provider returned a non-streaming response.")
 
             async def _with_request_model_id() -> AsyncIterator[OpenAIResponseObjectStream]:
                 async for event in result:
-                    response = getattr(event, "response", None)
-                    if isinstance(response, OpenAIResponseObject):
-                        response.model = request_model_id
+                    if isinstance(
+                        event,
+                        OpenAIResponseObjectStreamResponseCreated
+                        | OpenAIResponseObjectStreamResponseInProgress
+                        | OpenAIResponseObjectStreamResponseCompleted
+                        | OpenAIResponseObjectStreamResponseIncomplete
+                        | OpenAIResponseObjectStreamResponseFailed,
+                    ):
+                        event.response.model = request_model_id
                     yield event
 
             return _with_request_model_id()
 
+        if isinstance(result, AsyncIterator):
+            raise RuntimeError("Failed to create native response; provider returned a streaming response.")
         result.model = request_model_id
         return result
 

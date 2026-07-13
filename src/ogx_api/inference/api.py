@@ -6,10 +6,8 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
-from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
-
-from pydantic.main import IncEx
+from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from ogx_api.messages.models import (
     AnthropicCountTokensRequest,
@@ -22,6 +20,7 @@ from ogx_api.models import Model
 
 if TYPE_CHECKING:
     from ogx_api.openai_responses import OpenAIResponseObject, OpenAIResponseObjectStream
+    from ogx_api.responses.models import CreateResponseRequest
 
 from .models import (
     ChatCompletionMessageList,
@@ -48,30 +47,6 @@ class ModelStore(Protocol):
     """Protocol for storing and retrieving model definitions."""
 
     async def get_model(self, identifier: str) -> Model: ...
-
-
-class OpenAIResponseRequestLike(Protocol):
-    """Request shape needed by provider-native Responses implementations."""
-
-    model: str
-
-    def model_dump(
-        self,
-        *,
-        mode: Literal["json", "python"] | str = "python",
-        include: IncEx | None = None,
-        exclude: IncEx | None = None,
-        context: Any | None = None,
-        by_alias: bool | None = None,
-        exclude_unset: bool = False,
-        exclude_defaults: bool = False,
-        exclude_none: bool = False,
-        exclude_computed_fields: bool = False,
-        round_trip: bool = False,
-        warnings: Literal["none", "warn", "error"] | bool = True,
-        fallback: Callable[[Any], Any] | None = None,
-        serialize_as_any: bool = False,
-    ) -> dict[str, Any]: ...
 
 
 @runtime_checkable
@@ -108,7 +83,7 @@ class InferenceProvider(Protocol):
 
     async def openai_response(
         self,
-        params: OpenAIResponseRequestLike,
+        params: CreateResponseRequest,
     ) -> OpenAIResponseObject | AsyncIterator[OpenAIResponseObjectStream]:
         """Generate an OpenAI-compatible response using a provider-native Responses API."""
         raise NotImplementedError(f"{self.__class__.__name__} does not support native OpenAI responses")

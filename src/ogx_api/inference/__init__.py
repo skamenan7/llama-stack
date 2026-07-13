@@ -19,7 +19,7 @@ from ogx_api.common.content_types import InterleavedContent
 from . import fastapi_routes
 
 # Import protocol for re-export
-from .api import Inference, InferenceProvider, ModelStore, OpenAIResponseRequestLike
+from .api import Inference, InferenceProvider, ModelStore
 
 # Import models for re-export
 from .models import (
@@ -121,7 +121,6 @@ __all__ = [
     "Inference",
     "InferenceProvider",
     "ModelStore",
-    "OpenAIResponseRequestLike",
     # Common types (for backward compatibility)
     "InterleavedContent",
     # Sampling

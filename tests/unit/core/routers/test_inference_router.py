@@ -25,6 +25,8 @@ from ogx_api import (
     CreateResponseRequest,
     ModelType,
     OpenAIResponseObject,
+    OpenAIResponseObjectStreamResponseCreated,
+    OpenAIResponseObjectStreamResponseOutputTextDelta,
     RerankData,
     RerankResponse,
     RoutingTable,
@@ -129,7 +131,7 @@ async def test_openai_response_calls_provider_with_llm_model():
     assert result.model == "test-llm"
 
 
-async def test_openai_response_missing_provider_method_raises_not_implemented():
+async def test_openai_response_propagates_provider_not_implemented():
     routing_table = MagicMock(spec=RoutingTable)
 
     mock_model = MagicMock()
@@ -139,7 +141,7 @@ async def test_openai_response_missing_provider_method_raises_not_implemented():
 
     mock_provider = MagicMock()
     mock_provider.__provider_id__ = "test_provider"
-    del mock_provider.openai_response
+    mock_provider.openai_response = AsyncMock(side_effect=NotImplementedError)
 
     routing_table.get_object_by_identifier = AsyncMock(return_value=mock_model)
     routing_table.get_provider_impl = AsyncMock(return_value=mock_provider)
@@ -149,3 +151,36 @@ async def test_openai_response_missing_provider_method_raises_not_implemented():
 
     with pytest.raises(NotImplementedError):
         await router.openai_response(request)
+
+
+async def test_openai_response_stream_updates_only_lifecycle_response_models():
+    routing_table = MagicMock(spec=RoutingTable)
+    mock_model = MagicMock(identifier="test-llm", model_type=ModelType.llm, provider_resource_id="provider-llm-123")
+    mock_provider = MagicMock(__provider_id__="test_provider")
+
+    native_response = OpenAIResponseObject(
+        id="resp_native",
+        created_at=123,
+        model="provider-llm-123",
+        output=[],
+        status="completed",
+        store=False,
+    )
+
+    async def native_stream():
+        yield OpenAIResponseObjectStreamResponseCreated(response=native_response, sequence_number=0)
+        yield OpenAIResponseObjectStreamResponseOutputTextDelta(
+            content_index=0, delta="hello", item_id="msg_native", output_index=0, sequence_number=1
+        )
+
+    mock_provider.openai_response = AsyncMock(return_value=native_stream())
+    routing_table.get_object_by_identifier = AsyncMock(return_value=mock_model)
+    routing_table.get_provider_impl = AsyncMock(return_value=mock_provider)
+
+    stream = await InferenceRouter(routing_table=routing_table).openai_response(
+        CreateResponseRequest(input="hello", model="test-llm", stream=True, store=False)
+    )
+    events = [event async for event in stream]
+
+    assert events[0].response.model == "test-llm"
+    assert events[1].type == "response.output_text.delta"

@@ -30,6 +30,7 @@ from ogx.providers.utils.inference.openai_compat import (
 )
 from ogx.providers.utils.inference.prompt_adapter import localize_image_content
 from ogx_api import (
+    CreateResponseRequest,
     Model,
     ModelType,
     OpenAIChatCompletion,
@@ -44,7 +45,6 @@ from ogx_api import (
     OpenAIMessageParam,
     OpenAIResponseObject,
     OpenAIResponseObjectStream,
-    OpenAIResponseRequestLike,
     validate_embeddings_input_is_text,
 )
 from ogx_api.messages.models import (
@@ -481,7 +481,7 @@ class OpenAIMixin(NeedsRequestProviderData, ABC, BaseModel):
 
     async def openai_response(
         self,
-        params: OpenAIResponseRequestLike,
+        params: CreateResponseRequest,
     ) -> OpenAIResponseObject | AsyncIterator[OpenAIResponseObjectStream]:
         raise NotImplementedError(f"{self.__class__.__name__} does not support native OpenAI responses")
 

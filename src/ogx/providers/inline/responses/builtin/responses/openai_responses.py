@@ -68,6 +68,11 @@ from ogx_api import (
     OpenAIResponseMessage,
     OpenAIResponseObject,
     OpenAIResponseObjectStream,
+    OpenAIResponseObjectStreamResponseCompleted,
+    OpenAIResponseObjectStreamResponseCreated,
+    OpenAIResponseObjectStreamResponseFailed,
+    OpenAIResponseObjectStreamResponseIncomplete,
+    OpenAIResponseObjectStreamResponseInProgress,
     OpenAIResponsePrompt,
     OpenAIResponseReasoning,
     OpenAIResponseText,
@@ -223,9 +228,15 @@ class OpenAIResponsesImpl:
         execution: str,
         fallback_reason: str | None = None,
     ) -> OpenAIResponseObjectStream:
-        response = getattr(event, "response", None)
-        if isinstance(response, OpenAIResponseObject):
-            self._mark_response_execution(response, execution, fallback_reason)
+        if isinstance(
+            event,
+            OpenAIResponseObjectStreamResponseCreated
+            | OpenAIResponseObjectStreamResponseInProgress
+            | OpenAIResponseObjectStreamResponseCompleted
+            | OpenAIResponseObjectStreamResponseIncomplete
+            | OpenAIResponseObjectStreamResponseFailed,
+        ):
+            self._mark_response_execution(event.response, execution, fallback_reason)
         return event
 
     def _check_native_response_eligibility(self, request: CreateResponseRequest) -> _NativeEligibility:
@@ -258,25 +269,11 @@ class OpenAIResponsesImpl:
         return _NativeEligibility(True)
 
     def _build_native_response_request(self, request: CreateResponseRequest) -> CreateResponseRequest:
-        return CreateResponseRequest(
-            input=request.input,
-            model=request.model,
-            instructions=request.instructions,
-            store=False if "store" not in request.model_fields_set else request.store,
-            stream=request.stream,
-            temperature=request.temperature,
-            top_p=request.top_p,
-            frequency_penalty=request.frequency_penalty,
-            text=request.text,
-            max_output_tokens=request.max_output_tokens,
-            reasoning=request.reasoning,
-            service_tier=request.service_tier,
-            metadata=self._metadata_for_native_request(request.metadata),
-            safety_identifier=request.safety_identifier,
-            truncation=request.truncation,
-            top_logprobs=request.top_logprobs,
-            presence_penalty=request.presence_penalty,
-            stream_options=request.stream_options,
+        return request.model_copy(
+            update={
+                "store": False if "store" not in request.model_fields_set else request.store,
+                "metadata": self._metadata_for_native_request(request.metadata),
+            }
         )
 
     async def initialize(self) -> None:
