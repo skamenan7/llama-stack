@@ -18,6 +18,7 @@ from ogx.log import get_logger
 from ogx.providers.inline.responses.builtin.responses.types import (
     AssistantMessageWithReasoning,
 )
+from ogx.providers.utils.inference.anthropic_translation import passthrough_anthropic_stream
 from ogx.providers.utils.inference.http_client import (
     build_network_client_kwargs as _build_network_client_kwargs,
 )
@@ -43,6 +44,14 @@ from ogx_api import (
     RerankResponse,
 )
 from ogx_api.inference import RerankRequest
+from ogx_api.messages.models import (
+    ANTHROPIC_VERSION,
+    AnthropicCountTokensRequest,
+    AnthropicCountTokensResponse,
+    AnthropicCreateMessageRequest,
+    AnthropicMessageResponse,
+    AnthropicStreamEvent,
+)
 
 from .config import VLLMInferenceAdapterConfig
 
@@ -350,6 +359,58 @@ class VLLMInferenceAdapter(OpenAIMixin):
                 )
 
         return _wrap_chunks()
+
+    async def anthropic_messages(
+        self,
+        params: AnthropicCreateMessageRequest,
+    ) -> AnthropicMessageResponse | AsyncIterator[AnthropicStreamEvent]:
+        """Handle Anthropic Messages via native /v1/messages endpoint."""
+        url = f"{self.get_base_url()}/v1/messages"
+        body = params.model_dump(exclude_none=True)
+        body["model"] = params.model
+        headers = {
+            "content-type": "application/json",
+            "anthropic-version": ANTHROPIC_VERSION,
+        }
+
+        api_key = self._get_api_key_from_config_or_provider_data()
+        if api_key and api_key != "NO KEY REQUIRED":
+            headers["Authorization"] = f"Bearer {api_key}"
+
+        if params.stream:
+            return passthrough_anthropic_stream(
+                url=url,
+                req_body=body,
+                headers=headers,
+                httpx_client_kwargs=self._build_httpx_client_kwargs(),
+            )
+
+        async with httpx.AsyncClient(**self._build_httpx_client_kwargs()) as client:
+            resp = await client.post(url, json=body, headers=headers, timeout=300)
+            resp.raise_for_status()
+            return AnthropicMessageResponse(**resp.json())
+
+    async def anthropic_count_tokens(
+        self,
+        params: AnthropicCountTokensRequest,
+    ) -> AnthropicCountTokensResponse:
+        """Forward count_tokens to vLLM's /v1/messages/count_tokens endpoint."""
+        url = f"{self.get_base_url()}/v1/messages/count_tokens"
+        body = params.model_dump(exclude_none=True)
+        body["model"] = params.model
+        headers = {
+            "content-type": "application/json",
+            "anthropic-version": ANTHROPIC_VERSION,
+        }
+
+        api_key = self._get_api_key_from_config_or_provider_data()
+        if api_key and api_key != "NO KEY REQUIRED":
+            headers["Authorization"] = f"Bearer {api_key}"
+
+        async with httpx.AsyncClient(**self._build_httpx_client_kwargs()) as client:
+            resp = await client.post(url, json=body, headers=headers, timeout=30)
+            resp.raise_for_status()
+            return AnthropicCountTokensResponse(**resp.json())
 
     def construct_model_from_identifier(self, identifier: str) -> Model:
         # vLLM's /v1/models response does not expose a model task/type field,

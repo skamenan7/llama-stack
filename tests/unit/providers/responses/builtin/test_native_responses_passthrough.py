@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from ogx_api import OpenAIResponseObject, OpenAIResponseObjectStreamResponseCreated
+from ogx_api import CreateResponseRequest, OpenAIResponseObject, OpenAIResponseObjectStreamResponseCreated
 
 
 def _response(metadata: dict[str, str] | None = None) -> OpenAIResponseObject:
@@ -31,9 +31,7 @@ async def test_native_passthrough_omitted_store_forces_provider_store_false(
     mock_inference_api.openai_response = AsyncMock(return_value=_response())
 
     result = await openai_responses_impl.create_openai_response(
-        input="hello",
-        model="vllm/test-model",
-        explicit_request_fields={"input", "model"},
+        CreateResponseRequest(input="hello", model="vllm/test-model")
     )
 
     assert result.metadata["_ogx_execution"] == "provider_native"
@@ -51,10 +49,11 @@ async def test_native_passthrough_overwrites_reserved_metadata_keys(
     mock_inference_api.openai_response = AsyncMock(return_value=_response({"_ogx_execution": "client", "keep": "yes"}))
 
     result = await openai_responses_impl.create_openai_response(
-        input="hello",
-        model="vllm/test-model",
-        metadata={"_ogx_execution": "client", "keep": "yes"},
-        explicit_request_fields={"input", "model", "metadata"},
+        CreateResponseRequest(
+            input="hello",
+            model="vllm/test-model",
+            metadata={"_ogx_execution": "client", "keep": "yes"},
+        )
     )
 
     assert result.metadata["keep"] == "yes"
@@ -75,10 +74,7 @@ async def test_native_passthrough_stream_marks_response_events(
     mock_inference_api.openai_response = AsyncMock(return_value=native_stream())
 
     stream = await openai_responses_impl.create_openai_response(
-        input="hello",
-        model="vllm/test-model",
-        stream=True,
-        explicit_request_fields={"input", "model", "stream"},
+        CreateResponseRequest(input="hello", model="vllm/test-model", stream=True)
     )
 
     events = [event async for event in stream]
@@ -92,10 +88,7 @@ async def test_required_native_passthrough_rejects_explicit_store_true(openai_re
 
     with pytest.raises(ValueError, match="requires_storage"):
         await openai_responses_impl.create_openai_response(
-            input="hello",
-            model="vllm/test-model",
-            store=True,
-            explicit_request_fields={"input", "model", "store"},
+            CreateResponseRequest(input="hello", model="vllm/test-model", store=True)
         )
 
 
@@ -108,7 +101,5 @@ async def test_required_native_passthrough_unsupported_provider_is_runtime_error
 
     with pytest.raises(RuntimeError, match="does not support"):
         await openai_responses_impl.create_openai_response(
-            input="hello",
-            model="openai/test-model",
-            explicit_request_fields={"input", "model"},
+            CreateResponseRequest(input="hello", model="openai/test-model")
         )

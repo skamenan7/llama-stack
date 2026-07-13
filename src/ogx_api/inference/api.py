@@ -11,6 +11,13 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 from pydantic.main import IncEx
 
+from ogx_api.messages.models import (
+    AnthropicCountTokensRequest,
+    AnthropicCountTokensResponse,
+    AnthropicCreateMessageRequest,
+    AnthropicMessageResponse,
+    AnthropicStreamEvent,
+)
 from ogx_api.models import Model
 
 if TYPE_CHECKING:
@@ -131,6 +138,28 @@ class InferenceProvider(Protocol):
     ) -> OpenAIEmbeddingsResponse:
         """Generate OpenAI-compatible embeddings for the given input using the specified model."""
         ...
+
+    async def anthropic_messages(
+        self,
+        params: AnthropicCreateMessageRequest,
+    ) -> AnthropicMessageResponse | AsyncIterator[AnthropicStreamEvent]:
+        """Handle Anthropic Messages API requests.
+
+        Default raises NotImplementedError. OpenAIMixin provides translation via
+        openai_chat_completion. Providers with native /v1/messages support
+        (e.g., Ollama, vLLM) override with direct passthrough.
+        """
+        raise NotImplementedError(f"{self.__class__.__name__} does not support anthropic messages")
+
+    async def anthropic_count_tokens(
+        self,
+        params: AnthropicCountTokensRequest,
+    ) -> AnthropicCountTokensResponse:
+        """Count tokens for an Anthropic Messages API request.
+
+        Default raises NotImplementedError.
+        """
+        raise NotImplementedError(f"{self.__class__.__name__} does not support anthropic count tokens")
 
 
 class Inference(InferenceProvider):
