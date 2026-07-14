@@ -115,12 +115,14 @@ type_checking = [
     "ollama",
     "llama-stack-client==0.4.6",
 ]
-# These are the dependencies required for running unit tests.
+# These are additional dependencies required for running unit tests beyond the
+# shared `test` dependency group.
 unit = [
     "anthropic",
     "databricks-sdk",
     "sqlite-vec",
     "ollama",
+    "llama-stack-client==0.4.6",
     "aiosqlite",
     "aiohttp",
     "psycopg2-binary>=2.9.0",
@@ -129,6 +131,9 @@ unit = [
     "chardet",
     "sqlalchemy",
     "sqlalchemy[asyncio]>=2.0.41",
+    "torch>=2.6.0",
+    "torchvision>=0.21.0",
+    "fairscale",
     "blobfile",
     "faiss-cpu",
     "litellm",
@@ -136,10 +141,11 @@ unit = [
     "coverage",
     "moto[s3]>=5.1.10",
 ]
-# These are the core dependencies required for running integration tests. They are shared across all
-# providers. If a provider requires additional dependencies, please add them to your environment
-# separately. If you are using "uv" to execute your tests, you can use the "--group" flag to specify extra
-# dependencies.
+# These are the core dependencies shared across test environments. Integration
+# tests use this group directly, and the unit test wrapper installs it alongside
+# the `unit` group. If a provider requires additional dependencies, please add
+# them to your environment separately. If you are using "uv" to execute your
+# tests, you can use the "--group" flag to specify extra dependencies.
 test = [
     "aiosqlite",
     "aiohttp",

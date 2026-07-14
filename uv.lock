@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12"
 resolution-markers = [
     "(python_full_version >= '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.13' and sys_platform != 'darwin' and sys_platform != 'linux')",
@@ -2203,8 +2203,10 @@ unit = [
     { name = "chardet" },
     { name = "coverage" },
     { name = "databricks-sdk" },
+    { name = "fairscale" },
     { name = "faiss-cpu" },
     { name = "litellm" },
+    { name = "llama-stack-client" },
     { name = "mcp" },
     { name = "moto", extra = ["s3"] },
     { name = "ollama" },
@@ -2213,6 +2215,10 @@ unit = [
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "sqlite-vec" },
     { name = "together" },
+    { name = "torch", version = "2.8.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
+    { name = "torch", version = "2.8.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform != 'darwin'" },
+    { name = "torchvision", version = "0.23.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine == 'aarch64' and sys_platform == 'linux') or sys_platform == 'darwin'" },
+    { name = "torchvision", version = "0.23.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
 ]
 
 [package.metadata]
@@ -2350,8 +2356,10 @@ unit = [
     { name = "chardet" },
     { name = "coverage" },
     { name = "databricks-sdk" },
+    { name = "fairscale" },
     { name = "faiss-cpu" },
     { name = "litellm" },
+    { name = "llama-stack-client", specifier = "==0.4.6" },
     { name = "mcp" },
     { name = "moto", extras = ["s3"], specifier = ">=5.1.10" },
     { name = "ollama" },
@@ -2361,6 +2369,8 @@ unit = [
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.41" },
     { name = "sqlite-vec" },
     { name = "together" },
+    { name = "torch", specifier = ">=2.6.0", index = "https://download.pytorch.org/whl/cpu" },
+    { name = "torchvision", specifier = ">=0.21.0", index = "https://download.pytorch.org/whl/cpu" },
 ]
 
 [[package]]
