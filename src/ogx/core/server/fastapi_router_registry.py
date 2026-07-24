@@ -34,7 +34,7 @@ _API_TO_PACKAGE: dict[str, str] = {
 }
 
 
-def _discover_router_factories() -> dict[str, Callable[..., APIRouter]]:
+def _discover_router_factories() -> dict[str, Callable[[Any], APIRouter]]:
     """Auto-discover router factories from ogx_api packages.
 
     For each Api enum value, try to import
@@ -42,7 +42,7 @@ def _discover_router_factories() -> dict[str, Callable[..., APIRouter]]:
     APIs without a fastapi_routes module (e.g. vector_stores, tool_runtime)
     are silently skipped.
     """
-    factories: dict[str, Callable[..., APIRouter]] = {}
+    factories: dict[str, Callable[[Any], APIRouter]] = {}
     for api in Api:
         package_name = _API_TO_PACKAGE.get(api.value, api.value)
         module_path = f"ogx_api.{package_name}.fastapi_routes"
@@ -65,7 +65,7 @@ def _discover_router_factories() -> dict[str, Callable[..., APIRouter]]:
     return factories
 
 
-_ROUTER_FACTORIES: dict[str, Callable[..., APIRouter]] = _discover_router_factories()
+_ROUTER_FACTORIES: dict[str, Callable[[Any], APIRouter]] = _discover_router_factories()
 
 
 def register_external_api_routers(external_apis: dict[Api, ExternalApiSpec]) -> None:
@@ -92,8 +92,9 @@ def build_fastapi_router(api: "Api", impl: Any, max_file_upload_size: int | None
     if router_factory is None:
         return None
 
-    if max_file_upload_size is not None and api.value in {"files", "file_processors", "containers"}:
-        return cast(APIRouter, router_factory(impl, max_upload_size_bytes=max_file_upload_size))
+    if max_file_upload_size is not None and api.value in {"files", "file_processors", "containers", "skills"}:
+        upload_router_factory = cast(Callable[..., APIRouter], router_factory)
+        return upload_router_factory(impl, max_upload_size_bytes=max_file_upload_size)
     return cast(APIRouter, router_factory(impl))
 
 

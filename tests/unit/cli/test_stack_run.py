@@ -241,7 +241,7 @@ class TestDryRun:
         mock_uvicorn.assert_not_called()
 
 
-def test_uvicorn_run_passes_configured_resource_limits(tmp_path: Path) -> None:
+def test_uvicorn_run_passes_configured_resource_limits(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     config_file = tmp_path / "config.yaml"
     config_file.write_text("version: 2\n")
     config = MagicMock()
@@ -255,6 +255,7 @@ def test_uvicorn_run_passes_configured_resource_limits(tmp_path: Path) -> None:
     config.server.tls_keyfile = None
     config.server.tls_certfile = None
     config.server.insecure = True
+    monkeypatch.setenv("OGX_CONFIG", "original")
 
     with (
         patch("ogx.core.configure.parse_and_maybe_upgrade_config", return_value=config),

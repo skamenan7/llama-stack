@@ -822,11 +822,11 @@ class ServerConfig(BaseModel):
     limit_concurrency: int | None = Field(
         default=None,
         description="Maximum concurrent connections accepted by each Uvicorn worker. Omit to use Uvicorn's default.",
-        gt=0,
+        gt=1,
     )
     limit_max_requests: int | None = Field(
         default=None,
-        description="Maximum requests served by a Uvicorn worker before it restarts. Omit to disable.",
+        description="Maximum requests served by a Uvicorn process before it exits. Omit to disable.",
         gt=0,
     )
     timeout_keep_alive: int = Field(

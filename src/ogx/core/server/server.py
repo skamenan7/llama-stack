@@ -210,7 +210,7 @@ async def _send_error_response(send: Send, status: int, message: str) -> None:
     await send({"type": "http.response.body", "body": error_msg})
 
 
-async def request_body_too_large_handler(_request: Request, _exc: "RequestBodyTooLargeError") -> JSONResponse:
+async def _request_body_too_large_handler(_request: Request, _exc: "RequestBodyTooLargeError") -> JSONResponse:
     """Return the standard error envelope for an oversized streamed request."""
     return JSONResponse(
         status_code=413,
@@ -276,6 +276,7 @@ class RequestSizeLimitMiddleware:
     _UPLOAD_PATHS = {
         "/v1/files",
         "/v1alpha/file-processors/process",
+        "/v1alpha/skills",
     }
 
     def __init__(self, app: ASGIApp, max_request_body_size: int, max_file_upload_size: int) -> None:
@@ -284,10 +285,20 @@ class RequestSizeLimitMiddleware:
         self.max_file_upload_size = max_file_upload_size
 
     def _limit_for_scope(self, scope: Scope) -> int:
+        if not self._is_upload_request(scope):
+            return self.max_request_body_size
+        return self.max_file_upload_size + self._MULTIPART_ENVELOPE_ALLOWANCE
+
+    @classmethod
+    def _is_upload_request(cls, scope: Scope) -> bool:
+        if scope.get("method") != "POST":
+            return False
         path = scope.get("path", "")
-        if path in self._UPLOAD_PATHS or (path.startswith("/v1alpha/containers/") and path.endswith("/files")):
-            return self.max_file_upload_size + self._MULTIPART_ENVELOPE_ALLOWANCE
-        return self.max_request_body_size
+        return (
+            path in cls._UPLOAD_PATHS
+            or (path.startswith("/v1alpha/containers/") and path.endswith("/files"))
+            or (path.startswith("/v1alpha/skills/") and path.endswith("/versions"))
+        )
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> Any:
         if scope["type"] != "http":
@@ -317,7 +328,10 @@ class RequestSizeLimitMiddleware:
                     raise RequestBodyTooLargeError
             return cast(MutableMapping[str, Any], message)
 
-        return await self.app(scope, receive_with_limit, send)
+        try:
+            return await self.app(scope, receive_with_limit, send)
+        except RequestBodyTooLargeError:
+            return await _send_error_response(send, status=413, message="Request body exceeds the allowed size")
 
     @staticmethod
     def _log_rejection(scope: Scope, request_size: int, limit: int) -> None:
@@ -411,10 +425,7 @@ class ZstdDecompressionMiddleware:
         self.max_file_upload_size = max_file_upload_size
 
     def _limit_for_scope(self, scope: Scope) -> int:
-        path = scope.get("path", "")
-        if path in RequestSizeLimitMiddleware._UPLOAD_PATHS or (
-            path.startswith("/v1alpha/containers/") and path.endswith("/files")
-        ):
+        if RequestSizeLimitMiddleware._is_upload_request(scope):
             return self.max_file_upload_size + RequestSizeLimitMiddleware._MULTIPART_ENVELOPE_ALLOWANCE
         return self.max_request_body_size
 
@@ -556,7 +567,7 @@ def create_app() -> StackApp:
         config=config,
     )
 
-    app.exception_handler(RequestBodyTooLargeError)(request_body_too_large_handler)
+    app.exception_handler(RequestBodyTooLargeError)(_request_body_too_large_handler)
 
     # Add HSTS middleware when TLS is configured and HSTS is not disabled
     if config.server.tls_certfile and config.server.tls_keyfile and config.server.hsts_max_age > 0:
@@ -601,11 +612,6 @@ def create_app() -> StackApp:
         logger.info("Enabling tenancy enforcement (no auth)", mode=config.server.tenancy.mode.value)
         app.add_middleware(TenancyMiddleware, tenancy_config=config.server.tenancy)
 
-    # Add request metrics middleware.
-    # Added last so it runs first (outermost), wrapping auth.
-    # Route mapping is built lazily on the first request from scope["app"].
-    app.add_middleware(RequestMetricsMiddleware)
-
     app.add_middleware(
         ZstdDecompressionMiddleware,
         max_request_body_size=config.server.max_request_body_size,
@@ -616,6 +622,10 @@ def create_app() -> StackApp:
         max_request_body_size=config.server.max_request_body_size,
         max_file_upload_size=config.server.max_file_upload_size,
     )
+
+    # Added last so it runs first (outermost), including size-limit rejections.
+    # Route mapping is built lazily on the first request from scope["app"].
+    app.add_middleware(RequestMetricsMiddleware)
 
     # Register specific exception handlers before the generic Exception handler
     # This prevents the re-raising behavior that causes connection resets
