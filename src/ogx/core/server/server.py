@@ -182,7 +182,7 @@ async def lifespan(app: StackApp) -> AsyncIterator[None]:
     for api_str in apis_to_serve:
         api = Api(api_str)
         impl = impls[api]
-        router = build_fastapi_router(api, impl)
+        router = build_fastapi_router(api, impl, max_file_upload_size=app.stack.run_config.server.max_file_upload_size)
         if router:
             app.include_router(router)
             logger.debug("Registered FastAPI router", api=str(api))
@@ -208,6 +208,14 @@ async def _send_error_response(send: Send, status: int, message: str) -> None:
     )
     error_msg = OpenAIErrorResponse.from_message(message).to_bytes()
     await send({"type": "http.response.body", "body": error_msg})
+
+
+async def request_body_too_large_handler(_request: Request, _exc: "RequestBodyTooLargeError") -> JSONResponse:
+    """Return the standard error envelope for an oversized streamed request."""
+    return JSONResponse(
+        status_code=413,
+        content=OpenAIErrorResponse.from_message("Request body exceeds the allowed size").to_dict(),
+    )
 
 
 class HSTSMiddleware:
@@ -255,6 +263,69 @@ class ClientVersionMiddleware:
                     pass
 
         return await self.app(scope, receive, send)
+
+
+class RequestBodyTooLargeError(Exception):
+    """Raised when an HTTP request body exceeds its configured limit."""
+
+
+class RequestSizeLimitMiddleware:
+    """Reject HTTP bodies over the configured limit before or during parsing."""
+
+    _MULTIPART_ENVELOPE_ALLOWANCE = 1024 * 1024
+    _UPLOAD_PATHS = {
+        "/v1/files",
+        "/v1alpha/file-processors/process",
+    }
+
+    def __init__(self, app: ASGIApp, max_request_body_size: int, max_file_upload_size: int) -> None:
+        self.app = app
+        self.max_request_body_size = max_request_body_size
+        self.max_file_upload_size = max_file_upload_size
+
+    def _limit_for_scope(self, scope: Scope) -> int:
+        path = scope.get("path", "")
+        if path in self._UPLOAD_PATHS or (path.startswith("/v1alpha/containers/") and path.endswith("/files")):
+            return self.max_file_upload_size + self._MULTIPART_ENVELOPE_ALLOWANCE
+        return self.max_request_body_size
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> Any:
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        limit = self._limit_for_scope(scope)
+        headers = dict(scope.get("headers", []))
+        content_length = headers.get(b"content-length")
+        if content_length is not None:
+            try:
+                declared_size = int(content_length)
+            except ValueError:
+                declared_size = None
+            if declared_size is not None and declared_size > limit:
+                self._log_rejection(scope, declared_size, limit)
+                return await _send_error_response(send, status=413, message="Request body exceeds the allowed size")
+
+        consumed = 0
+
+        async def receive_with_limit() -> MutableMapping[str, Any]:
+            nonlocal consumed
+            message = await receive()
+            if message["type"] == "http.request":
+                consumed += len(message.get("body", b""))
+                if consumed > limit:
+                    self._log_rejection(scope, consumed, limit)
+                    raise RequestBodyTooLargeError
+            return cast(MutableMapping[str, Any], message)
+
+        return await self.app(scope, receive_with_limit, send)
+
+    @staticmethod
+    def _log_rejection(scope: Scope, request_size: int, limit: int) -> None:
+        client = scope.get("client")
+        client_ip = client[0] if client else None
+        logger.warning(
+            "Rejected request body exceeding size limit", client_ip=client_ip, request_size=request_size, limit=limit
+        )
 
 
 def _client_version_is_compatible(client_version: str, server_version: str) -> bool:
@@ -329,13 +400,23 @@ class ZstdDecompressionMiddleware:
 
     If the request body is not zstd-encoded, it passes through unchanged.
     If decompression fails, it logs a warning and passes the original compressed body to the app.
-    If the decompressed body exceeds 100 MB, it returns a 413 Payload Too Large response.
+    If the decompressed body exceeds the configured route limit, it returns a 413 Payload Too Large response.
 
     This is useful for Codex CLI requests that send zstd-compressed payloads to reduce bandwidth usage.
     """
 
-    def __init__(self, app: ASGIApp) -> None:
+    def __init__(self, app: ASGIApp, max_request_body_size: int, max_file_upload_size: int) -> None:
         self.app = app
+        self.max_request_body_size = max_request_body_size
+        self.max_file_upload_size = max_file_upload_size
+
+    def _limit_for_scope(self, scope: Scope) -> int:
+        path = scope.get("path", "")
+        if path in RequestSizeLimitMiddleware._UPLOAD_PATHS or (
+            path.startswith("/v1alpha/containers/") and path.endswith("/files")
+        ):
+            return self.max_file_upload_size + RequestSizeLimitMiddleware._MULTIPART_ENVELOPE_ALLOWANCE
+        return self.max_request_body_size
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> Any:
         if scope["type"] != "http":
@@ -358,7 +439,7 @@ class ZstdDecompressionMiddleware:
         compressed_body = b"".join(body_parts)
 
         try:
-            max_decompressed_size = 100 * 1024 * 1024  # 100 MB
+            max_decompressed_size = self._limit_for_scope(scope)
 
             def _decompress_zstd(compressed: bytes, max_size: int) -> tuple[bytes | None, bool]:
                 decompressor = zstandard.ZstdDecompressor()
@@ -475,6 +556,8 @@ def create_app() -> StackApp:
         config=config,
     )
 
+    app.exception_handler(RequestBodyTooLargeError)(request_body_too_large_handler)
+
     # Add HSTS middleware when TLS is configured and HSTS is not disabled
     if config.server.tls_certfile and config.server.tls_keyfile and config.server.hsts_max_age > 0:
         app.add_middleware(HSTSMiddleware, max_age=config.server.hsts_max_age)
@@ -523,7 +606,16 @@ def create_app() -> StackApp:
     # Route mapping is built lazily on the first request from scope["app"].
     app.add_middleware(RequestMetricsMiddleware)
 
-    app.add_middleware(ZstdDecompressionMiddleware)
+    app.add_middleware(
+        ZstdDecompressionMiddleware,
+        max_request_body_size=config.server.max_request_body_size,
+        max_file_upload_size=config.server.max_file_upload_size,
+    )
+    app.add_middleware(
+        RequestSizeLimitMiddleware,
+        max_request_body_size=config.server.max_request_body_size,
+        max_file_upload_size=config.server.max_file_upload_size,
+    )
 
     # Register specific exception handlers before the generic Exception handler
     # This prevents the re-raising behavior that causes connection resets
