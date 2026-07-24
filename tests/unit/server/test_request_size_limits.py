@@ -23,6 +23,7 @@ from ogx.core.server.server import (
 )
 from ogx_api import Api
 from ogx_api.common.errors import FileTooLargeError
+from ogx_api.skills.models import MAX_ZIP_SIZE_BYTES
 
 
 def _scope(
@@ -171,6 +172,15 @@ class TestRequestSizeLimitMiddleware:
 
         assert sent[0]["status"] == 200
 
+    def test_skills_admission_limit_matches_router_cap(self) -> None:
+        middleware = RequestSizeLimitMiddleware(
+            _consume_request_body,
+            max_request_body_size=10,
+            max_file_upload_size=100 * 1024 * 1024,
+        )
+
+        assert middleware._limit_for_scope(_scope("/v1alpha/skills")) == MAX_ZIP_SIZE_BYTES + 1024 * 1024
+
 
 def test_server_resource_limit_config_is_parsed() -> None:
     config = ServerConfig(
@@ -250,3 +260,22 @@ def test_forged_content_length_zstd_request_returns_413() -> None:
     )
 
     assert response.status_code == 413
+
+
+def test_interactions_request_limit_uses_google_error_envelope() -> None:
+    app = FastAPI()
+
+    @app.post("/v1alpha/interactions")
+    async def interactions(request: Request) -> dict[str, int]:
+        return {"size": len(await request.body())}
+
+    app.add_middleware(
+        RequestSizeLimitMiddleware,
+        max_request_body_size=10,
+        max_file_upload_size=20,
+    )
+
+    response = TestClient(app).post("/v1alpha/interactions", content=b"x" * 11)
+
+    assert response.status_code == 413
+    assert response.json() == {"error": {"code": 413, "message": "Request body exceeds the allowed size"}}

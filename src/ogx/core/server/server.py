@@ -5,6 +5,7 @@
 # the root directory of this source tree.
 
 import asyncio
+import json
 import os
 import sys
 import traceback
@@ -51,6 +52,7 @@ from ogx.core.utils.config_resolution import resolve_config_or_distro
 from ogx.log import LoggingConfig, get_logger, parse_yaml_config, setup_logging
 from ogx_api import Api, ConflictError, ResourceNotFoundError
 from ogx_api.common.errors import OpenAIErrorResponse
+from ogx_api.skills.models import MAX_ZIP_SIZE_BYTES
 
 from .auth import AuthenticationMiddleware, RouteAuthorizationMiddleware, TenancyMiddleware
 from .metrics import RequestMetricsMiddleware
@@ -197,8 +199,8 @@ async def lifespan(app: StackApp) -> AsyncIterator[None]:
     await app.stack.shutdown()
 
 
-async def _send_error_response(send: Send, status: int, message: str) -> None:
-    """Send an ASGI error response with an OpenAI-compatible error body."""
+async def _send_error_response(send: Send, status: int, message: str, scope: Scope | None = None) -> None:
+    """Send an API-compatible ASGI error response."""
     await send(
         {
             "type": "http.response.start",
@@ -206,16 +208,11 @@ async def _send_error_response(send: Send, status: int, message: str) -> None:
             "headers": [[b"content-type", b"application/json"]],
         }
     )
-    error_msg = OpenAIErrorResponse.from_message(message).to_bytes()
+    if scope is not None and scope.get("path", "").startswith("/v1alpha/interactions"):
+        error_msg = json.dumps({"error": {"code": status, "message": message}}).encode()
+    else:
+        error_msg = OpenAIErrorResponse.from_message(message).to_bytes()
     await send({"type": "http.response.body", "body": error_msg})
-
-
-async def _request_body_too_large_handler(_request: Request, _exc: "RequestBodyTooLargeError") -> JSONResponse:
-    """Return the standard error envelope for an oversized streamed request."""
-    return JSONResponse(
-        status_code=413,
-        content=OpenAIErrorResponse.from_message("Request body exceeds the allowed size").to_dict(),
-    )
 
 
 class HSTSMiddleware:
@@ -257,6 +254,7 @@ class ClientVersionMiddleware:
                             send,
                             status=httpx.codes.UPGRADE_REQUIRED,
                             message=f"Client version {client_version} is not compatible with server version {self.server_version}. Please update your client.",
+                            scope=scope,
                         )
                 except InvalidVersion:
                     # If version parsing fails, let the request through
@@ -287,7 +285,12 @@ class RequestSizeLimitMiddleware:
     def _limit_for_scope(self, scope: Scope) -> int:
         if not self._is_upload_request(scope):
             return self.max_request_body_size
-        return self.max_file_upload_size + self._MULTIPART_ENVELOPE_ALLOWANCE
+        return self._upload_limit_for_scope(scope) + self._MULTIPART_ENVELOPE_ALLOWANCE
+
+    def _upload_limit_for_scope(self, scope: Scope) -> int:
+        if self._is_skills_upload(scope):
+            return min(self.max_file_upload_size, MAX_ZIP_SIZE_BYTES)
+        return self.max_file_upload_size
 
     @classmethod
     def _is_upload_request(cls, scope: Scope) -> bool:
@@ -299,6 +302,11 @@ class RequestSizeLimitMiddleware:
             or (path.startswith("/v1alpha/containers/") and path.endswith("/files"))
             or (path.startswith("/v1alpha/skills/") and path.endswith("/versions"))
         )
+
+    @classmethod
+    def _is_skills_upload(cls, scope: Scope) -> bool:
+        path = str(scope.get("path", ""))
+        return path == "/v1alpha/skills" or (path.startswith("/v1alpha/skills/") and path.endswith("/versions"))
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> Any:
         if scope["type"] != "http":
@@ -314,7 +322,9 @@ class RequestSizeLimitMiddleware:
                 declared_size = None
             if declared_size is not None and declared_size > limit:
                 self._log_rejection(scope, declared_size, limit)
-                return await _send_error_response(send, status=413, message="Request body exceeds the allowed size")
+                return await _send_error_response(
+                    send, status=413, message="Request body exceeds the allowed size", scope=scope
+                )
 
         consumed = 0
 
@@ -331,7 +341,9 @@ class RequestSizeLimitMiddleware:
         try:
             return await self.app(scope, receive_with_limit, send)
         except RequestBodyTooLargeError:
-            return await _send_error_response(send, status=413, message="Request body exceeds the allowed size")
+            return await _send_error_response(
+                send, status=413, message="Request body exceeds the allowed size", scope=scope
+            )
 
     @staticmethod
     def _log_rejection(scope: Scope, request_size: int, limit: int) -> None:
@@ -426,7 +438,10 @@ class ZstdDecompressionMiddleware:
 
     def _limit_for_scope(self, scope: Scope) -> int:
         if RequestSizeLimitMiddleware._is_upload_request(scope):
-            return self.max_file_upload_size + RequestSizeLimitMiddleware._MULTIPART_ENVELOPE_ALLOWANCE
+            upload_limit = self.max_file_upload_size
+            if RequestSizeLimitMiddleware._is_skills_upload(scope):
+                upload_limit = min(upload_limit, MAX_ZIP_SIZE_BYTES)
+            return upload_limit + RequestSizeLimitMiddleware._MULTIPART_ENVELOPE_ALLOWANCE
         return self.max_request_body_size
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> Any:
@@ -471,6 +486,7 @@ class ZstdDecompressionMiddleware:
                     send,
                     status=413,
                     message=f"Decompressed request body exceeds maximum allowed size of {max_decompressed_size} bytes",
+                    scope=scope,
                 )
 
             if decompressed_body is None:
@@ -478,6 +494,7 @@ class ZstdDecompressionMiddleware:
                     send,
                     status=500,
                     message="Failed to decompress request body",
+                    scope=scope,
                 )
 
             # Strip content-encoding header and update content-length
@@ -566,8 +583,6 @@ def create_app() -> StackApp:
         openapi_url="/openapi.json",
         config=config,
     )
-
-    app.exception_handler(RequestBodyTooLargeError)(_request_body_too_large_handler)
 
     # Add HSTS middleware when TLS is configured and HSTS is not disabled
     if config.server.tls_certfile and config.server.tls_keyfile and config.server.hsts_max_age > 0:
