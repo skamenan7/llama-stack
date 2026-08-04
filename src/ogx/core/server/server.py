@@ -273,6 +273,7 @@ class RequestSizeLimitMiddleware:
     _MULTIPART_ENVELOPE_ALLOWANCE = 1024 * 1024
     _UPLOAD_PATHS = {
         "/v1/files",
+        "/v1alpha/file-processors/jobs",
         "/v1alpha/file-processors/process",
         "/v1alpha/skills",
     }

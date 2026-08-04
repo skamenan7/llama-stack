@@ -144,6 +144,20 @@ class TestRequestSizeLimitMiddleware:
 
         assert sent[0]["status"] == 200
 
+    async def test_uses_upload_limit_for_file_processor_jobs(self) -> None:
+        sent: list[Message] = []
+        middleware = RequestSizeLimitMiddleware(
+            _consume_request_body, max_request_body_size=10, max_file_upload_size=20
+        )
+
+        await middleware(
+            _scope("/v1alpha/file-processors/jobs", [(b"content-length", b"20")]),
+            _receive_messages([{"type": "http.request", "body": b"x" * 20, "more_body": False}]),
+            _send_messages(sent),
+        )
+
+        assert sent[0]["status"] == 200
+
     async def test_does_not_use_upload_limit_for_get_request(self) -> None:
         sent: list[Message] = []
         middleware = RequestSizeLimitMiddleware(
