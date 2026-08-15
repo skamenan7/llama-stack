@@ -212,6 +212,12 @@ def add_letsgo_arguments(parser: argparse.ArgumentParser) -> None:
         help="Allow running without TLS certificates. Disables FIPS enforcement. For local development only.",
     )
     parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Host to bind the server to",
+    )
+    parser.add_argument(
         "--no-auth",
         action="store_true",
         default=False,
@@ -478,7 +484,8 @@ async def _run_letsgo_cmd_impl(args: argparse.Namespace, parser: argparse.Argume
         config_dict["server"]["insecure"] = False
         cprint(f"  ✓ Generated self-signed TLS certificate → {cert_path}", color="green")
 
-    # ── Auth config injection ──
+    config_dict["server"]["host"] = args.host
+
     if not args.no_auth:
         api_keys = [f"ogk_{secrets.token_urlsafe(24)}" for _ in range(3)]
         if "server" not in config_dict:
