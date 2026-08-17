@@ -19,6 +19,7 @@ from fastapi import UploadFile
 
 from ogx.log import get_logger
 from ogx.providers.utils.files.response import response_body_bytes
+from ogx.providers.utils.files.structural_metadata import structural_metadata_as_attributes
 from ogx.providers.utils.vector_io.vector_utils import generate_chunk_id
 from ogx_api.common.errors import InvalidParameterError
 from ogx_api.file_processors import ProcessFileRequest, ProcessFileResponse
@@ -339,9 +340,18 @@ class DoclingServeFileProcessor:
                 **document_metadata,
             }
 
-            headings = raw_chunk.get("meta", {}).get("headings", None)
-            if headings:
-                meta["headings"] = headings
+            legacy_meta = raw_chunk.get("meta") or {}
+            headings = raw_chunk.get("headings")
+            legacy_headings = legacy_meta.get("headings")
+            page_numbers = raw_chunk.get("page_numbers") or legacy_meta.get("page_numbers")
+            meta.update(
+                structural_metadata_as_attributes(
+                    headings=headings,
+                    page_numbers=page_numbers,
+                )
+            )
+            if not headings and legacy_headings:
+                meta["headings"] = legacy_headings
 
             chunks.append(
                 Chunk(
@@ -418,13 +428,18 @@ class DoclingServeFileProcessor:
                 **document_metadata,
             }
 
-            # Extract headings from meta object
-            headings = None
-            if hasattr(raw_chunk, "meta") and hasattr(raw_chunk.meta, "headings"):
-                headings = raw_chunk.meta.headings
-
-            if headings:
-                meta["headings"] = headings
+            legacy_meta = getattr(raw_chunk, "meta", None)
+            headings = getattr(raw_chunk, "headings", None)
+            legacy_headings = getattr(legacy_meta, "headings", None)
+            page_numbers = getattr(raw_chunk, "page_numbers", None) or getattr(legacy_meta, "page_numbers", None)
+            meta.update(
+                structural_metadata_as_attributes(
+                    headings=headings,
+                    page_numbers=page_numbers,
+                )
+            )
+            if not headings and legacy_headings:
+                meta["headings"] = legacy_headings
 
             chunks.append(
                 Chunk(
