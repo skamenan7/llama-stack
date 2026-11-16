@@ -4,7 +4,6 @@
 # This source code is licensed under the terms described in the LICENSE file in
 # the root directory of this source tree.
 
-import base64
 import logging  # allow-direct-logging
 from unittest.mock import patch
 
@@ -12,6 +11,9 @@ import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from jwcrypto.common import base64url_encode
+from jwcrypto.jwk import JWK
+from jwcrypto.jwt import JWT
 
 from ogx.core.datatypes import (
     AuthenticationConfig,
@@ -23,6 +25,9 @@ from ogx.core.datatypes import (
 )
 from ogx.core.server.auth import AuthenticationMiddleware
 
+# 32-byte secret so the oct keys satisfy HS256's 256-bit key length requirement.
+_HS256_SECRET = b"0123456789abcdef0123456789abcdef"
+
 
 @pytest.fixture
 def suppress_auth_errors(caplog):
@@ -33,19 +38,18 @@ def suppress_auth_errors(caplog):
 
 @pytest.fixture
 def jwt_token_valid():
-    import jwt
-
-    return jwt.encode(
-        {
+    key = JWK(kty="oct", kid="1234567890", k=base64url_encode(_HS256_SECRET))
+    token = JWT(
+        header={"alg": "HS256", "kid": "1234567890"},
+        claims={
             "sub": "my-user",
             "groups": ["group1", "group2"],
             "scope": "foo bar",
             "aud": "ogx",
         },
-        key="foobarbaz",
-        algorithm="HS256",
-        headers={"kid": "1234567890"},
     )
+    token.make_signed_token(key)
+    return token.serialize()
 
 
 # --- Custom auth provider: 503 tests ---
@@ -120,40 +124,41 @@ def oauth2_client():
 
 
 def test_jwks_connection_error_returns_503(oauth2_client, jwt_token_valid, suppress_auth_errors):
-    from jwt.exceptions import PyJWKClientConnectionError
-
-    with patch("jwt.PyJWKClient.fetch_data", side_effect=PyJWKClientConnectionError("Connection refused")):
+    with patch(
+        "ogx.core.server.auth_providers._JwksKeySource.fetch_jwks",
+        side_effect=httpx.ConnectError("Connection refused"),
+    ):
         response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {jwt_token_valid}"})
         assert response.status_code == 503
         assert "Authentication service unavailable" in response.json()["error"]["message"]
 
 
 def test_jwks_network_error_returns_503(oauth2_client, jwt_token_valid, suppress_auth_errors):
-    with patch("jwt.PyJWKClient.fetch_data", side_effect=OSError("Network is unreachable")):
+    with patch(
+        "ogx.core.server.auth_providers._JwksKeySource.fetch_jwks",
+        side_effect=OSError("Network is unreachable"),
+    ):
         response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {jwt_token_valid}"})
         assert response.status_code == 503
         assert "Authentication service unavailable" in response.json()["error"]["message"]
 
 
 def test_jwks_timeout_returns_503(oauth2_client, jwt_token_valid, suppress_auth_errors):
-    with patch("jwt.PyJWKClient.fetch_data", side_effect=TimeoutError("Connection timed out")):
+    with patch(
+        "ogx.core.server.auth_providers._JwksKeySource.fetch_jwks",
+        side_effect=httpx.ReadTimeout("Connection timed out"),
+    ):
         response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {jwt_token_valid}"})
         assert response.status_code == 503
         assert "Authentication service unavailable" in response.json()["error"]["message"]
 
 
 def test_jwks_http_500_returns_503(oauth2_client, jwt_token_valid, suppress_auth_errors):
-    import urllib.error
-
+    request = httpx.Request("GET", "http://mock-authz-service/.well-known/jwks.json")
+    response_500 = httpx.Response(500, request=request)
     with patch(
-        "jwt.PyJWKClient.fetch_data",
-        side_effect=urllib.error.HTTPError(
-            url="http://mock-authz-service/.well-known/jwks.json",
-            code=500,
-            msg="Internal Server Error",
-            hdrs={},
-            fp=None,
-        ),
+        "ogx.core.server.auth_providers._JwksKeySource.fetch_jwks",
+        side_effect=httpx.HTTPStatusError("Internal Server Error", request=request, response=response_500),
     ):
         response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {jwt_token_valid}"})
         assert response.status_code == 503
@@ -162,7 +167,7 @@ def test_jwks_http_500_returns_503(oauth2_client, jwt_token_valid, suppress_auth
 
 def test_bad_token_still_returns_401(oauth2_client, suppress_auth_errors):
     with patch(
-        "jwt.PyJWKClient.fetch_data",
+        "ogx.core.server.auth_providers._JwksKeySource.fetch_jwks",
         return_value={
             "keys": [
                 {
@@ -170,7 +175,7 @@ def test_bad_token_still_returns_401(oauth2_client, suppress_auth_errors):
                     "kty": "oct",
                     "alg": "HS256",
                     "use": "sig",
-                    "k": base64.b64encode(b"foobarbaz").decode(),
+                    "k": base64url_encode(_HS256_SECRET),
                 }
             ]
         },
@@ -181,17 +186,15 @@ def test_bad_token_still_returns_401(oauth2_client, suppress_auth_errors):
 
 
 def test_jwks_missing_kid_still_returns_401(oauth2_client, suppress_auth_errors):
-    import jwt
-
-    token_with_unknown_kid = jwt.encode(
-        {"sub": "my-user", "groups": ["group1", "group2"], "scope": "foo bar", "aud": "ogx"},
-        key="foobarbaz",
-        algorithm="HS256",
-        headers={"kid": "unknown-kid"},
+    key = JWK(kty="oct", kid="1234567890", k=base64url_encode(_HS256_SECRET))
+    token_with_unknown_kid = JWT(
+        header={"alg": "HS256", "kid": "unknown-kid"},
+        claims={"sub": "my-user", "groups": ["group1", "group2"], "scope": "foo bar", "aud": "ogx"},
     )
+    token_with_unknown_kid.make_signed_token(key)
 
     with patch(
-        "jwt.PyJWKClient.fetch_data",
+        "ogx.core.server.auth_providers._JwksKeySource.fetch_jwks",
         return_value={
             "keys": [
                 {
@@ -199,12 +202,12 @@ def test_jwks_missing_kid_still_returns_401(oauth2_client, suppress_auth_errors)
                     "kty": "oct",
                     "alg": "HS256",
                     "use": "sig",
-                    "k": base64.b64encode(b"foobarbaz").decode(),
+                    "k": base64url_encode(_HS256_SECRET),
                 }
             ]
         },
     ):
-        response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {token_with_unknown_kid}"})
+        response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {token_with_unknown_kid.serialize()}"})
         assert response.status_code == 401
         assert "Invalid JWT token" in response.json()["error"]["message"]
 
