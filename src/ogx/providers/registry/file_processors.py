@@ -23,7 +23,11 @@ def available_providers() -> list[ProviderSpec]:
             api=Api.file_processors,
             provider_type="inline::auto",
             execution_mode="worker",
-            pip_packages=["chardet", "pypdf>=6.13.0", "markitdown[audio-transcription,docx,outlook,pdf,pptx,xls,xlsx,youtube-transcription]"],
+            pip_packages=[
+                "chardet",
+                "pypdf>=6.13.0",
+                "markitdown[audio-transcription,docx,outlook,pdf,pptx,xls,xlsx,youtube-transcription]",
+            ],
             module="ogx.providers.inline.file_processor.auto",
             config_class="ogx.providers.inline.file_processor.auto.AutoFileProcessorConfig",
             api_dependencies=[Api.files],
