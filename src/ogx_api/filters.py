@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
+from pydantic.fields import FieldInfo
 
 from .schema_utils import json_schema_type
 
@@ -57,7 +58,7 @@ class CompoundFilter(BaseModel):
 FilterUnion = ComparisonFilter | CompoundFilter
 
 # Now update CompoundFilter with proper type
-CompoundFilter.model_fields["filters"].annotation = list[FilterUnion]
+CompoundFilter.model_fields["filters"] = FieldInfo.from_annotation(list[FilterUnion])
 CompoundFilter.model_rebuild()
 
 # Create the annotated version for API use
