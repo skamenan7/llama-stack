@@ -1,69 +1,79 @@
-# =============================================================================
-# Pre-Release Preparation
-# =============================================================================
-#
-# Triggered via workflow_dispatch to prepare a release branch for publishing.
-# Takes a version (e.g., "0.5.1") and target release branch as input.
-#
-# Automates:
-#   - Updating fallback_version to the release version in both pyproject.toml files
-#   - Updating ogx-client pins to the release version
-#   - Regenerating and checking uv.lock after the client has been published
-#   - Committing all changes directly to the release branch
-#
-# =============================================================================
+# Prepare the version and lockfile through a reviewed PR. The existing
+# odh-create-tag.yml workflow creates the tag only after that PR is merged.
+# Based on the validation and version-pinning approach in PR #349.
 
 name: Prepare release
+run-name: Prepare v${{ inputs.version }} on ${{ inputs.release_branch }}
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g., "0.5.1")'
+        description: 'Package version without v (e.g., "1.4.3+rhaiv.0")'
         required: true
         type: string
       release_branch:
-        description: 'Target release branch (e.g., "release-0.5.x")'
+        description: 'Source branch (release-3.5 or release-3.6)'
         required: true
         type: string
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: prepare-release-${{ inputs.release_branch }}
+  cancel-in-progress: false
 
 jobs:
   prepare-release:
+    if: github.repository == 'opendatahub-io/ogx'
     name: Prepare release v${{ inputs.version }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ inputs.release_branch }}
-          fetch-depth: 0
-
       - name: Validate inputs
         env:
           VERSION: ${{ inputs.version }}
           BRANCH: ${{ inputs.release_branch }}
+          DISPATCH_REF: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
         run: |
-          # Validate version format (X.Y.Z)
-          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::Invalid version format: ${VERSION}. Expected X.Y.Z (e.g., 0.5.1)"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?\+rhaiv\.[0-9]+$ ]]; then
+            echo "::error::Failed to validate version. Expected X.Y.Z[.revision]+rhaiv.N without a leading v."
+            exit 1
+          fi
+          if [[ "$BRANCH" != "release-3.5" && "$BRANCH" != "release-3.6" ]]; then
+            echo "::error::Failed to validate source branch. Expected release-3.5 or release-3.6."
+            exit 1
+          fi
+          if [[ "$REF_TYPE" != "branch" || "$DISPATCH_REF" != "$BRANCH" ]]; then
+            echo "::error::Failed to validate dispatch ref. Select the same source branch as release_branch."
             exit 1
           fi
 
-          # Validate branch exists
-          if ! git rev-parse "origin/${BRANCH}" >/dev/null 2>&1; then
-            echo "::error::Branch ${BRANCH} does not exist"
-            exit 1
-          fi
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.release_branch }}
+          token: ${{ secrets.RELEASE_TOKEN }}
+          fetch-depth: 0
+          # The token authenticates the working-branch push and allows its PR to trigger CI.
+          persist-credentials: true
 
-          if [ "$BRANCH" != "release-${VERSION%.*}.x" ]; then
-            echo "::error::Failed to prepare ${VERSION}: expected branch release-${VERSION%.*}.x"
+      - name: Check if tag already exists
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" > /dev/null; then
+            echo "::error::Failed to prepare v${VERSION}: the tag already exists."
             exit 1
+          else
+            status=$?
+            if [[ "$status" -ne 2 ]]; then
+              echo "::error::Failed to check whether v${VERSION} exists (git exited with ${status})."
+              exit "$status"
+            fi
           fi
-
-          echo "Preparing release v${VERSION} on ${BRANCH}"
 
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -73,50 +83,76 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
 
-      - name: Verify the matching client is published
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          if ! curl --fail --silent --show-error "https://pypi.org/pypi/ogx-client/${VERSION}/json" --output /dev/null; then
-            echo "::error::Failed to find ogx-client==${VERSION} on PyPI. Publish clients-only from the release branch first."
-            exit 1
-          fi
-
       - name: Update version files and lock dependencies
         env:
           VERSION: ${{ inputs.version }}
         run: |
+          # Replace dynamic versions on the first preparation and pinned versions on later runs.
+          for pyproject in pyproject.toml src/ogx_api/pyproject.toml; do
+            sed -i 's/^dynamic = \["version"\]/version = "'"${VERSION}"'"/' "$pyproject"
+            sed -i '/^\[project\]$/,/^\[/{s/^version = ".*"/version = "'"${VERSION}"'"/}' "$pyproject"
+            sed -i 's/^fallback_version = .*/fallback_version = "'"${VERSION}"'"/' "$pyproject"
+          done
+          python - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
 
-          # --- Update fallback_version in both pyproject.toml files ---
-          sed -i "s/^fallback_version = .*/fallback_version = \"${VERSION}\"/" pyproject.toml
-          sed -i "s/^fallback_version = .*/fallback_version = \"${VERSION}\"/" src/ogx_api/pyproject.toml
-
-          # --- Update ogx-client pins in pyproject.toml ---
-          # Update the pin in [project.optional-dependencies] and [dependency-groups]
-          # Match patterns like: "ogx-client>=X.Y.Z" or "ogx-client==X.Y.Z"
-          sed -i -E "s/\"ogx-client[><=!]+[0-9]+\.[0-9]+\.[0-9]+[^\"]*\"/\"ogx-client==${VERSION}\"/" pyproject.toml
-
+          for path in (Path("pyproject.toml"), Path("src/ogx_api/pyproject.toml")):
+              project = tomllib.loads(path.read_text())["project"]
+              if project.get("version") != os.environ["VERSION"] or "version" in project.get("dynamic", []):
+                  raise SystemExit(f"Failed to pin the project version in {path}")
+          PY
           uv lock
           uv lock --check
 
-      - name: Commit prepared release
+      - name: Open preparation PR
         env:
           VERSION: ${{ inputs.version }}
           RELEASE_BRANCH: ${{ inputs.release_branch }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
-          # Show what changed
-          echo "=== Changes ==="
-          git diff
-
-          # Check if there are changes
-          if git diff --quiet; then
-            echo "::warning::No changes detected. Version may already be set to ${VERSION}."
+          PREPARE_BRANCH="prepare-${RELEASE_BRANCH}-v${VERSION}"
+          EXISTING_PRS=$(gh pr list --repo "$GITHUB_REPOSITORY" --base "$RELEASE_BRANCH" \
+            --head "$PREPARE_BRANCH" --state open --json url,isCrossRepository)
+          EXISTING_PR=$(python -c '
+          import json, sys
+          print(next((pr["url"] for pr in json.load(sys.stdin) if pr["isCrossRepository"] is False), ""))
+          ' <<< "$EXISTING_PRS")
+          if [[ -n "$EXISTING_PR" ]]; then
+            echo "Preparation PR already exists: ${EXISTING_PR}"
+            exit 0
+          fi
+          if git diff --quiet -- pyproject.toml src/ogx_api/pyproject.toml uv.lock; then
+            echo "No version or lockfile changes to propose."
             exit 0
           fi
 
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml src/ogx_api/pyproject.toml uv.lock
-          git commit -s -m "chore: prepare release v${VERSION}"
-          git push origin "HEAD:${RELEASE_BRANCH}"
-          echo "Committed version updates directly to ${RELEASE_BRANCH}"
+          # Recover a previous successful branch push if PR creation failed afterwards.
+          if git ls-remote --exit-code --heads origin "refs/heads/${PREPARE_BRANCH}" > /dev/null; then
+            git fetch origin "$PREPARE_BRANCH"
+            if ! git diff --quiet FETCH_HEAD -- pyproject.toml src/ogx_api/pyproject.toml uv.lock; then
+              echo "::error::Failed to reuse ${PREPARE_BRANCH}: its prepared files differ. Review the existing branch."
+              exit 1
+            fi
+          else
+            status=$?
+            if [[ "$status" -ne 2 ]]; then
+              echo "::error::Failed to check preparation branch (git exited with ${status})."
+              exit "$status"
+            fi
+            git switch -c "$PREPARE_BRANCH"
+            git config --local user.name "github-actions[bot]"
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git add pyproject.toml src/ogx_api/pyproject.toml uv.lock
+            git commit -s -m "chore: prepare release v${VERSION}."
+            git push origin "HEAD:refs/heads/${PREPARE_BRANCH}"
+          fi
+
+          gh pr create --repo "$GITHUB_REPOSITORY" --base "$RELEASE_BRANCH" --head "$PREPARE_BRANCH" \
+            --title "chore: prepare release v${VERSION}." \
+            --body "Updates both project versions and uv.lock for v${VERSION} on ${RELEASE_BRANCH}.
+
+          Client pins are unchanged. Review the lockfile before merging.
+          After merge, the existing release-tag workflow creates v${VERSION} from the merged commit.
+          Preparation does not create a tag, publish packages, or dispatch a distribution update."

@@ -22,11 +22,14 @@ OGX uses GitHub Actions for Continuous Integration (CI). Below is a table detail
 | Integration Tests (Replay) | [integration-tests.yml](integration-tests.yml) | Run the integration test suites from tests/integration in replay mode |
 | Vector IO Integration Tests | [integration-vector-io-tests.yml](integration-vector-io-tests.yml) | Run the integration test suite with various VectorIO providers |
 | Launch GPU EC2 Runner | [launch-gpu-ec2-runner.yml](launch-gpu-ec2-runner.yml) | GPU recording for gpt-oss:20b (${{ inputs.suite }} suite) |
+| Praxis Migration E2E | [migration-e2e-praxis.yml](migration-e2e-praxis.yml) | End-to-end OGX->Praxis migration against real Postgres + Praxis |
+| Create release tag | [odh-create-tag.yml](odh-create-tag.yml) | Create tag from version in pyproject.toml |
+| Dispatch Version Update to ODH Distribution | [odh-dispatch-version-update-to-odh-distribution.yml](odh-dispatch-version-update-to-odh-distribution.yml) | Dispatch version update to ogx-distribution (${{ github.ref_name }}) |
 | OpenAPI Generator SDK Validation | [openapi-generator-validation.yml](openapi-generator-validation.yml) | Validate OpenAPI Generator SDK generation |
 | OpenResponses Conformance Tests | [openresponses-conformance.yml](openresponses-conformance.yml) | Run OpenResponses conformance tests against ogx Responses API |
 | Post-release automation | [post-release.yml](post-release.yml) | Post-release automation |
 | Pre-commit | [pre-commit.yml](pre-commit.yml) | Run pre-commit checks |
-| Prepare release | [prepare-release.yml](prepare-release.yml) | Prepare release |
+| Prepare release | [prepare-release.yml](prepare-release.yml) | Prepare v${{ inputs.version }} on ${{ inputs.release_branch }} |
 | Test OGX Build | [providers-build.yml](providers-build.yml) | Test ogx build and list-deps |
 | Build, test, and publish packages | [pypi.yml](pypi.yml) | Build, test, and publish packages |
 | Integration Tests (Record) | [record-integration-tests.yml](record-integration-tests.yml) | Auto-record missing test recordings for PR |

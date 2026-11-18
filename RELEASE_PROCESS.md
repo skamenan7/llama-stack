@@ -106,7 +106,25 @@ For each release, the Release Owner should complete:
 
 ### Technical Release Steps
 
-#### Patch release (e.g., 0.4.5 on existing `release-0.4.x`)
+#### ODH version preparation (`release-3.6`)
+
+Use [**Prepare release**](https://github.com/opendatahub-io/ogx/actions/workflows/prepare-release.yml) to propose the package version and lockfile changes before tagging:
+
+1. Select `release-3.6` in **Use workflow from** and enter `release_branch=release-3.6`.
+2. Enter the next package version without its leading `v`, for example `version=1.4.3+rhaiv.0`. The format is `X.Y.Z[.revision]+rhaiv.N`. The package version is independent of the product stream: this source branch also supplies later product releases.
+3. Run the workflow. It rejects existing tags, pins `[project].version` and `fallback_version` in both manifests, refreshes `uv.lock`, and checks it with `uv lock --check`. It leaves the existing `ogx-client` pin unchanged; matching client publication is not a prerequisite.
+4. Review the generated PR targeting `release-3.6`, including the dependency changes. Preparation pushes only a working branch. It does not create a tag, publish packages, or dispatch a distribution update.
+5. After the normal review and merge, check **Create release tag** (`odh-create-tag.yml`) and verify that `v<version>` points to the merged version change. Do not create the tag from the preparation branch.
+
+The workflow uses the existing `RELEASE_TOKEN` secret to push its working branch and open the PR. That token must have repository contents and pull-request write access, and be allowed to trigger CI. The workflow's `GITHUB_TOKEN` has read-only contents access. Dispatch requires the selected workflow branch to match `release_branch`. Although the replacement accepts `release-3.5` as well, use it there only after its separate backport has merged.
+
+Rerunning the same preparation returns the existing open PR from this repository, ignoring fork PRs with the same branch name. If branch creation succeeded but PR creation failed, a retry reuses the branch only when all three prepared files match. A conflicting branch or failed tag lookup stops the run instead of overwriting remote state.
+
+The existing automatic distribution dispatcher is unchanged by this preparation change. Its removal and the manual product-version selection instructions are separate work. Do not treat this preparation workflow as a replacement for those steps.
+
+The following patch/minor procedures describe upstream publishing, not the ODH preparation flow above.
+
+#### Upstream patch release (e.g., 0.4.5 on existing `release-0.4.x`)
 
 **Pre-release on `release-0.4.x`:**
 
@@ -142,7 +160,7 @@ The following steps are handled automatically by the [**Post-release automation*
 - Tags `main` with the next dev tag and opens a fallback-version PR when the release is at least as new as main's current version.
 - Opens the npm lockfile update PR for `release-0.4.x`.
 
-#### Minor release (e.g., 0.5.0 — new release branch)
+#### Upstream minor release (e.g., 0.5.0 — new release branch)
 
 **All of the above, plus:**
 
@@ -212,13 +230,7 @@ The unified workflow (`.github/workflows/pypi.yml`) builds and publishes all pac
 
 ### Prepare release (`.github/workflows/prepare-release.yml`)
 
-Triggered via `workflow_dispatch` after publishing the matching clients. Takes a version and matching release branch as input, then:
-
-- Verifies `ogx-client==X.Y.Z` is available on PyPI
-- Updates `fallback_version` to the release version in both `pyproject.toml` files
-- Updates `ogx-client` pins to `==X.Y.Z`
-- Regenerates `uv.lock` and verifies it with `uv lock --check`
-- Commits both manifests and the lockfile directly to the release branch only after all checks pass
+For ODH, triggered via `workflow_dispatch` from the selected source branch. Follow [ODH version preparation](#odh-version-preparation-release-36) above. It validates the branch, dispatch ref and package version, then rejects an existing release tag or a failed tag lookup. It pins both project versions, refreshes and checks `uv.lock`, and opens a signed-off version-bump PR from a working branch. Client pins are preserved. The protected release branch is updated only through normal PR review and merge; its existing tag workflow remains responsible for tagging.
 
 ### Post-release (`.github/workflows/post-release.yml`)
 
