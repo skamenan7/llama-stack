@@ -8,13 +8,15 @@ import ipaddress
 import json
 import re
 import ssl
+import time
 from abc import ABC, abstractmethod
 from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
 
 import httpx
-import jwt
-from jwt.exceptions import PyJWKClientConnectionError
+from jwcrypto.common import JWKeyNotFound, base64url_decode, json_decode
+from jwcrypto.jwk import JWKSet
+from jwcrypto.jwt import JWT
 from pydantic import BaseModel, Field
 from starlette.types import Scope
 
@@ -191,6 +193,140 @@ def get_attributes_from_claims(claims: dict[str, Any], mapping: dict[str, str]) 
     return attributes
 
 
+def _unverified_kid(token: str) -> str | None:
+    """Extract the 'kid' header of a token without verifying it.
+
+    The kid is only used to select which already-trusted JWKS key will verify
+    the token; all cryptographic and claim verification happens after this.
+    """
+    header = json_decode(base64url_decode(token.split(".", 1)[0]))
+    if not isinstance(header, dict):
+        raise ValueError("Invalid JWT header")
+    kid: str | None = header.get("kid")
+    if kid is not None and not isinstance(kid, str):
+        raise ValueError("Invalid JWT kid header")
+    return kid
+
+
+def _audience_values(aud: Any) -> list[str]:
+    """Normalize a token 'aud' claim (string or list of strings) to a list."""
+    if isinstance(aud, list):
+        return [value for value in aud if isinstance(value, str)]
+    if isinstance(aud, str):
+        return [aud]
+    return []
+
+
+def _verify_signed_token(token: str, keyset: JWKSet, audience: str | None, issuer: str | None) -> dict[str, Any]:
+    """Verify a signed (JWS) bearer token and return its claims.
+
+    jwcrypto verifies the signature against the given key set with a strict
+    allowlist of FIPS-approved asymmetric algorithms, trying every key that
+    matches the token's kid. Encrypted (JWE) and JSON-serialized tokens are
+    rejected, and the exp/nbf claims are validated whenever they are set.
+    The audience and issuer are enforced only when configured, mirroring the
+    previous PyJWT behavior (claims are optional but must match when set).
+    """
+    signed = JWT(algs=FIPS_APPROVED_JWT_ALGORITHMS, expected_type="JWS", strict_serialization=True)
+    # PyJWT used no clock-skew leeway when validating exp/nbf.
+    signed.leeway = 0
+    signed.deserialize(token, keyset)
+    claims: dict[str, Any] = json_decode(signed.claims)
+    # jwcrypto checks only the format of the iat claim; PyJWT additionally
+    # rejected tokens issued in the future, so keep enforcing that here.
+    iat = claims.get("iat")
+    if isinstance(iat, int) and iat > time.time():
+        raise ValueError("Invalid issued-at claim")
+    if audience is not None and audience not in _audience_values(claims.get("aud")):
+        raise ValueError("Invalid audience claim")
+    if issuer is not None and claims.get("iss") != issuer:
+        raise ValueError("Invalid issuer claim")
+    return claims
+
+
+class _JwksKeySource:
+    """Fetches and caches the remote JWKS used to validate bearer tokens.
+
+    This replaces PyJWT's PyJWKClient with an httpx-backed implementation so
+    JWKS fetches no longer block the event loop. The key set is re-fetched
+    when the recheck period elapses or when a token references an unknown key
+    (for example after a key rotation), mirroring PyJWKClient semantics.
+    """
+
+    def __init__(
+        self,
+        uri: str,
+        headers: dict[str, str],
+        verify: bool | ssl.SSLContext,
+        recheck_period: int | None,
+    ) -> None:
+        self.uri = uri
+        # Kept public so tests can assert on the headers sent to the JWKS endpoint.
+        self.headers = headers
+        self._verify = verify
+        self._recheck_period = recheck_period
+        self._keyset: JWKSet | None = None
+        self._fetched_at: float | None = None
+
+    async def fetch_jwks(self) -> dict[str, Any]:
+        """Fetch the JWKS document from the configured URI.
+
+        This method is the stable mock boundary for unit tests; it plays the
+        role that jwt.PyJWKClient.fetch_data used to play.
+        """
+        async with httpx.AsyncClient(verify=self._verify, timeout=httpx.Timeout(10.0, connect=5.0)) as client:
+            response = await client.get(self.uri, headers=self.headers)
+            response.raise_for_status()
+            document: dict[str, Any] = response.json()
+            return document
+
+    async def get_signing_keyset(self, kid: str | None) -> JWKSet:
+        """Return the JWKS signing keys matching the given key id, refreshing the cache if needed.
+
+        Keys marked for encryption (use="enc") or lacking a kid are never
+        returned, mirroring the signing-key filter applied by PyJWT's JWKS
+        client. All matching keys are returned so that verification can try
+        each of them (for example duplicate kids across rotated keys).
+        """
+        if kid is None:
+            # PyJWKClient matched keys by kid only, so kid-less tokens could
+            # never resolve a signing key.
+            raise JWKeyNotFound("Failed to find a signing key: token has no kid header")
+        if self._keyset is not None and not self._is_stale():
+            keyset = self._lookup_keyset(kid)
+            if keyset is not None:
+                return keyset
+        # Unknown key (possible rotation) or stale cache: re-fetch once.
+        await self._refresh()
+        keyset = self._lookup_keyset(kid)
+        if keyset is None:
+            raise JWKeyNotFound(f"Failed to find a signing key for kid: {kid!r}")
+        return keyset
+
+    async def _refresh(self) -> None:
+        document = await self.fetch_jwks()
+        keyset = JWKSet()
+        keyset.import_keyset(json.dumps(document))
+        self._keyset = keyset
+        self._fetched_at = time.monotonic()
+
+    def _lookup_keyset(self, kid: str) -> JWKSet | None:
+        if self._keyset is None:
+            return None
+        signing_keys = [key for key in self._keyset.get_keys(kid) if key.get("use") in ("sig", None)]
+        if not signing_keys:
+            return None
+        keyset = JWKSet()
+        for key in signing_keys:
+            keyset.add(key)
+        return keyset
+
+    def _is_stale(self) -> bool:
+        if self._recheck_period is None or self._fetched_at is None:
+            return False
+        return time.monotonic() - self._fetched_at >= self._recheck_period
+
+
 class OAuth2TokenAuthProvider(AuthProvider):
     """
     JWT token authentication provider that validates a JWT token and extracts access attributes.
@@ -200,7 +336,7 @@ class OAuth2TokenAuthProvider(AuthProvider):
 
     def __init__(self, config: OAuth2TokenAuthConfig) -> None:
         self.config = config
-        self._jwks_client: jwt.PyJWKClient | None = None
+        self._jwks_source: _JwksKeySource | None = None
 
     async def validate_token(self, token: str, scope: Scope | None = None) -> User:
         if self.config.jwks:
@@ -209,63 +345,58 @@ class OAuth2TokenAuthProvider(AuthProvider):
             return await self.introspect_token(token, scope)
         raise ValueError("One of jwks or introspection must be configured")
 
-    def _get_jwks_client(self) -> jwt.PyJWKClient:
-        if self._jwks_client is None:
-            ssl_context = None
-            if not self.config.verify_tls:
-                # Disable SSL verification if verify_tls is False
-                ssl_context = ssl.create_default_context()
-                ssl_context.check_hostname = False
-                ssl_context.verify_mode = ssl.CERT_NONE
-            elif self.config.tls_cafile:
-                # Use custom CA file if provided
-                ssl_context = ssl.create_default_context(
-                    cafile=self.config.tls_cafile.as_posix(),
-                )
-                # If verify_tls is True and no tls_cafile, ssl_context remains None (use system defaults)
+    def _get_jwks_source(self) -> _JwksKeySource:
+        if self._jwks_source is None:
+            # Ensure uri is not None before building the key source
+            if not self.config.jwks or not self.config.jwks.uri:
+                raise ValueError("JWKS configuration requires a valid URI")
 
             # Prepare headers for JWKS request - this is needed for Kubernetes to authenticate
             # to the JWK endpoint, we must use the token in the config to authenticate
             headers = {}
-            if self.config.jwks and self.config.jwks.token:
+            if self.config.jwks.token:
                 headers["Authorization"] = f"Bearer {self.config.jwks.token}"
 
-            # Ensure uri is not None for PyJWKClient
-            if not self.config.jwks or not self.config.jwks.uri:
-                raise ValueError("JWKS configuration requires a valid URI")
+            # httpx's verify parameter accepts True (system defaults), False (no
+            # verification), or an SSLContext built from a custom CA bundle.
+            verify: bool | ssl.SSLContext = True
+            if not self.config.verify_tls:
+                # Disable SSL verification if verify_tls is False
+                verify = False
+            elif self.config.tls_cafile:
+                # Use custom CA file if provided
+                verify = ssl.create_default_context(cafile=self.config.tls_cafile.as_posix())
 
-            # Build kwargs conditionally to avoid passing None values
-            jwks_kwargs: dict[str, Any] = {
-                "cache_keys": True,
-                "max_cached_keys": 10,
-                "headers": headers,
-                "ssl_context": ssl_context,
-            }
-            if self.config.jwks.key_recheck_period is not None:
-                jwks_kwargs["lifespan"] = self.config.jwks.key_recheck_period
+            self._jwks_source = _JwksKeySource(
+                uri=self.config.jwks.uri,
+                headers=headers,
+                verify=verify,
+                recheck_period=self.config.jwks.key_recheck_period,
+            )
+        return self._jwks_source
 
-            self._jwks_client = jwt.PyJWKClient(self.config.jwks.uri, **jwks_kwargs)
-        return self._jwks_client
+    async def _get_signing_keyset(self, token: str) -> JWKSet:
+        kid = _unverified_kid(token)
+        source = self._get_jwks_source()
+        try:
+            return await source.get_signing_keyset(kid)
+        except (
+            httpx.TimeoutException,
+            httpx.ConnectError,
+            httpx.NetworkError,
+            httpx.HTTPStatusError,
+            OSError,
+        ) as exc:
+            logger.warning("Failed to reach JWKS endpoint", error=str(exc))
+            raise AuthServiceUnavailableError("Authentication service unavailable") from exc
 
     async def validate_jwt_token(self, token: str, scope: Scope | None = None) -> User:
         """Validate a token using the JWT token."""
         try:
-            jwks_client: jwt.PyJWKClient = self._get_jwks_client()
-            signing_key = jwks_client.get_signing_key_from_jwt(token)
-
-            # Decode and verify the JWT using a static allowlist of FIPS-approved algorithms.
-            # Never trust the algorithm from the unverified token header (algorithm confusion attack).
-            claims = jwt.decode(
-                token,
-                signing_key.key,
-                algorithms=FIPS_APPROVED_JWT_ALGORITHMS,
-                audience=self.config.audience,
-                issuer=self.config.issuer,
-                options={"verify_exp": True, "verify_aud": True, "verify_iss": True},
-            )
-        except (PyJWKClientConnectionError, ConnectionError, TimeoutError, OSError) as exc:
-            logger.warning("Failed to reach JWKS endpoint", error=str(exc))
-            raise AuthServiceUnavailableError("Authentication service unavailable") from exc
+            signing_keys = await self._get_signing_keyset(token)
+            claims = _verify_signed_token(token, signing_keys, self.config.audience, self.config.issuer)
+        except AuthServiceUnavailableError:
+            raise
         except Exception as exc:
             raise ValueError("Invalid JWT token") from exc
 
