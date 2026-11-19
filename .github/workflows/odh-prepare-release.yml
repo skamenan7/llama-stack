@@ -105,7 +105,25 @@ jobs:
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add pyproject.toml src/ogx_api/pyproject.toml uv.lock
           git commit -s -m "chore: prepare ODH release ${TAG}."
-          git push origin "HEAD:refs/heads/${branch}"
+          bump_ref="refs/heads/$branch"
+          if ! git push origin "HEAD:$bump_ref"; then
+            # A previous run may have pushed the bump but not opened its PR.
+            git fetch --no-tags --depth=2 origin "$bump_ref"
+            expected=$(git show -s --format='%T %P' HEAD)
+            existing=$(git show -s --format='%T %P' FETCH_HEAD)
+            if [[ "$existing" != "$expected" ]]; then
+              echo '::error::Failed to reuse branch: bump or base differs.'
+              exit 1
+            fi
+            owner="${GITHUB_REPOSITORY%%/*}"
+            pr_url=$(gh api --method GET "repos/$GITHUB_REPOSITORY/pulls" \
+              -f state=open -f base="$RELEASE_BRANCH" -f head="$owner:$branch" \
+              --jq '.[0].html_url // empty')
+            if [[ -n "$pr_url" ]]; then
+              echo "Release PR already open: $pr_url"
+              exit 0
+            fi
+          fi
           gh pr create --repo "$GITHUB_REPOSITORY" --base "$RELEASE_BRANCH" \
             --head "$branch" --title "chore: prepare ODH release ${TAG}." \
             --body "Pins ogx and ogx-api to ${TAG#v} and refreshes uv.lock."
