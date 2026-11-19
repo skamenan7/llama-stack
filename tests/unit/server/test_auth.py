@@ -5,11 +5,17 @@
 # the root directory of this source tree.
 
 import logging  # allow-direct-logging
+import time
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.testclient import TestClient
+from jwcrypto.common import base64url_encode
+from jwcrypto.jwk import JWK
+from jwcrypto.jwt import JWT
 
 from ogx.core.datatypes import (
     AuthenticationConfig,
@@ -381,60 +387,37 @@ def test_invalid_auth_header_format_oauth2(oauth2_client):
 
 
 @pytest.fixture
-def rsa_key_pair():
-    """Generate an RSA key pair for JWT signing/verification tests."""
-    from cryptography.hazmat.primitives import serialization
-    from cryptography.hazmat.primitives.asymmetric import rsa
+def rsa_key_pair() -> tuple[JWK, dict[str, Any]]:
+    """Generate an RSA key pair for JWT signing/verification tests.
 
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    private_pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
-    public_key = private_key.public_key()
-    public_numbers = public_key.public_numbers()
-    # Build JWK for mock JWKS endpoint
-    import base64
-
-    def _int_to_base64url(n, length=None):
-        b = n.to_bytes((n.bit_length() + 7) // 8, byteorder="big")
-        return base64.urlsafe_b64encode(b).rstrip(b"=").decode()
-
-    jwk = {
-        "kid": "rsa-test-key",
-        "kty": "RSA",
-        "alg": "RS256",
-        "use": "sig",
-        "n": _int_to_base64url(public_numbers.n),
-        "e": _int_to_base64url(public_numbers.e),
-    }
-    return private_pem, jwk
+    Returns the signing key (a jwcrypto JWK holding the private material) and
+    the public JWK served by the mock JWKS endpoint.
+    """
+    key = JWK.generate(kty="RSA", size=2048, kid="rsa-test-key", use="sig")
+    return key, key.export_public(as_dict=True)
 
 
 @pytest.fixture
 def jwt_token_valid(rsa_key_pair):
-    import jwt
-
-    private_pem, _ = rsa_key_pair
-    return jwt.encode(
-        {
+    key, _ = rsa_key_pair
+    token = JWT(
+        header={"alg": "RS256", "kid": "rsa-test-key"},
+        claims={
             "sub": "my-user",
             "groups": ["group1", "group2"],
             "scope": "foo bar",
             "aud": "ogx",
         },
-        key=private_pem,
-        algorithm="RS256",
-        headers={"kid": "rsa-test-key"},
     )
+    token.make_signed_token(key)
+    return token.serialize()
 
 
 @pytest.fixture
 def mock_jwks_fetch(rsa_key_pair):
-    """Mock PyJWKClient.fetch_data for JWKS requests (stable mock boundary across pyjwt versions)."""
+    """Mock the JWKS fetch for JWKS requests (stable mock boundary across jwcrypto versions)."""
     _, jwk = rsa_key_pair
-    with patch("jwt.PyJWKClient.fetch_data", return_value={"keys": [jwk]}) as mock_fetch:
+    with patch("ogx.core.server.auth_providers._JwksKeySource.fetch_jwks", return_value={"keys": [jwk]}) as mock_fetch:
         yield mock_fetch
 
 
@@ -442,20 +425,18 @@ def mock_jwks_fetch(rsa_key_pair):
 def mock_jwks_fetch_requires_auth(rsa_key_pair):
     """Simulate a JWKS endpoint that rejects requests without a Bearer token.
 
-    Inspects the Authorization header the PyJWKClient was configured with,
-    mirroring the outgoing-request check the old urlopen mock performed.
+    Inspects the Authorization header the JWKS key source was configured
+    with, mirroring the outgoing-request check the old urlopen mock performed.
     """
-    from jwt.exceptions import PyJWKClientConnectionError
-
     _, jwk = rsa_key_pair
 
-    def fetch_data(self):
+    async def fetch_jwks(self):
         auth_header = (self.headers or {}).get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
-            raise PyJWKClientConnectionError('Fail to fetch data from the url, err: "HTTP Error 401: Unauthorized"')
+            raise httpx.ConnectError('Fail to fetch data from the url, err: "HTTP Error 401: Unauthorized"')
         return {"keys": [jwk]}
 
-    with patch("jwt.PyJWKClient.fetch_data", fetch_data) as mock_fetch:
+    with patch("ogx.core.server.auth_providers._JwksKeySource.fetch_jwks", fetch_jwks) as mock_fetch:
         yield mock_fetch
 
 
@@ -522,6 +503,181 @@ def test_oauth2_with_jwks_token_sent_to_jwks_endpoint(
 ):
     """The configured JWKS token must be sent as a Bearer header on JWKS requests."""
     response = oauth2_client_with_jwks_token.get("/test", headers={"Authorization": f"Bearer {jwt_token_valid}"})
+    assert response.status_code == 200
+    assert response.json() == {"message": "Authentication successful"}
+
+
+def test_expired_oauth2_token_rejected(oauth2_client, rsa_key_pair, mock_jwks_fetch, suppress_auth_errors):
+    """Tokens with an expired 'exp' claim must be rejected."""
+    key, _ = rsa_key_pair
+    token = JWT(
+        header={"alg": "RS256", "kid": "rsa-test-key"},
+        claims={"sub": "my-user", "aud": "ogx", "exp": int(time.time()) - 3600},
+    )
+    token.make_signed_token(key)
+    response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {token.serialize()}"})
+    assert response.status_code == 401
+    assert "Invalid JWT token" in response.json()["error"]["message"]
+
+
+def test_oauth2_token_with_expiry_accepted(oauth2_client, rsa_key_pair, mock_jwks_fetch):
+    """Tokens carrying a valid 'exp' claim must be accepted so expiry checking stays active."""
+    key, _ = rsa_key_pair
+    token = JWT(
+        header={"alg": "RS256", "kid": "rsa-test-key"},
+        claims={"sub": "my-user", "aud": "ogx", "exp": int(time.time()) + 3600},
+    )
+    token.make_signed_token(key)
+    response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {token.serialize()}"})
+    assert response.status_code == 200
+    assert response.json() == {"message": "Authentication successful"}
+
+
+def test_oauth2_wrong_audience_rejected(oauth2_client, rsa_key_pair, mock_jwks_fetch, suppress_auth_errors):
+    """Tokens for a different audience must be rejected when an audience is configured."""
+    key, _ = rsa_key_pair
+    token = JWT(
+        header={"alg": "RS256", "kid": "rsa-test-key"},
+        claims={"sub": "my-user", "aud": "other-service"},
+    )
+    token.make_signed_token(key)
+    response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {token.serialize()}"})
+    assert response.status_code == 401
+    assert "Invalid JWT token" in response.json()["error"]["message"]
+
+
+@pytest.fixture
+def oauth2_client_with_issuer():
+    app = FastAPI()
+    auth_config = AuthenticationConfig(
+        provider_config=OAuth2TokenAuthConfig(
+            type=AuthProviderType.OAUTH2_TOKEN,
+            jwks=OAuth2JWKSConfig(uri="http://mock-authz-service/jwks"),
+            audience="ogx",
+            issuer="https://auth.example.com",
+        ),
+        access_policy=[],
+    )
+    app.add_middleware(
+        AuthenticationMiddleware,
+        auth_config=auth_config,
+    )
+
+    @app.get("/test")
+    def test_endpoint():
+        return {"message": "Authentication successful"}
+
+    return TestClient(app)
+
+
+def test_oauth2_issuer_mismatch_rejected(
+    oauth2_client_with_issuer, rsa_key_pair, mock_jwks_fetch, suppress_auth_errors
+):
+    """Tokens from a different issuer must be rejected when an issuer is configured."""
+    key, _ = rsa_key_pair
+    token = JWT(
+        header={"alg": "RS256", "kid": "rsa-test-key"},
+        claims={"sub": "my-user", "aud": "ogx", "iss": "https://evil.example.com"},
+    )
+    token.make_signed_token(key)
+    response = oauth2_client_with_issuer.get("/test", headers={"Authorization": f"Bearer {token.serialize()}"})
+    assert response.status_code == 401
+    assert "Invalid JWT token" in response.json()["error"]["message"]
+
+
+def test_oauth2_symmetric_algorithm_rejected(oauth2_client, suppress_auth_errors):
+    """HS256-signed tokens must be rejected by the FIPS allowlist even when the JWKS holds the matching key."""
+    key = JWK(kty="oct", kid="oct-test-key", k=base64url_encode(b"0123456789abcdef0123456789abcdef"))
+    token = JWT(
+        header={"alg": "HS256", "kid": "oct-test-key"},
+        claims={"sub": "my-user", "aud": "ogx"},
+    )
+    token.make_signed_token(key)
+    with patch(
+        "ogx.core.server.auth_providers._JwksKeySource.fetch_jwks",
+        return_value={"keys": [key.export(as_dict=True)]},
+    ):
+        response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {token.serialize()}"})
+    assert response.status_code == 401
+    assert "Invalid JWT token" in response.json()["error"]["message"]
+
+
+def test_oauth2_encrypted_token_rejected(oauth2_client, mock_jwks_fetch, suppress_auth_errors):
+    """Encrypted (JWE) tokens must be rejected: OGX only accepts signed bearer tokens."""
+    # The token is rejected on its type before any key operation, so a symmetric
+    # key is enough to produce a well-formed JWE carrying the mocked JWKS kid.
+    encryption_key = JWK(kty="oct", kid="rsa-test-key", k=base64url_encode(b"0123456789abcdef0123456789abcdef"))
+    token = JWT(
+        header={"alg": "dir", "enc": "A256GCM", "kid": "rsa-test-key"},
+        claims={"sub": "my-user", "aud": "ogx"},
+    )
+    token.make_encrypted_token(encryption_key)
+    response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {token.serialize()}"})
+    assert response.status_code == 401
+    assert "Invalid JWT token" in response.json()["error"]["message"]
+
+
+def test_oauth2_duplicate_kid_prefers_signing_key(oauth2_client):
+    """A JWKS mixing signing and encryption keys that share a kid must not break token validation."""
+    signing_key = JWK.generate(kty="RSA", size=2048, kid="dup-key", use="sig")
+    encryption_key = JWK.generate(kty="RSA", size=2048, kid="dup-key", use="enc")
+    token = JWT(header={"alg": "RS256", "kid": "dup-key"}, claims={"sub": "my-user", "aud": "ogx"})
+    token.make_signed_token(signing_key)
+    jwks = {"keys": [signing_key.export_public(as_dict=True), encryption_key.export_public(as_dict=True)]}
+    with patch("ogx.core.server.auth_providers._JwksKeySource.fetch_jwks", return_value=jwks):
+        response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {token.serialize()}"})
+    assert response.status_code == 200
+    assert response.json() == {"message": "Authentication successful"}
+
+
+def test_oauth2_encryption_only_key_rejected(oauth2_client, rsa_key_pair, jwt_token_valid, suppress_auth_errors):
+    """A JWKS whose only matching key is marked for encryption must not authenticate the token."""
+    _, jwk = rsa_key_pair
+    encryption_only = dict(jwk)
+    encryption_only["use"] = "enc"
+    with patch(
+        "ogx.core.server.auth_providers._JwksKeySource.fetch_jwks",
+        return_value={"keys": [encryption_only]},
+    ):
+        response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {jwt_token_valid}"})
+    assert response.status_code == 401
+    assert "Invalid JWT token" in response.json()["error"]["message"]
+
+
+def test_oauth2_token_without_kid_rejected(oauth2_client, suppress_auth_errors):
+    """Tokens without a kid header must fail to resolve a signing key, as they did with PyJWT."""
+    key = JWK.generate(kty="RSA", size=2048, use="sig")
+    kidless_jwks = {"keys": [key.export_public(as_dict=True)]}
+    token = JWT(header={"alg": "RS256"}, claims={"sub": "my-user", "aud": "ogx"})
+    token.make_signed_token(key)
+    with patch("ogx.core.server.auth_providers._JwksKeySource.fetch_jwks", return_value=kidless_jwks):
+        response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {token.serialize()}"})
+    assert response.status_code == 401
+    assert "Invalid JWT token" in response.json()["error"]["message"]
+
+
+def test_oauth2_future_iat_rejected(oauth2_client, rsa_key_pair, mock_jwks_fetch, suppress_auth_errors):
+    """Tokens with a future issued-at claim must be rejected."""
+    key, _ = rsa_key_pair
+    token = JWT(
+        header={"alg": "RS256", "kid": "rsa-test-key"},
+        claims={"sub": "my-user", "aud": "ogx", "iat": int(time.time()) + 3600},
+    )
+    token.make_signed_token(key)
+    response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {token.serialize()}"})
+    assert response.status_code == 401
+    assert "Invalid JWT token" in response.json()["error"]["message"]
+
+
+def test_oauth2_past_iat_accepted(oauth2_client, rsa_key_pair, mock_jwks_fetch):
+    """Tokens issued in the past (the normal case) must be accepted."""
+    key, _ = rsa_key_pair
+    token = JWT(
+        header={"alg": "RS256", "kid": "rsa-test-key"},
+        claims={"sub": "my-user", "aud": "ogx", "iat": int(time.time()) - 60},
+    )
+    token.make_signed_token(key)
+    response = oauth2_client.get("/test", headers={"Authorization": f"Bearer {token.serialize()}"})
     assert response.status_code == 200
     assert response.json() == {"message": "Authentication successful"}
 

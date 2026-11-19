@@ -31,6 +31,7 @@ constraint-dependencies = [
     "protobuf>=5.29.6",               # CVE-2025-4565 + CVE-2026-0994: parsing vulnerabilities
     "pyasn1>=0.6.5",                   # CVE-2026-30922: DoS via unbounded recursion
     "pydantic-settings>=2.14.2",
+    "pyjwt>=2.15.1",                   # CVE-2026-48526: auth bypass via forged JWTs (transitive via mcp/msal)
     "python-engineio>=4.13.2",
     "python-multipart>=0.0.31",        # CVE-2026-40347: header injection; CVE-2026-42561: DoS via oversized headers
     "python-socketio>=5.16.2",         # CVE-2025-61765: RCE via pickle deserialization
@@ -70,10 +71,10 @@ dependencies = [
     "httpx",
     "jinja2>=3.1.6",
     "jsonschema",
+    "jwcrypto>=1.6.1",                                # JOSE (JWS/JWK) for bearer token auth; RSA1_5 key encryption (Bleichenbacher-prone) requires explicit opt-in
     "ogx-api",                                # API and provider specifications (local dev via tool.uv.sources)
     "openai>=2.41.0",
     "python-dotenv>=1.2.2",                              # CVE-2026-28684: arbitrary file overwrite via symlink following
-    "pyjwt[crypto]>=2.15.1",                          # Pull crypto to support RS256 for jwt. CVE-2026-48526: auth bypass via forged JWTs.
     "pydantic>=2.11.9",
     "rich",
     "structlog>=24.1.0",
@@ -118,7 +119,7 @@ starter = [
     "fireworks-ai<=0.17.16",
     "google-genai>=1.69.0,<2",
     "langdetect",
-    "markitdown[all]",
+    "markitdown[audio-transcription,docx,outlook,pdf,pptx,xls,xlsx,youtube-transcription]",
     "matplotlib",
     "numpy",
     "ollama",
@@ -174,7 +175,7 @@ type_checking = [
     "types-requests",
     "types-setuptools",
     "types-jsonschema",
-    "markitdown[all]",
+    "markitdown[audio-transcription,docx,outlook,pdf,pptx,xls,xlsx,youtube-transcription]",
     "pypdf>=6.18.0",
     "pandas-stubs",
     "types-psutil>=7.2.2.20260518",
@@ -225,7 +226,7 @@ unit = [
     "databricks-sdk>=0.114.0",
     "docling-slim[service-client]>=2.103.0",  # AsyncDoclingServiceClient added in 2.103.0
     "faiss-cpu",
-    "markitdown[all]",
+    "markitdown[audio-transcription,docx,outlook,pdf,pptx,xls,xlsx,youtube-transcription]",
     "moto[s3]>=5.1.10",
     "ollama",
     "sqlite-vec",
@@ -554,6 +555,7 @@ module = [
     "nest_asyncio",
     "streamlit_option_menu",
     "lmformatenforcer.*",
+    "jwcrypto.*",
     "google.genai.*",
     "docling.*",
     "docling_core.*",
