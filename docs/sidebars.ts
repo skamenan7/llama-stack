@@ -109,7 +109,6 @@ const sidebars: SidebarsConfig = {
           items: [
             'distributions/self_hosted_distro/starter',
             'distributions/self_hosted_distro/nvidia',
-            'distributions/self_hosted_distro/passthrough',
           ],
         },
         {
@@ -185,7 +184,6 @@ const sidebars: SidebarsConfig = {
             'providers/inference/remote_oci',
             'providers/inference/remote_ollama',
             'providers/inference/remote_openai',
-            'providers/inference/remote_passthrough',
             'providers/inference/remote_runpod',
             'providers/inference/remote_sambanova',
             'providers/inference/remote_sglang',
@@ -229,7 +227,6 @@ const sidebars: SidebarsConfig = {
           collapsed: false,
           link: { type: 'doc', id: 'providers/tool_runtime/index' },
           items: [
-            'providers/tool_runtime/inline_file-search',
             'providers/tool_runtime/remote_model-context-protocol'
           ],
         },
