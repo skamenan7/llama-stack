@@ -1,0 +1,111 @@
+name: Prepare ODH release PR
+run-name: Prepare ODH release ${{ inputs.tag }} on ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.4.3+rhaiv.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: odh-prepare-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare-release:
+    if: github.repository == 'opendatahub-io/ogx'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TAG: ${{ inputs.tag }}
+      RELEASE_BRANCH: ${{ github.ref_name }}
+      REF_TYPE: ${{ github.ref_type }}
+    steps:
+      - name: Validate tag and release branch
+        run: |
+          tag_format='^v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?\+rhaiv\.[0-9]+$'
+          branch_format='^release-[0-9]+\.[0-9]+(-ea\.[0-9]+)?$'
+          if [[ ! "$TAG" =~ $tag_format ]]; then
+            echo '::error::Failed to validate tag. Expected vX.Y.Z+rhaiv.N.'
+            exit 1
+          fi
+          if [[ "$REF_TYPE" != branch ||
+                ! "$RELEASE_BRANCH" =~ $branch_format ]]; then
+            echo '::error::Failed to validate ref. Select a release branch.'
+            exit 1
+          fi
+
+      - name: Checkout release branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.ref }}
+          # The release credential lets the version-bump PR trigger CI.
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Check that the tag is new
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null
+          then
+            echo "::error::Failed to prepare ${TAG}: tag already exists."
+            exit 1
+          else
+            status=$?
+            if [[ "$status" -ne 2 ]]; then
+              echo "::error::Failed to check for $TAG (exit $status)."
+              exit "$status"
+            fi
+          fi
+
+      - name: Set up Python
+        # actions/setup-python v6.3.0
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Set up uv
+        # astral-sh/setup-uv v8.2.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39
+
+      - name: Pin project versions and refresh lockfile
+        run: |
+          export VERSION="${TAG#v}"
+          for pyproject in pyproject.toml src/ogx_api/pyproject.toml; do
+            pin="version = \"${VERSION}\""
+            sed -i "/^\[project\]$/,/^\[/{
+              s/^dynamic = \[\"version\"\]$/$pin/
+              s/^version = \".*\"$/$pin/
+            }" "$pyproject"
+          done
+          python - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
+
+          for file in ("pyproject.toml", "src/ogx_api/pyproject.toml"):
+              project = tomllib.loads(Path(file).read_text())["project"]
+              if (project.get("version") != os.environ["VERSION"]
+                  or "version" in project.get("dynamic", [])):
+                  raise SystemExit(f"Failed to pin the version in {file}")
+          PY
+          uv lock
+          uv lock --check
+
+      - name: Push version bump and open PR
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          branch="odh-prepare-${RELEASE_BRANCH}-${TAG}"
+          git switch -c "$branch"
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add pyproject.toml src/ogx_api/pyproject.toml uv.lock
+          git commit -s -m "chore: prepare ODH release ${TAG}."
+          git push origin "HEAD:refs/heads/${branch}"
+          gh pr create --repo "$GITHUB_REPOSITORY" --base "$RELEASE_BRANCH" \
+            --head "$branch" --title "chore: prepare ODH release ${TAG}." \
+            --body "Pins ogx and ogx-api to ${TAG#v} and refreshes uv.lock."

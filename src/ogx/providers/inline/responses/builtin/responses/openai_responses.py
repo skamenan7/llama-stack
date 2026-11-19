@@ -358,7 +358,7 @@ class OpenAIResponsesImpl:
 
             if previous_response.messages:
                 # Use stored messages directly and convert only new input
-                message_adapter: TypeAdapter[list[OpenAIMessageParam]] = TypeAdapter(list[OpenAIMessageParam])
+                message_adapter = TypeAdapter(list[OpenAIMessageParam])
                 messages = message_adapter.validate_python(previous_response.messages)
                 new_messages = await convert_response_input_to_chat_messages(
                     input, previous_messages=messages, files_api=self.files_api
@@ -1498,7 +1498,7 @@ class OpenAIResponsesImpl:
             # turn's items while .messages has the complete chat history. When input is
             # None, .input + .output (set above) already captures the full context.
             if previous_response.messages and input is not None:
-                message_adapter: TypeAdapter[list[OpenAIMessageParam]] = TypeAdapter(list[OpenAIMessageParam])
+                message_adapter = TypeAdapter(list[OpenAIMessageParam])
                 resolved_messages = message_adapter.validate_python(previous_response.messages)
         elif input is not None:
             if isinstance(input, str):
@@ -1815,6 +1815,6 @@ class OpenAIResponsesImpl:
 
         conversation_items.extend(output_items)
 
-        adapter: TypeAdapter[list[ConversationItem]] = TypeAdapter(list[ConversationItem])
+        adapter = TypeAdapter(list[ConversationItem])
         validated_items = adapter.validate_python(conversation_items)
         await self.conversations_api.add_items(conversation_id, AddItemsRequest(items=validated_items))
